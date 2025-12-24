@@ -1,13 +1,27 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, ChevronUp, ChevronDown, ArrowUpDown, Check, X } from "lucide-react";
+import { 
+  Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
+  ChevronUp, ChevronDown, ArrowUpDown, Check, X, Users, Upload, AlertTriangle 
+} from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Level {
   id: string;
@@ -19,8 +33,15 @@ interface Level {
   thumbnail_url: string | null;
 }
 
+interface AdminUser {
+  id: string;
+  user_id: string;
+  role: string;
+  email?: string;
+}
+
 export default function AdminPage() {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, isHeadAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -33,11 +54,19 @@ export default function AdminPage() {
   const [newLevelId, setNewLevelId] = useState("");
   const [addingLevel, setAddingLevel] = useState(false);
   
+  // Bulk import
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [bulkLevelIds, setBulkLevelIds] = useState("");
+  const [bulkImporting, setBulkImporting] = useState(false);
+  
   // Edit modal
   const [editingLevel, setEditingLevel] = useState<Level | null>(null);
   const [editName, setEditName] = useState("");
   const [editAuthor, setEditAuthor] = useState("");
   const [editThumbnail, setEditThumbnail] = useState("");
+  
+  // Delete confirmation
+  const [deleteConfirmLevel, setDeleteConfirmLevel] = useState<Level | null>(null);
   
   // Quick rank change
   const [rankInputId, setRankInputId] = useState<string | null>(null);
@@ -50,6 +79,11 @@ export default function AdminPage() {
   // Drag and drop
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  
+  // Admin management (head admin only)
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [addingAdmin, setAddingAdmin] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -61,8 +95,11 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAdmin) {
       fetchLevels();
+      if (isHeadAdmin) {
+        fetchAdmins();
+      }
     }
-  }, [isAdmin]);
+  }, [isAdmin, isHeadAdmin]);
 
   const fetchLevels = async () => {
     setLoading(true);
@@ -77,6 +114,17 @@ export default function AdminPage() {
       setLevels(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchAdmins = async () => {
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("id, user_id, role")
+      .eq("role", "admin");
+    
+    if (!error && data) {
+      setAdmins(data);
+    }
   };
 
   const calculatePoints = (rank: number): number => {
@@ -129,17 +177,89 @@ export default function AdminPage() {
     }
   };
 
-  const removeLevel = async (id: string) => {
-    const { error } = await supabase.from("levels").delete().eq("id", id);
+  const bulkImportLevels = async () => {
+    const ids = bulkLevelIds
+      .split(/[\n,]+/)
+      .map(id => id.trim())
+      .filter(id => id.length > 0);
+    
+    if (ids.length === 0) {
+      toast({ title: "Error", description: "No valid level IDs found", variant: "destructive" });
+      return;
+    }
+    
+    setBulkImporting(true);
+    let successCount = 0;
+    let errorCount = 0;
+    let currentRank = levels.length;
+    
+    for (const levelId of ids) {
+      try {
+        // Check if already exists
+        const existingLevel = levels.find(l => l.level_id === levelId);
+        if (existingLevel) {
+          errorCount++;
+          continue;
+        }
+        
+        const response = await fetch(
+          `https://api.narrowarrow.xyz/level-details/${levelId}?isCustomLevel=true`
+        );
+        
+        if (!response.ok) {
+          errorCount++;
+          continue;
+        }
+        
+        const data = await response.json();
+        currentRank++;
+        
+        const { error } = await supabase.from("levels").insert({
+          level_id: levelId,
+          name: data.levelInfo?.name || "Unknown Level",
+          author: data.levelInfo?.author || "Unknown",
+          rank_position: currentRank,
+          points: calculatePoints(currentRank),
+          thumbnail_url: null,
+        });
+        
+        if (error) {
+          errorCount++;
+        } else {
+          successCount++;
+        }
+      } catch {
+        errorCount++;
+      }
+    }
+    
+    setBulkImporting(false);
+    setBulkImportOpen(false);
+    setBulkLevelIds("");
+    
+    toast({ 
+      title: "Bulk Import Complete", 
+      description: `Added ${successCount} levels. ${errorCount > 0 ? `${errorCount} failed/skipped.` : ""}` 
+    });
+    
+    fetchLevels();
+  };
+
+  const confirmDeleteLevel = async () => {
+    if (!deleteConfirmLevel) return;
+    
+    const { error } = await supabase.from("levels").delete().eq("id", deleteConfirmLevel.id);
     
     if (error) {
       toast({ title: "Error", description: "Failed to remove level", variant: "destructive" });
     } else {
       toast({ title: "Success", description: "Level removed" });
-      const remaining = levels.filter(l => l.id !== id);
+      const remaining = levels.filter(l => l.id !== deleteConfirmLevel.id);
       await updateRanks(remaining.map((l, i) => ({ ...l, rank_position: i + 1 })));
       fetchLevels();
     }
+    
+    setDeleteConfirmLevel(null);
   };
 
   const moveLevel = async (index: number, direction: "up" | "down") => {
@@ -177,7 +297,6 @@ export default function AdminPage() {
     toast({ title: "Saved", description: "Rankings updated" });
   };
 
-  // Quick rank change
   const startRankEdit = (level: Level) => {
     setRankInputId(level.id);
     setRankInputValue(String(level.rank_position));
@@ -203,7 +322,6 @@ export default function AdminPage() {
       return;
     }
 
-    // Reorder array
     const newLevels = [...levels];
     newLevels.splice(currentIndex, 1);
     newLevels.splice(targetIndex, 0, levelToMove);
@@ -219,7 +337,6 @@ export default function AdminPage() {
     await updateRanks(updatedLevels);
   };
 
-  // Quick thumbnail edit
   const startThumbnailEdit = (level: Level) => {
     setThumbnailEditId(level.id);
     setThumbnailInputValue(level.thumbnail_url || "");
@@ -247,7 +364,6 @@ export default function AdminPage() {
     setSaving(false);
   };
 
-  // Drag and drop handlers
   const handleDragStart = (index: number) => {
     setDraggedIndex(index);
   };
@@ -328,6 +444,54 @@ export default function AdminPage() {
     }
   };
 
+  // Admin management functions
+  const addAdmin = async () => {
+    if (!newAdminEmail.trim()) return;
+    
+    setAddingAdmin(true);
+    
+    try {
+      // First, we need to find the user by email - we'll use a workaround
+      // since we can't directly query auth.users
+      // The user needs to exist and be signed up
+      toast({ 
+        title: "Note", 
+        description: "The user must have already signed up. Enter their user ID instead of email for now.",
+      });
+      
+      // For now, treat input as user_id
+      const userId = newAdminEmail.trim();
+      
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({ user_id: userId, role: "admin" });
+      
+      if (error) throw error;
+      
+      toast({ title: "Success", description: "Admin added" });
+      setNewAdminEmail("");
+      fetchAdmins();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to add admin", variant: "destructive" });
+    } finally {
+      setAddingAdmin(false);
+    }
+  };
+
+  const removeAdmin = async (roleId: string) => {
+    const { error } = await supabase
+      .from("user_roles")
+      .delete()
+      .eq("id", roleId);
+    
+    if (error) {
+      toast({ title: "Error", description: "Failed to remove admin", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Admin removed" });
+      fetchAdmins();
+    }
+  };
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -357,21 +521,74 @@ export default function AdminPage() {
                 <Shield className="w-6 h-6 text-accent" />
               </div>
               <div>
-                <h1 className="font-display text-3xl font-bold text-foreground">Admin Panel</h1>
+                <h1 className="font-display text-3xl font-bold text-foreground">
+                  Admin Panel {isHeadAdmin && <span className="text-accent text-lg">(Head Admin)</span>}
+                </h1>
                 <p className="text-muted-foreground">Drag to reorder • Click rank to jump • Click thumbnail to edit</p>
               </div>
             </div>
             
-            <Button 
-              onClick={triggerSync} 
-              disabled={syncing}
-              variant="outline"
-              className="gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncing..." : "Sync Now"}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setBulkImportOpen(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                Bulk Import
+              </Button>
+              <Button 
+                onClick={triggerSync} 
+                disabled={syncing}
+                variant="outline"
+                className="gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "Syncing..." : "Sync Now"}
+              </Button>
+            </div>
           </div>
+
+          {/* Head Admin: Manage Admins */}
+          {isHeadAdmin && (
+            <div className="rounded-lg bg-card border border-accent/30 p-6 mb-8">
+              <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-accent" />
+                Manage Admins
+              </h2>
+              
+              <div className="flex gap-4 mb-4">
+                <Input
+                  placeholder="Enter user ID to grant admin"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  className="flex-1 bg-secondary border-border"
+                />
+                <Button onClick={addAdmin} disabled={addingAdmin || !newAdminEmail.trim()}>
+                  {addingAdmin ? "Adding..." : "Add Admin"}
+                </Button>
+              </div>
+              
+              {admins.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground mb-2">Current Admins:</p>
+                  {admins.map(admin => (
+                    <div key={admin.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                      <span className="font-mono text-sm text-foreground">{admin.user_id}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeAdmin(admin.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Add New Level */}
           <div className="rounded-lg bg-card border border-border p-6 mb-8">
@@ -423,12 +640,10 @@ export default function AdminPage() {
                       ${dragOverIndex === index && draggedIndex !== index ? "border-t-2 border-primary" : ""}
                     `}
                   >
-                    {/* Drag handle */}
                     <div className="flex-shrink-0 text-muted-foreground">
                       <GripVertical className="w-5 h-5" />
                     </div>
 
-                    {/* Rank - clickable to change */}
                     <div className="w-16 flex-shrink-0">
                       {rankInputId === level.id ? (
                         <div className="flex items-center gap-1">
@@ -465,7 +680,6 @@ export default function AdminPage() {
                       )}
                     </div>
 
-                    {/* Thumbnail - clickable to edit */}
                     <div className="w-20 h-12 rounded bg-secondary overflow-hidden flex-shrink-0 relative group">
                       {thumbnailEditId === level.id ? (
                         <div className="absolute inset-0 bg-card p-1 flex items-center gap-1 z-10">
@@ -509,7 +723,6 @@ export default function AdminPage() {
                       )}
                     </div>
 
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-foreground truncate">
                         {level.name || "Unnamed Level"}
@@ -519,7 +732,6 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Quick move buttons */}
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
@@ -553,7 +765,7 @@ export default function AdminPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => removeLevel(level.id)}
+                        onClick={() => setDeleteConfirmLevel(level)}
                         className="h-8 w-8 text-destructive hover:text-destructive"
                         title="Remove level"
                       >
@@ -568,13 +780,49 @@ export default function AdminPage() {
         </div>
       </main>
 
+      {/* Bulk Import Modal */}
+      {bulkImportOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-lg space-y-4">
+            <h2 className="font-display text-xl font-bold flex items-center gap-2">
+              <Upload className="w-5 h-5 text-primary" />
+              Bulk Import Levels
+            </h2>
+            
+            <div>
+              <Label htmlFor="bulkIds">Level IDs (one per line or comma-separated)</Label>
+              <Textarea
+                id="bulkIds"
+                value={bulkLevelIds}
+                onChange={(e) => setBulkLevelIds(e.target.value)}
+                placeholder="1743661104278
+1234567890123
+9876543210987"
+                className="mt-1 bg-secondary border-border min-h-[200px] font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Levels will be added in the order listed, starting after current last position.
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4">
+              <Button variant="outline" onClick={() => setBulkImportOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={bulkImportLevels} disabled={bulkImporting || !bulkLevelIds.trim()}>
+                {bulkImporting ? "Importing..." : "Import Levels"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Modal */}
       {editingLevel && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
             <h2 className="font-display text-xl font-bold">Edit Level</h2>
             
-            {/* Thumbnail preview */}
             <div className="aspect-video rounded-lg bg-secondary overflow-hidden">
               {editThumbnail ? (
                 <img src={editThumbnail} alt="Preview" className="w-full h-full object-cover" />
@@ -629,6 +877,28 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmLevel} onOpenChange={() => setDeleteConfirmLevel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Delete Level?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteConfirmLevel?.name || "this level"}</strong>? 
+              This will remove it from the rankings and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteLevel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
