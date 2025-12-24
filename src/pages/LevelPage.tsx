@@ -5,6 +5,7 @@ import { getPlayerProfile } from "@/config/profiles";
 import { formatTime, formatDate, fetchRunDetails, RunDetails } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash } from "lucide-react";
 
 export default function LevelPage() {
@@ -222,7 +223,7 @@ export default function LevelPage() {
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
-                          <span>{entry.arrow_name}</span>
+                          <ArrowIcon arrowName={entry.arrow_name} className="w-4 h-4" />
                           {details?.finishedAt && (
                             <>
                               <span>•</span>

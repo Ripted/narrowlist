@@ -3,16 +3,17 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Trophy, List, Shield, LogOut, LogIn, User } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock } from "lucide-react";
 
 export function Navbar() {
   const location = useLocation();
   const { user, isAdmin, signOut } = useAuth();
   const [playerUsername, setPlayerUsername] = useState<string | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
-      // Check if user has a linked profile
       supabase
         .from("profiles")
         .select("username")
@@ -32,10 +33,58 @@ export function Navbar() {
 
   const navItems = [
     { path: "/", label: "Levels", icon: List },
+    { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
+    <>
+      {navItems.map(({ path, label, icon: Icon }) => (
+        <Link key={path} to={path} onClick={() => mobile && setMobileOpen(false)}>
+          <Button
+            variant={isActive(path) ? "default" : "ghost"}
+            size="sm"
+            className={`gap-2 font-medium w-full justify-start ${mobile ? "" : ""} ${
+              isActive(path) ? "glow-primary" : "hover:bg-secondary"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </Button>
+        </Link>
+      ))}
+      {playerUsername && (
+        <Link to={`/player/${playerUsername}`} onClick={() => mobile && setMobileOpen(false)}>
+          <Button
+            variant={location.pathname === `/player/${playerUsername}` ? "default" : "ghost"}
+            size="sm"
+            className={`gap-2 font-medium w-full justify-start ${
+              location.pathname === `/player/${playerUsername}` ? "glow-primary" : "hover:bg-secondary"
+            }`}
+          >
+            <User className="w-4 h-4" />
+            Profile
+          </Button>
+        </Link>
+      )}
+      {isAdmin && (
+        <Link to="/admin" onClick={() => mobile && setMobileOpen(false)}>
+          <Button
+            variant={isActive("/admin") ? "default" : "ghost"}
+            size="sm"
+            className={`gap-2 font-medium w-full justify-start ${
+              isActive("/admin") ? "glow-accent bg-accent text-accent-foreground" : "hover:bg-secondary text-accent"
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            Admin
+          </Button>
+        </Link>
+      )}
+    </>
+  );
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -54,53 +103,12 @@ export function Navbar() {
             </span>
           </Link>
 
-          {/* Navigation */}
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
-            {navItems.map(({ path, label, icon: Icon }) => (
-              <Link key={path} to={path}>
-                <Button
-                  variant={isActive(path) ? "default" : "ghost"}
-                  size="sm"
-                  className={`gap-2 font-medium ${
-                    isActive(path) ? "glow-primary" : "hover:bg-secondary"
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </Button>
-              </Link>
-            ))}
-            {playerUsername && (
-              <Link to={`/player/${playerUsername}`}>
-                <Button
-                  variant={location.pathname === `/player/${playerUsername}` ? "default" : "ghost"}
-                  size="sm"
-                  className={`gap-2 font-medium ${
-                    location.pathname === `/player/${playerUsername}` ? "glow-primary" : "hover:bg-secondary"
-                  }`}
-                >
-                  <User className="w-4 h-4" />
-                  Profile
-                </Button>
-              </Link>
-            )}
-            {isAdmin && (
-              <Link to="/admin">
-                <Button
-                  variant={isActive("/admin") ? "default" : "ghost"}
-                  size="sm"
-                  className={`gap-2 font-medium ${
-                    isActive("/admin") ? "glow-accent bg-accent text-accent-foreground" : "hover:bg-secondary text-accent"
-                  }`}
-                >
-                  <Shield className="w-4 h-4" />
-                  Admin
-                </Button>
-              </Link>
-            )}
+            <NavLinks />
           </div>
 
-          {/* Auth */}
+          {/* Auth & Mobile */}
           <div className="flex items-center gap-2">
             {user ? (
               <Button
@@ -120,6 +128,20 @@ export function Navbar() {
                 </Button>
               </Link>
             )}
+
+            {/* Mobile Menu */}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-64 bg-background border-border">
+                <div className="flex flex-col gap-2 pt-8">
+                  <NavLinks mobile />
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
