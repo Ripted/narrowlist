@@ -99,6 +99,7 @@ export function useLevel(levelId: string) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [rank, setRank] = useState<number | null>(null);
   const [points, setPoints] = useState<number>(0);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -127,6 +128,7 @@ export function useLevel(levelId: string) {
         });
         setRank(dbResult.data.rank_position);
         setPoints(dbResult.data.points);
+        setThumbnailUrl(dbResult.data.thumbnail_url);
       } else {
         setLevel(details);
       }
@@ -138,7 +140,7 @@ export function useLevel(levelId: string) {
     load();
   }, [levelId]);
 
-  return { level, leaderboard, rank, points, loading };
+  return { level, leaderboard, rank, points, thumbnailUrl, loading };
 }
 
 export function usePlayerLeaderboard() {

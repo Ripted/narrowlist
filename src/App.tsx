@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import LevelPage from "./pages/LevelPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import PlayerPage from "./pages/PlayerPage";
+import FutureListPage from "./pages/FutureListPage";
 import AuthPage from "./pages/AuthPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/level/:levelId" element={<LevelPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
+            <Route path="/future-list" element={<FutureListPage />} />
             <Route path="/player/:username" element={<PlayerPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/admin" element={<AdminPage />} />
