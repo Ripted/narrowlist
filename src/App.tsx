@@ -7,7 +7,6 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import LevelPage from "./pages/LevelPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
-import PlayersPage from "./pages/PlayersPage";
 import PlayerPage from "./pages/PlayerPage";
 import AuthPage from "./pages/AuthPage";
 import AdminPage from "./pages/AdminPage";
@@ -26,7 +25,6 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/level/:levelId" element={<LevelPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
-            <Route path="/players" element={<PlayersPage />} />
             <Route path="/player/:username" element={<PlayerPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/admin" element={<AdminPage />} />

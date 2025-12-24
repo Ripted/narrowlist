@@ -1,14 +1,38 @@
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useLevel } from "@/hooks/useLevels";
 import { getPlayerProfile } from "@/config/profiles";
-import { formatTime, formatDate } from "@/lib/api";
+import { formatTime, formatDate, fetchRunDetails, RunDetails } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash } from "lucide-react";
 
 export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
   const { level, leaderboard, rank, points, loading } = useLevel(levelId || "");
+  const [runDetails, setRunDetails] = useState<Map<number, RunDetails>>(new Map());
+  const [loadingRuns, setLoadingRuns] = useState(false);
+
+  useEffect(() => {
+    if (leaderboard.length > 0) {
+      setLoadingRuns(true);
+      Promise.all(
+        leaderboard.map((entry) =>
+          fetchRunDetails(entry.run_id).then((details) => ({
+            runId: entry.run_id,
+            details,
+          }))
+        )
+      ).then((results) => {
+        const map = new Map<number, RunDetails>();
+        results.forEach(({ runId, details }) => {
+          if (details) map.set(runId, details);
+        });
+        setRunDetails(map);
+        setLoadingRuns(false);
+      });
+    }
+  }, [leaderboard]);
 
   if (loading) {
     return (
@@ -51,9 +75,9 @@ export default function LevelPage() {
   };
 
   const getMedalColor = (position: number) => {
-    if (position === 0) return "text-yellow-400";
-    if (position === 1) return "text-gray-400";
-    if (position === 2) return "text-orange-400";
+    if (position === 0) return "text-glow-gold";
+    if (position === 1) return "text-glow-silver";
+    if (position === 2) return "text-glow-bronze";
     return "text-muted-foreground";
   };
 
@@ -122,7 +146,7 @@ export default function LevelPage() {
                   <div className="text-xs text-muted-foreground">Completions</div>
                 </div>
                 <div className="rounded-lg bg-card border border-border p-4 text-center">
-                  <Medal className="w-6 h-6 mx-auto mb-2 text-yellow-400" />
+                  <Medal className="w-6 h-6 mx-auto mb-2 text-glow-gold" />
                   <div className="font-display text-lg font-bold text-foreground truncate">
                     {worldRecord?.username || "N/A"}
                   </div>
@@ -156,11 +180,16 @@ export default function LevelPage() {
               <div className="divide-y divide-border">
                 {leaderboard.map((entry, index) => {
                   const profile = getPlayerProfile(entry.username);
+                  const details = runDetails.get(entry.run_id);
+                  const isVerifier = details?.verifier === true;
+                  
                   return (
                     <Link
                       key={entry.run_id}
                       to={`/player/${entry.username}`}
-                      className="flex items-center gap-4 p-4 hover:bg-secondary/20 transition-colors"
+                      className={`flex items-center gap-4 p-4 hover:bg-secondary/20 transition-colors ${
+                        isVerifier ? "bg-primary/5 border-l-2 border-primary" : ""
+                      }`}
                     >
                       <div className="w-8 text-center flex-shrink-0">
                         {index < 3 ? (
@@ -181,14 +210,38 @@ export default function LevelPage() {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-foreground truncate">
-                          {profile?.displayName || entry.username}
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground truncate">
+                            {profile?.displayName || entry.username}
+                          </span>
+                          {isVerifier && (
+                            <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                              <CheckCircle className="w-3 h-3" />
+                              Verifier
+                            </span>
+                          )}
                         </div>
-                        <div className="text-xs text-muted-foreground">{entry.arrow_name}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <span>{entry.arrow_name}</span>
+                          {details?.finishedAt && (
+                            <>
+                              <span>•</span>
+                              <span>{formatDate(details.finishedAt)}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="font-mono text-primary font-medium">
-                        {formatTime(entry.completion_time)}
+                      <div className="flex items-center gap-4">
+                        {details?.input_count !== undefined && (
+                          <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
+                            <Hash className="w-3 h-3" />
+                            <span>{details.input_count} inputs</span>
+                          </div>
+                        )}
+                        <div className="font-mono text-primary font-medium">
+                          {formatTime(entry.completion_time)}
+                        </div>
                       </div>
                     </Link>
                   );

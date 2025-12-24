@@ -46,6 +46,7 @@ export interface RunDetails {
   input_count: number;
   isCustomLevel: boolean;
   verified: boolean;
+  verifier?: boolean;
   skinConfig?: {
     themeColor?: { name: string; image: string };
     thrustColor?: { name: string; image: string };
