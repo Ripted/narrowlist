@@ -15,7 +15,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const HEAD_ADMIN_ID = "40674720-de67-4ee0-acef-6dff6673d3a4";
+// Head admin emails - permanent admins that cannot be removed
+const HEAD_ADMIN_EMAILS = ["sirsamyou@gmail.com", "narrow.ripted@gmail.com"];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -54,14 +55,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const checkAdminRole = async (userId: string) => {
-    // Check if head admin
-    if (userId === HEAD_ADMIN_ID) {
-      setIsAdmin(true);
-      setIsHeadAdmin(true);
-      return;
-    }
-
     try {
+      // Check if head admin via the database function
+      const { data: headAdminData } = await supabase.rpc('is_head_admin', { _user_id: userId });
+      
+      if (headAdminData) {
+        setIsAdmin(true);
+        setIsHeadAdmin(true);
+        return;
+      }
+
+      // Check regular admin role
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")

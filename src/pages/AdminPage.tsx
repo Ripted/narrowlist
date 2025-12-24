@@ -10,8 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
-  ChevronUp, ChevronDown, ArrowUpDown, Check, X, Users, Upload, AlertTriangle,
-  ImagePlus, Loader2
+  ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
+  ImagePlus, Loader2, UserCheck, UserX, Clock
 } from "lucide-react";
 import {
   AlertDialog,
@@ -34,11 +34,15 @@ interface Level {
   thumbnail_url: string | null;
 }
 
-interface AdminUser {
+interface ClaimRequest {
   id: string;
+  profile_id: string;
   user_id: string;
-  role: string;
-  email?: string;
+  email: string;
+  status: string;
+  created_at: string;
+  profile_username?: string;
+  profile_display_name?: string;
 }
 
 export default function AdminPage() {
@@ -51,13 +55,15 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   
-  // New level form
+  // New level form with rank
   const [newLevelId, setNewLevelId] = useState("");
+  const [newLevelRank, setNewLevelRank] = useState("");
   const [addingLevel, setAddingLevel] = useState(false);
   
   // Bulk import
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [bulkLevelIds, setBulkLevelIds] = useState("");
+  const [bulkStartRank, setBulkStartRank] = useState("");
   const [bulkImporting, setBulkImporting] = useState(false);
   
   // Edit modal
@@ -77,17 +83,15 @@ export default function AdminPage() {
   const [thumbnailEditId, setThumbnailEditId] = useState<string | null>(null);
   const [thumbnailInputValue, setThumbnailInputValue] = useState("");
   const [uploadingThumbnail, setUploadingThumbnail] = useState<string | null>(null);
-  const thumbnailInputRef = useRef<HTMLInputElement>(null);
   const editThumbnailInputRef = useRef<HTMLInputElement>(null);
   
   // Drag and drop
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   
-  // Admin management (head admin only)
-  const [admins, setAdmins] = useState<AdminUser[]>([]);
-  const [newAdminEmail, setNewAdminEmail] = useState("");
-  const [addingAdmin, setAddingAdmin] = useState(false);
+  // Claim requests
+  const [claimRequests, setClaimRequests] = useState<ClaimRequest[]>([]);
+  const [processingClaim, setProcessingClaim] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -99,11 +103,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAdmin) {
       fetchLevels();
-      if (isHeadAdmin) {
-        fetchAdmins();
-      }
+      fetchClaimRequests();
     }
-  }, [isAdmin, isHeadAdmin]);
+  }, [isAdmin]);
 
   const fetchLevels = async () => {
     setLoading(true);
@@ -120,14 +122,31 @@ export default function AdminPage() {
     setLoading(false);
   };
 
-  const fetchAdmins = async () => {
+  const fetchClaimRequests = async () => {
     const { data, error } = await supabase
-      .from("user_roles")
-      .select("id, user_id, role")
-      .eq("role", "admin");
+      .from("profile_claim_requests")
+      .select("*")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
     
     if (!error && data) {
-      setAdmins(data);
+      // Fetch profile info for each request
+      const requestsWithProfiles = await Promise.all(
+        data.map(async (req) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username, display_name")
+            .eq("id", req.profile_id)
+            .single();
+          
+          return {
+            ...req,
+            profile_username: profile?.username,
+            profile_display_name: profile?.display_name,
+          };
+        })
+      );
+      setClaimRequests(requestsWithProfiles);
     }
   };
 
@@ -158,21 +177,40 @@ export default function AdminPage() {
       }
       
       const data = await response.json();
-      const newRank = levels.length + 1;
+      const targetRank = newLevelRank ? parseInt(newLevelRank) : levels.length + 1;
+      
+      if (targetRank < 1 || targetRank > levels.length + 1) {
+        throw new Error(`Rank must be between 1 and ${levels.length + 1}`);
+      }
+      
+      // Shift existing levels if inserting at a specific position
+      if (targetRank <= levels.length) {
+        const levelsToUpdate = levels.filter(l => l.rank_position >= targetRank);
+        for (const level of levelsToUpdate) {
+          await supabase
+            .from("levels")
+            .update({ 
+              rank_position: level.rank_position + 1,
+              points: calculatePoints(level.rank_position + 1)
+            })
+            .eq("id", level.id);
+        }
+      }
       
       const { error } = await supabase.from("levels").insert({
         level_id: newLevelId.trim(),
         name: data.levelInfo?.name || "Unknown Level",
         author: data.levelInfo?.author || "Unknown",
-        rank_position: newRank,
-        points: calculatePoints(newRank),
+        rank_position: targetRank,
+        points: calculatePoints(targetRank),
         thumbnail_url: null,
       });
       
       if (error) throw error;
       
-      toast({ title: "Success", description: "Level added successfully" });
+      toast({ title: "Success", description: `Level added at rank #${targetRank}` });
       setNewLevelId("");
+      setNewLevelRank("");
       fetchLevels();
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to add level", variant: "destructive" });
@@ -195,11 +233,27 @@ export default function AdminPage() {
     setBulkImporting(true);
     let successCount = 0;
     let errorCount = 0;
-    let currentRank = levels.length;
+    
+    const startRank = bulkStartRank ? parseInt(bulkStartRank) : levels.length + 1;
+    
+    // Shift existing levels if needed
+    if (startRank <= levels.length) {
+      const levelsToUpdate = levels.filter(l => l.rank_position >= startRank);
+      for (const level of levelsToUpdate) {
+        await supabase
+          .from("levels")
+          .update({ 
+            rank_position: level.rank_position + ids.length,
+            points: calculatePoints(level.rank_position + ids.length)
+          })
+          .eq("id", level.id);
+      }
+    }
+    
+    let currentRank = startRank;
     
     for (const levelId of ids) {
       try {
-        // Check if already exists
         const existingLevel = levels.find(l => l.level_id === levelId);
         if (existingLevel) {
           errorCount++;
@@ -216,7 +270,6 @@ export default function AdminPage() {
         }
         
         const data = await response.json();
-        currentRank++;
         
         const { error } = await supabase.from("levels").insert({
           level_id: levelId,
@@ -231,6 +284,7 @@ export default function AdminPage() {
           errorCount++;
         } else {
           successCount++;
+          currentRank++;
         }
       } catch {
         errorCount++;
@@ -240,10 +294,11 @@ export default function AdminPage() {
     setBulkImporting(false);
     setBulkImportOpen(false);
     setBulkLevelIds("");
+    setBulkStartRank("");
     
     toast({ 
       title: "Bulk Import Complete", 
-      description: `Added ${successCount} levels. ${errorCount > 0 ? `${errorCount} failed/skipped.` : ""}` 
+      description: `Added ${successCount} levels starting at rank #${startRank}. ${errorCount > 0 ? `${errorCount} failed/skipped.` : ""}` 
     });
     
     fetchLevels();
@@ -506,51 +561,47 @@ export default function AdminPage() {
     }
   };
 
-  // Admin management functions
-  const addAdmin = async () => {
-    if (!newAdminEmail.trim()) return;
+  // Claim request handlers
+  const handleClaimRequest = async (requestId: string, action: "approved" | "rejected") => {
+    setProcessingClaim(requestId);
     
-    setAddingAdmin(true);
+    const request = claimRequests.find(r => r.id === requestId);
+    if (!request) return;
     
     try {
-      // First, we need to find the user by email - we'll use a workaround
-      // since we can't directly query auth.users
-      // The user needs to exist and be signed up
-      toast({ 
-        title: "Note", 
-        description: "The user must have already signed up. Enter their user ID instead of email for now.",
-      });
+      if (action === "approved") {
+        // Link profile to user
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ user_id: request.user_id })
+          .eq("id", request.profile_id);
+        
+        if (profileError) throw profileError;
+      }
       
-      // For now, treat input as user_id
-      const userId = newAdminEmail.trim();
-      
+      // Update request status
       const { error } = await supabase
-        .from("user_roles")
-        .insert({ user_id: userId, role: "admin" });
+        .from("profile_claim_requests")
+        .update({ 
+          status: action,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", requestId);
       
       if (error) throw error;
       
-      toast({ title: "Success", description: "Admin added" });
-      setNewAdminEmail("");
-      fetchAdmins();
+      toast({ 
+        title: action === "approved" ? "Claim Approved" : "Claim Rejected",
+        description: action === "approved" 
+          ? `Profile linked to user successfully` 
+          : `Claim request has been rejected`
+      });
+      
+      fetchClaimRequests();
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to add admin", variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
-      setAddingAdmin(false);
-    }
-  };
-
-  const removeAdmin = async (roleId: string) => {
-    const { error } = await supabase
-      .from("user_roles")
-      .delete()
-      .eq("id", roleId);
-    
-    if (error) {
-      toast({ title: "Error", description: "Failed to remove admin", variant: "destructive" });
-    } else {
-      toast({ title: "Success", description: "Admin removed" });
-      fetchAdmins();
+      setProcessingClaim(null);
     }
   };
 
@@ -611,44 +662,50 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Head Admin: Manage Admins */}
-          {isHeadAdmin && (
-            <div className="rounded-lg bg-card border border-accent/30 p-6 mb-8">
+          {/* Claim Requests */}
+          {claimRequests.length > 0 && (
+            <div className="rounded-lg bg-card border border-yellow-500/30 p-6 mb-8">
               <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5 text-accent" />
-                Manage Admins
+                <Clock className="w-5 h-5 text-yellow-500" />
+                Profile Claim Requests ({claimRequests.length})
               </h2>
               
-              <div className="flex gap-4 mb-4">
-                <Input
-                  placeholder="Enter user ID to grant admin"
-                  value={newAdminEmail}
-                  onChange={(e) => setNewAdminEmail(e.target.value)}
-                  className="flex-1 bg-secondary border-border"
-                />
-                <Button onClick={addAdmin} disabled={addingAdmin || !newAdminEmail.trim()}>
-                  {addingAdmin ? "Adding..." : "Add Admin"}
-                </Button>
-              </div>
-              
-              {admins.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground mb-2">Current Admins:</p>
-                  {admins.map(admin => (
-                    <div key={admin.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
-                      <span className="font-mono text-sm text-foreground">{admin.user_id}</span>
+              <div className="space-y-3">
+                {claimRequests.map(request => (
+                  <div key={request.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
+                    <div>
+                      <div className="font-medium text-foreground">
+                        {request.profile_display_name || request.profile_username}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Email: {request.email} • Requested: {new Date(request.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
                       <Button
-                        variant="ghost"
                         size="sm"
-                        onClick={() => removeAdmin(admin.id)}
-                        className="text-destructive hover:text-destructive"
+                        variant="outline"
+                        className="gap-1 text-green-500 border-green-500/50 hover:bg-green-500/10"
+                        onClick={() => handleClaimRequest(request.id, "approved")}
+                        disabled={processingClaim === request.id}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <UserCheck className="w-4 h-4" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-destructive border-destructive/50 hover:bg-destructive/10"
+                        onClick={() => handleClaimRequest(request.id, "rejected")}
+                        disabled={processingClaim === request.id}
+                      >
+                        <UserX className="w-4 h-4" />
+                        Reject
                       </Button>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -665,10 +722,22 @@ export default function AdminPage() {
                 onChange={(e) => setNewLevelId(e.target.value)}
                 className="flex-1 bg-secondary border-border"
               />
+              <Input
+                placeholder={`Rank (1-${levels.length + 1})`}
+                value={newLevelRank}
+                onChange={(e) => setNewLevelRank(e.target.value)}
+                className="w-32 bg-secondary border-border"
+                type="number"
+                min={1}
+                max={levels.length + 1}
+              />
               <Button onClick={addLevel} disabled={addingLevel || !newLevelId.trim()}>
                 {addingLevel ? "Adding..." : "Add Level"}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Leave rank empty to add at the end ({levels.length + 1})
+            </p>
           </div>
 
           {/* Level List */}
@@ -884,8 +953,22 @@ export default function AdminPage() {
 9876543210987"
                 className="mt-1 bg-secondary border-border min-h-[200px] font-mono text-sm"
               />
+            </div>
+            
+            <div>
+              <Label htmlFor="bulkStartRank">Starting Rank (optional)</Label>
+              <Input
+                id="bulkStartRank"
+                type="number"
+                min={1}
+                max={levels.length + 1}
+                placeholder={`Leave empty to start at ${levels.length + 1}`}
+                value={bulkStartRank}
+                onChange={(e) => setBulkStartRank(e.target.value)}
+                className="mt-1 bg-secondary border-border"
+              />
               <p className="text-xs text-muted-foreground mt-2">
-                Levels will be added in the order listed, starting after current last position.
+                Existing levels will be shifted down to make room.
               </p>
             </div>
 

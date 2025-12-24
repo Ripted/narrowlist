@@ -25,12 +25,12 @@ const Index = () => {
             </div>
             
             <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight">
-              <span className="gradient-text text-glow">HARDEST</span>
-              <span className="text-foreground"> LEVELS</span>
+              <span className="gradient-text text-glow">NARROW</span>
+              <span className="text-foreground">LIST</span>
             </h1>
             
             <p className="max-w-2xl mx-auto text-lg text-muted-foreground">
-              The definitive ranking of the most challenging levels. Only the most skilled players can conquer these legendary creations.
+              The definitive ranking of the most challenging levels.
             </p>
 
             <div className="flex items-center justify-center gap-8 pt-4">
@@ -40,15 +40,10 @@ const Index = () => {
               </div>
               <div className="w-px h-12 bg-border" />
               <div className="text-center">
-                <div className="font-display text-3xl font-bold text-accent">10</div>
-                <div className="text-sm text-muted-foreground">Max Points</div>
-              </div>
-              <div className="w-px h-12 bg-border" />
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1">
-                  <Trophy className="w-6 h-6 text-yellow-400" />
+                <div className="font-display text-3xl font-bold text-accent">
+                  {levels.reduce((sum, level) => sum + (level.points || 0), 0)}
                 </div>
-                <div className="text-sm text-muted-foreground">Glory Awaits</div>
+                <div className="text-sm text-muted-foreground">Max Points</div>
               </div>
             </div>
           </div>
