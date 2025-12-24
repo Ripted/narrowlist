@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, Save, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2 } from "lucide-react";
+import { Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, ChevronUp, ChevronDown, ArrowUpDown, Check, X } from "lucide-react";
 
 interface Level {
   id: string;
@@ -38,6 +38,18 @@ export default function AdminPage() {
   const [editName, setEditName] = useState("");
   const [editAuthor, setEditAuthor] = useState("");
   const [editThumbnail, setEditThumbnail] = useState("");
+  
+  // Quick rank change
+  const [rankInputId, setRankInputId] = useState<string | null>(null);
+  const [rankInputValue, setRankInputValue] = useState("");
+  
+  // Quick thumbnail edit
+  const [thumbnailEditId, setThumbnailEditId] = useState<string | null>(null);
+  const [thumbnailInputValue, setThumbnailInputValue] = useState("");
+  
+  // Drag and drop
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -85,7 +97,6 @@ export default function AdminPage() {
     setAddingLevel(true);
     
     try {
-      // Fetch level details from API
       const response = await fetch(
         `https://api.narrowarrow.xyz/level-details/${newLevelId.trim()}?isCustomLevel=true`
       );
@@ -125,7 +136,6 @@ export default function AdminPage() {
       toast({ title: "Error", description: "Failed to remove level", variant: "destructive" });
     } else {
       toast({ title: "Success", description: "Level removed" });
-      // Recalculate ranks
       const remaining = levels.filter(l => l.id !== id);
       await updateRanks(remaining.map((l, i) => ({ ...l, rank_position: i + 1 })));
       fetchLevels();
@@ -140,7 +150,6 @@ export default function AdminPage() {
     
     [newLevels[index], newLevels[targetIndex]] = [newLevels[targetIndex], newLevels[index]];
     
-    // Update ranks
     const updatedLevels = newLevels.map((l, i) => ({
       ...l,
       rank_position: i + 1,
@@ -166,6 +175,114 @@ export default function AdminPage() {
     
     setSaving(false);
     toast({ title: "Saved", description: "Rankings updated" });
+  };
+
+  // Quick rank change
+  const startRankEdit = (level: Level) => {
+    setRankInputId(level.id);
+    setRankInputValue(String(level.rank_position));
+  };
+
+  const confirmRankChange = async () => {
+    if (!rankInputId) return;
+    
+    const newRank = parseInt(rankInputValue);
+    if (isNaN(newRank) || newRank < 1 || newRank > levels.length) {
+      toast({ title: "Invalid rank", description: `Enter a number between 1 and ${levels.length}`, variant: "destructive" });
+      return;
+    }
+
+    const levelToMove = levels.find(l => l.id === rankInputId);
+    if (!levelToMove) return;
+
+    const currentIndex = levels.findIndex(l => l.id === rankInputId);
+    const targetIndex = newRank - 1;
+
+    if (currentIndex === targetIndex) {
+      setRankInputId(null);
+      return;
+    }
+
+    // Reorder array
+    const newLevels = [...levels];
+    newLevels.splice(currentIndex, 1);
+    newLevels.splice(targetIndex, 0, levelToMove);
+
+    const updatedLevels = newLevels.map((l, i) => ({
+      ...l,
+      rank_position: i + 1,
+      points: calculatePoints(i + 1),
+    }));
+
+    setLevels(updatedLevels);
+    setRankInputId(null);
+    await updateRanks(updatedLevels);
+  };
+
+  // Quick thumbnail edit
+  const startThumbnailEdit = (level: Level) => {
+    setThumbnailEditId(level.id);
+    setThumbnailInputValue(level.thumbnail_url || "");
+  };
+
+  const confirmThumbnailChange = async () => {
+    if (!thumbnailEditId) return;
+
+    setSaving(true);
+    const { error } = await supabase
+      .from("levels")
+      .update({ thumbnail_url: thumbnailInputValue || null })
+      .eq("id", thumbnailEditId);
+
+    if (error) {
+      toast({ title: "Error", description: "Failed to update thumbnail", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Thumbnail updated" });
+      setLevels(prev => prev.map(l => 
+        l.id === thumbnailEditId ? { ...l, thumbnail_url: thumbnailInputValue || null } : l
+      ));
+    }
+    
+    setThumbnailEditId(null);
+    setSaving(false);
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = async (targetIndex: number) => {
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newLevels = [...levels];
+    const [draggedItem] = newLevels.splice(draggedIndex, 1);
+    newLevels.splice(targetIndex, 0, draggedItem);
+
+    const updatedLevels = newLevels.map((l, i) => ({
+      ...l,
+      rank_position: i + 1,
+      points: calculatePoints(i + 1),
+    }));
+
+    setLevels(updatedLevels);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    await updateRanks(updatedLevels);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const openEditModal = (level: Level) => {
@@ -241,7 +358,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <h1 className="font-display text-3xl font-bold text-foreground">Admin Panel</h1>
-                <p className="text-muted-foreground">Manage levels and trigger sync</p>
+                <p className="text-muted-foreground">Drag to reorder • Click rank to jump • Click thumbnail to edit</p>
               </div>
             </div>
             
@@ -273,15 +390,15 @@ export default function AdminPage() {
                 {addingLevel ? "Adding..." : "Add Level"}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              The level will be added at the bottom of the list. You can then reorder it.
-            </p>
           </div>
 
           {/* Level List */}
           <div className="rounded-lg bg-card border border-border overflow-hidden">
             <div className="p-4 border-b border-border bg-secondary/30 flex items-center justify-between">
-              <h2 className="font-display text-lg font-bold">Level Rankings</h2>
+              <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                <ArrowUpDown className="w-5 h-5 text-primary" />
+                Level Rankings
+              </h2>
               <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                 {levels.length} levels
               </span>
@@ -296,32 +413,99 @@ export default function AdminPage() {
                 {levels.map((level, index) => (
                   <div
                     key={level.id}
-                    className="flex items-center gap-4 p-4 hover:bg-secondary/20 transition-colors"
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDrop={() => handleDrop(index)}
+                    onDragEnd={handleDragEnd}
+                    className={`flex items-center gap-3 p-4 transition-all cursor-grab active:cursor-grabbing
+                      ${draggedIndex === index ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
+                      ${dragOverIndex === index && draggedIndex !== index ? "border-t-2 border-primary" : ""}
+                    `}
                   >
-                    {/* Rank */}
-                    <div className="w-12 text-center">
-                      <span className={`font-display font-bold text-xl ${
-                        index === 0 ? "rank-gold" :
-                        index === 1 ? "rank-silver" :
-                        index === 2 ? "rank-bronze" :
-                        "text-muted-foreground"
-                      }`}>
-                        #{index + 1}
-                      </span>
+                    {/* Drag handle */}
+                    <div className="flex-shrink-0 text-muted-foreground">
+                      <GripVertical className="w-5 h-5" />
                     </div>
 
-                    {/* Thumbnail */}
-                    <div className="w-16 h-10 rounded bg-secondary overflow-hidden flex-shrink-0">
-                      {level.thumbnail_url ? (
-                        <img
-                          src={level.thumbnail_url}
-                          alt={level.name || "Level"}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Image className="w-4 h-4 text-muted-foreground" />
+                    {/* Rank - clickable to change */}
+                    <div className="w-16 flex-shrink-0">
+                      {rankInputId === level.id ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min={1}
+                            max={levels.length}
+                            value={rankInputValue}
+                            onChange={(e) => setRankInputValue(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && confirmRankChange()}
+                            className="w-12 h-8 text-center p-1 bg-secondary"
+                            autoFocus
+                          />
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmRankChange}>
+                            <Check className="w-3 h-3 text-green-500" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRankInputId(null)}>
+                            <X className="w-3 h-3 text-destructive" />
+                          </Button>
                         </div>
+                      ) : (
+                        <button
+                          onClick={() => startRankEdit(level)}
+                          className={`font-display font-bold text-xl hover:underline cursor-pointer ${
+                            index === 0 ? "rank-gold" :
+                            index === 1 ? "rank-silver" :
+                            index === 2 ? "rank-bronze" :
+                            "text-muted-foreground"
+                          }`}
+                          title="Click to change rank"
+                        >
+                          #{index + 1}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Thumbnail - clickable to edit */}
+                    <div className="w-20 h-12 rounded bg-secondary overflow-hidden flex-shrink-0 relative group">
+                      {thumbnailEditId === level.id ? (
+                        <div className="absolute inset-0 bg-card p-1 flex items-center gap-1 z-10">
+                          <Input
+                            type="text"
+                            placeholder="URL..."
+                            value={thumbnailInputValue}
+                            onChange={(e) => setThumbnailInputValue(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && confirmThumbnailChange()}
+                            className="h-full text-xs p-1 bg-secondary flex-1"
+                            autoFocus
+                          />
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmThumbnailChange}>
+                            <Check className="w-3 h-3 text-green-500" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setThumbnailEditId(null)}>
+                            <X className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startThumbnailEdit(level)}
+                          className="w-full h-full relative"
+                          title="Click to edit thumbnail"
+                        >
+                          {level.thumbnail_url ? (
+                            <img
+                              src={level.thumbnail_url}
+                              alt={level.name || "Level"}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Image className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <Edit2 className="w-4 h-4 text-foreground" />
+                          </div>
+                        </button>
                       )}
                     </div>
 
@@ -335,7 +519,7 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Actions */}
+                    {/* Quick move buttons */}
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
@@ -343,8 +527,9 @@ export default function AdminPage() {
                         onClick={() => moveLevel(index, "up")}
                         disabled={index === 0 || saving}
                         className="h-8 w-8"
+                        title="Move up"
                       >
-                        <GripVertical className="w-4 h-4 rotate-90" />
+                        <ChevronUp className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -352,14 +537,16 @@ export default function AdminPage() {
                         onClick={() => moveLevel(index, "down")}
                         disabled={index === levels.length - 1 || saving}
                         className="h-8 w-8"
+                        title="Move down"
                       >
-                        <GripVertical className="w-4 h-4 -rotate-90" />
+                        <ChevronDown className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => openEditModal(level)}
                         className="h-8 w-8"
+                        title="Edit details"
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
@@ -368,6 +555,7 @@ export default function AdminPage() {
                         size="icon"
                         onClick={() => removeLevel(level.id)}
                         className="h-8 w-8 text-destructive hover:text-destructive"
+                        title="Remove level"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -386,7 +574,29 @@ export default function AdminPage() {
           <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
             <h2 className="font-display text-xl font-bold">Edit Level</h2>
             
+            {/* Thumbnail preview */}
+            <div className="aspect-video rounded-lg bg-secondary overflow-hidden">
+              {editThumbnail ? (
+                <img src={editThumbnail} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                  <Image className="w-8 h-8" />
+                </div>
+              )}
+            </div>
+            
             <div className="space-y-4">
+              <div>
+                <Label htmlFor="editThumbnail">Thumbnail URL</Label>
+                <Input
+                  id="editThumbnail"
+                  value={editThumbnail}
+                  onChange={(e) => setEditThumbnail(e.target.value)}
+                  placeholder="https://..."
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+              
               <div>
                 <Label htmlFor="editName">Level Name</Label>
                 <Input
@@ -403,17 +613,6 @@ export default function AdminPage() {
                   id="editAuthor"
                   value={editAuthor}
                   onChange={(e) => setEditAuthor(e.target.value)}
-                  className="mt-1 bg-secondary border-border"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="editThumbnail">Thumbnail URL</Label>
-                <Input
-                  id="editThumbnail"
-                  value={editThumbnail}
-                  onChange={(e) => setEditThumbnail(e.target.value)}
-                  placeholder="https://..."
                   className="mt-1 bg-secondary border-border"
                 />
               </div>
