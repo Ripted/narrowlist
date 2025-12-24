@@ -88,9 +88,7 @@ export async function fetchRunDetails(runId: number): Promise<RunDetails | null>
 }
 
 export function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = (seconds % 60).toFixed(3);
-  return mins > 0 ? `${mins}:${secs.padStart(6, "0")}` : `${secs}s`;
+  return `${seconds.toFixed(3)}s`;
 }
 
 export function formatDate(dateString: string): string {
