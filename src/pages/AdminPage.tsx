@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
@@ -10,7 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
-  ChevronUp, ChevronDown, ArrowUpDown, Check, X, Users, Upload, AlertTriangle 
+  ChevronUp, ChevronDown, ArrowUpDown, Check, X, Users, Upload, AlertTriangle,
+  ImagePlus, Loader2
 } from "lucide-react";
 import {
   AlertDialog,
@@ -75,6 +76,9 @@ export default function AdminPage() {
   // Quick thumbnail edit
   const [thumbnailEditId, setThumbnailEditId] = useState<string | null>(null);
   const [thumbnailInputValue, setThumbnailInputValue] = useState("");
+  const [uploadingThumbnail, setUploadingThumbnail] = useState<string | null>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const editThumbnailInputRef = useRef<HTMLInputElement>(null);
   
   // Drag and drop
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -362,6 +366,64 @@ export default function AdminPage() {
     
     setThumbnailEditId(null);
     setSaving(false);
+  };
+
+  const uploadThumbnail = async (file: File, levelId: string): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${levelId}-${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('level-thumbnails')
+      .upload(fileName, file, { upsert: true });
+    
+    if (error) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+      return null;
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('level-thumbnails')
+      .getPublicUrl(data.path);
+    
+    return publicUrl;
+  };
+
+  const handleQuickThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>, levelId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploadingThumbnail(levelId);
+    const url = await uploadThumbnail(file, levelId);
+    
+    if (url) {
+      const { error } = await supabase
+        .from("levels")
+        .update({ thumbnail_url: url })
+        .eq("id", levelId);
+      
+      if (!error) {
+        setLevels(prev => prev.map(l => l.id === levelId ? { ...l, thumbnail_url: url } : l));
+        toast({ title: "Success", description: "Thumbnail uploaded" });
+      }
+    }
+    
+    setUploadingThumbnail(null);
+    e.target.value = '';
+  };
+
+  const handleEditThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingLevel) return;
+    
+    setSaving(true);
+    const url = await uploadThumbnail(file, editingLevel.id);
+    
+    if (url) {
+      setEditThumbnail(url);
+    }
+    
+    setSaving(false);
+    e.target.value = '';
   };
 
   const handleDragStart = (index: number) => {
@@ -681,7 +743,11 @@ export default function AdminPage() {
                     </div>
 
                     <div className="w-20 h-12 rounded bg-secondary overflow-hidden flex-shrink-0 relative group">
-                      {thumbnailEditId === level.id ? (
+                      {uploadingThumbnail === level.id ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                        </div>
+                      ) : thumbnailEditId === level.id ? (
                         <div className="absolute inset-0 bg-card p-1 flex items-center gap-1 z-10">
                           <Input
                             type="text"
@@ -700,26 +766,44 @@ export default function AdminPage() {
                           </Button>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => startThumbnailEdit(level)}
-                          className="w-full h-full relative"
-                          title="Click to edit thumbnail"
-                        >
-                          {level.thumbnail_url ? (
-                            <img
-                              src={level.thumbnail_url}
-                              alt={level.name || "Level"}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Image className="w-4 h-4 text-muted-foreground" />
+                        <>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            id={`thumb-upload-${level.id}`}
+                            onChange={(e) => handleQuickThumbnailUpload(e, level.id)}
+                          />
+                          <div className="w-full h-full relative">
+                            {level.thumbnail_url ? (
+                              <img
+                                src={level.thumbnail_url}
+                                alt={level.name || "Level"}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Image className="w-4 h-4 text-muted-foreground" />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                              <button
+                                onClick={() => document.getElementById(`thumb-upload-${level.id}`)?.click()}
+                                className="p-1 rounded bg-primary/80 hover:bg-primary"
+                                title="Upload image"
+                              >
+                                <ImagePlus className="w-3 h-3 text-primary-foreground" />
+                              </button>
+                              <button
+                                onClick={() => startThumbnailEdit(level)}
+                                className="p-1 rounded bg-secondary/80 hover:bg-secondary"
+                                title="Enter URL"
+                              >
+                                <Edit2 className="w-3 h-3 text-foreground" />
+                              </button>
                             </div>
-                          )}
-                          <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <Edit2 className="w-4 h-4 text-foreground" />
                           </div>
-                        </button>
+                        </>
                       )}
                     </div>
 
@@ -823,7 +907,14 @@ export default function AdminPage() {
           <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
             <h2 className="font-display text-xl font-bold">Edit Level</h2>
             
-            <div className="aspect-video rounded-lg bg-secondary overflow-hidden">
+            <div className="aspect-video rounded-lg bg-secondary overflow-hidden relative group">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                ref={editThumbnailInputRef}
+                onChange={handleEditThumbnailUpload}
+              />
               {editThumbnail ? (
                 <img src={editThumbnail} alt="Preview" className="w-full h-full object-cover" />
               ) : (
@@ -831,11 +922,23 @@ export default function AdminPage() {
                   <Image className="w-8 h-8" />
                 </div>
               )}
+              <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => editThumbnailInputRef.current?.click()}
+                  disabled={saving}
+                  className="gap-2"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                  Upload Image
+                </Button>
+              </div>
             </div>
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="editThumbnail">Thumbnail URL</Label>
+                <Label htmlFor="editThumbnail">Thumbnail URL (or upload above)</Label>
                 <Input
                   id="editThumbnail"
                   value={editThumbnail}
