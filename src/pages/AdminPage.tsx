@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
-  ImagePlus, Loader2, UserCheck, UserX, Clock
+  ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass
 } from "lucide-react";
 import {
   AlertDialog,
@@ -23,8 +23,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 interface Level {
+  id: string;
+  level_id: string;
+  name: string | null;
+  author: string | null;
+  rank_position: number;
+  points: number;
+  thumbnail_url: string | null;
+}
+
+interface FutureLevel {
   id: string;
   level_id: string;
   name: string | null;
@@ -45,12 +61,22 @@ interface ClaimRequest {
   profile_display_name?: string;
 }
 
+interface ApprovedPlayer {
+  id: string;
+  username: string;
+  display_name: string | null;
+  user_id: string;
+  email?: string;
+}
+
 export default function AdminPage() {
   const { isAdmin, isHeadAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const [levels, setLevels] = useState<Level[]>([]);
+  const [futureLevels, setFutureLevels] = useState<FutureLevel[]>([]);
+  const [approvedPlayers, setApprovedPlayers] = useState<ApprovedPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -59,6 +85,11 @@ export default function AdminPage() {
   const [newLevelId, setNewLevelId] = useState("");
   const [newLevelRank, setNewLevelRank] = useState("");
   const [addingLevel, setAddingLevel] = useState(false);
+  
+  // Future level form
+  const [newFutureLevelId, setNewFutureLevelId] = useState("");
+  const [newFutureLevelRank, setNewFutureLevelRank] = useState("");
+  const [addingFutureLevel, setAddingFutureLevel] = useState(false);
   
   // Bulk import
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
@@ -74,6 +105,7 @@ export default function AdminPage() {
   
   // Delete confirmation
   const [deleteConfirmLevel, setDeleteConfirmLevel] = useState<Level | null>(null);
+  const [deleteConfirmFutureLevel, setDeleteConfirmFutureLevel] = useState<FutureLevel | null>(null);
   
   // Quick rank change
   const [rankInputId, setRankInputId] = useState<string | null>(null);
@@ -92,6 +124,10 @@ export default function AdminPage() {
   // Claim requests
   const [claimRequests, setClaimRequests] = useState<ClaimRequest[]>([]);
   const [processingClaim, setProcessingClaim] = useState<string | null>(null);
+  
+  // Player email edit
+  const [editingPlayerEmail, setEditingPlayerEmail] = useState<string | null>(null);
+  const [playerEmailValue, setPlayerEmailValue] = useState("");
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -103,7 +139,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAdmin) {
       fetchLevels();
+      fetchFutureLevels();
       fetchClaimRequests();
+      fetchApprovedPlayers();
     }
   }, [isAdmin]);
 
@@ -122,6 +160,47 @@ export default function AdminPage() {
     setLoading(false);
   };
 
+  const fetchFutureLevels = async () => {
+    const { data, error } = await supabase
+      .from("future_levels")
+      .select("*")
+      .order("rank_position", { ascending: true });
+    
+    if (!error) {
+      setFutureLevels(data || []);
+    }
+  };
+
+  const fetchApprovedPlayers = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username, display_name, user_id")
+      .not("user_id", "is", null);
+    
+    if (!error && data) {
+      // Get emails for each user
+      const playersWithEmails: ApprovedPlayer[] = [];
+      for (const profile of data) {
+        // Get email from claim requests (most recent approved)
+        const { data: claimData } = await supabase
+          .from("profile_claim_requests")
+          .select("email")
+          .eq("profile_id", profile.id)
+          .eq("status", "approved")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        playersWithEmails.push({
+          ...profile,
+          user_id: profile.user_id!,
+          email: claimData?.email,
+        });
+      }
+      setApprovedPlayers(playersWithEmails);
+    }
+  };
+
   const fetchClaimRequests = async () => {
     const { data, error } = await supabase
       .from("profile_claim_requests")
@@ -130,7 +209,6 @@ export default function AdminPage() {
       .order("created_at", { ascending: true });
     
     if (!error && data) {
-      // Fetch profile info for each request
       const requestsWithProfiles = await Promise.all(
         data.map(async (req) => {
           const { data: profile } = await supabase
@@ -183,7 +261,6 @@ export default function AdminPage() {
         throw new Error(`Rank must be between 1 and ${levels.length + 1}`);
       }
       
-      // Shift existing levels if inserting at a specific position
       if (targetRank <= levels.length) {
         const levelsToUpdate = levels.filter(l => l.rank_position >= targetRank);
         for (const level of levelsToUpdate) {
@@ -219,6 +296,102 @@ export default function AdminPage() {
     }
   };
 
+  const addFutureLevel = async () => {
+    if (!newFutureLevelId.trim()) return;
+    
+    setAddingFutureLevel(true);
+    
+    try {
+      const response = await fetch(
+        `https://api.narrowarrow.xyz/level-details/${newFutureLevelId.trim()}?isCustomLevel=true`
+      );
+      
+      if (!response.ok) {
+        throw new Error("Level not found");
+      }
+      
+      const data = await response.json();
+      const targetRank = newFutureLevelRank ? parseInt(newFutureLevelRank) : 1;
+      
+      const { error } = await supabase.from("future_levels").insert({
+        level_id: newFutureLevelId.trim(),
+        name: data.levelInfo?.name || "Unknown Level",
+        author: data.levelInfo?.author || "Unknown",
+        rank_position: targetRank,
+        points: calculatePoints(targetRank),
+        thumbnail_url: null,
+      });
+      
+      if (error) throw error;
+      
+      toast({ title: "Success", description: `Future level added with estimated rank #${targetRank}` });
+      setNewFutureLevelId("");
+      setNewFutureLevelRank("");
+      fetchFutureLevels();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to add future level", variant: "destructive" });
+    } finally {
+      setAddingFutureLevel(false);
+    }
+  };
+
+  const deleteFutureLevel = async () => {
+    if (!deleteConfirmFutureLevel) return;
+    
+    const { error } = await supabase.from("future_levels").delete().eq("id", deleteConfirmFutureLevel.id);
+    
+    if (error) {
+      toast({ title: "Error", description: "Failed to remove future level", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Future level removed" });
+      fetchFutureLevels();
+    }
+    
+    setDeleteConfirmFutureLevel(null);
+  };
+
+  const moveFutureLevelToMain = async (futureLevel: FutureLevel) => {
+    try {
+      // Add to main list
+      const targetRank = futureLevel.rank_position;
+      
+      // Shift existing levels
+      const levelsToUpdate = levels.filter(l => l.rank_position >= targetRank);
+      for (const level of levelsToUpdate) {
+        await supabase
+          .from("levels")
+          .update({ 
+            rank_position: level.rank_position + 1,
+            points: calculatePoints(level.rank_position + 1)
+          })
+          .eq("id", level.id);
+      }
+      
+      // Insert into main list
+      const { error: insertError } = await supabase.from("levels").insert({
+        level_id: futureLevel.level_id,
+        name: futureLevel.name,
+        author: futureLevel.author,
+        rank_position: targetRank,
+        points: calculatePoints(targetRank),
+        thumbnail_url: futureLevel.thumbnail_url,
+      });
+      
+      if (insertError) throw insertError;
+      
+      // Remove from future list
+      const { error: deleteError } = await supabase.from("future_levels").delete().eq("id", futureLevel.id);
+      
+      if (deleteError) throw deleteError;
+      
+      toast({ title: "Success", description: `Level moved to main list at rank #${targetRank}` });
+      fetchLevels();
+      fetchFutureLevels();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
   const bulkImportLevels = async () => {
     const ids = bulkLevelIds
       .split(/[\n,]+/)
@@ -236,7 +409,6 @@ export default function AdminPage() {
     
     const startRank = bulkStartRank ? parseInt(bulkStartRank) : levels.length + 1;
     
-    // Shift existing levels if needed
     if (startRank <= levels.length) {
       const levelsToUpdate = levels.filter(l => l.rank_position >= startRank);
       for (const level of levelsToUpdate) {
@@ -561,7 +733,6 @@ export default function AdminPage() {
     }
   };
 
-  // Claim request handlers
   const handleClaimRequest = async (requestId: string, action: "approved" | "rejected") => {
     setProcessingClaim(requestId);
     
@@ -570,7 +741,6 @@ export default function AdminPage() {
     
     try {
       if (action === "approved") {
-        // Link profile to user
         const { error: profileError } = await supabase
           .from("profiles")
           .update({ user_id: request.user_id })
@@ -579,7 +749,6 @@ export default function AdminPage() {
         if (profileError) throw profileError;
       }
       
-      // Update request status
       const { error } = await supabase
         .from("profile_claim_requests")
         .update({ 
@@ -598,10 +767,27 @@ export default function AdminPage() {
       });
       
       fetchClaimRequests();
+      fetchApprovedPlayers();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setProcessingClaim(null);
+    }
+  };
+
+  const unlinkPlayer = async (player: ApprovedPlayer) => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ user_id: null })
+        .eq("id", player.id);
+      
+      if (error) throw error;
+      
+      toast({ title: "Success", description: "Player unlinked" });
+      fetchApprovedPlayers();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 
@@ -628,16 +814,16 @@ export default function AdminPage() {
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-4">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-accent/20 flex items-center justify-center">
                 <Shield className="w-6 h-6 text-accent" />
               </div>
               <div>
-                <h1 className="font-display text-3xl font-bold text-foreground">
+                <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
                   Admin Panel {isHeadAdmin && <span className="text-accent text-lg">(Head Admin)</span>}
                 </h1>
-                <p className="text-muted-foreground">Drag to reorder • Click rank to jump • Click thumbnail to edit</p>
+                <p className="text-sm text-muted-foreground hidden md:block">Manage levels, players, and settings</p>
               </div>
             </div>
             
@@ -645,26 +831,28 @@ export default function AdminPage() {
               <Button 
                 onClick={() => setBulkImportOpen(true)}
                 variant="outline"
+                size="sm"
                 className="gap-2"
               >
                 <Upload className="w-4 h-4" />
-                Bulk Import
+                <span className="hidden sm:inline">Bulk Import</span>
               </Button>
               <Button 
                 onClick={triggerSync} 
                 disabled={syncing}
                 variant="outline"
+                size="sm"
                 className="gap-2"
               >
                 <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-                {syncing ? "Syncing..." : "Sync Now"}
+                <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync Now"}</span>
               </Button>
             </div>
           </div>
 
           {/* Claim Requests */}
           {claimRequests.length > 0 && (
-            <div className="rounded-lg bg-card border border-yellow-500/30 p-6 mb-8">
+            <div className="rounded-lg bg-card border border-yellow-500/30 p-4 md:p-6 mb-8">
               <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-yellow-500" />
                 Profile Claim Requests ({claimRequests.length})
@@ -672,7 +860,7 @@ export default function AdminPage() {
               
               <div className="space-y-3">
                 {claimRequests.map(request => (
-                  <div key={request.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-lg">
+                  <div key={request.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-secondary/50 rounded-lg">
                     <div>
                       <div className="font-medium text-foreground">
                         {request.profile_display_name || request.profile_username}
@@ -709,227 +897,370 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* Add New Level */}
-          <div className="rounded-lg bg-card border border-border p-6 mb-8">
-            <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-primary" />
-              Add New Level
-            </h2>
-            <div className="flex gap-4">
-              <Input
-                placeholder="Enter level ID (e.g., 1743661104278)"
-                value={newLevelId}
-                onChange={(e) => setNewLevelId(e.target.value)}
-                className="flex-1 bg-secondary border-border"
-              />
-              <Input
-                placeholder={`Rank (1-${levels.length + 1})`}
-                value={newLevelRank}
-                onChange={(e) => setNewLevelRank(e.target.value)}
-                className="w-32 bg-secondary border-border"
-                type="number"
-                min={1}
-                max={levels.length + 1}
-              />
-              <Button onClick={addLevel} disabled={addingLevel || !newLevelId.trim()}>
-                {addingLevel ? "Adding..." : "Add Level"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Leave rank empty to add at the end ({levels.length + 1})
-            </p>
-          </div>
+          <Tabs defaultValue="levels" className="space-y-6">
+            <TabsList className="w-full justify-start overflow-x-auto">
+              <TabsTrigger value="levels">Levels ({levels.length})</TabsTrigger>
+              <TabsTrigger value="future">Future List ({futureLevels.length})</TabsTrigger>
+              <TabsTrigger value="players">Players ({approvedPlayers.length})</TabsTrigger>
+            </TabsList>
 
-          {/* Level List */}
-          <div className="rounded-lg bg-card border border-border overflow-hidden">
-            <div className="p-4 border-b border-border bg-secondary/30 flex items-center justify-between">
-              <h2 className="font-display text-lg font-bold flex items-center gap-2">
-                <ArrowUpDown className="w-5 h-5 text-primary" />
-                Level Rankings
-              </h2>
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                {levels.length} levels
-              </span>
-            </div>
-
-            {levels.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                No levels added yet. Add a level above to get started.
+            <TabsContent value="levels" className="space-y-6">
+              {/* Add New Level */}
+              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
+                <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-primary" />
+                  Add New Level
+                </h2>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Input
+                    placeholder="Enter level ID"
+                    value={newLevelId}
+                    onChange={(e) => setNewLevelId(e.target.value)}
+                    className="flex-1 bg-secondary border-border"
+                  />
+                  <Input
+                    placeholder={`Rank (1-${levels.length + 1})`}
+                    value={newLevelRank}
+                    onChange={(e) => setNewLevelRank(e.target.value)}
+                    className="w-full sm:w-32 bg-secondary border-border"
+                    type="number"
+                    min={1}
+                    max={levels.length + 1}
+                  />
+                  <Button onClick={addLevel} disabled={addingLevel || !newLevelId.trim()}>
+                    {addingLevel ? "Adding..." : "Add Level"}
+                  </Button>
+                </div>
               </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {levels.map((level, index) => (
-                  <div
-                    key={level.id}
-                    draggable
-                    onDragStart={() => handleDragStart(index)}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDrop={() => handleDrop(index)}
-                    onDragEnd={handleDragEnd}
-                    className={`flex items-center gap-3 p-4 transition-all cursor-grab active:cursor-grabbing
-                      ${draggedIndex === index ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
-                      ${dragOverIndex === index && draggedIndex !== index ? "border-t-2 border-primary" : ""}
-                    `}
-                  >
-                    <div className="flex-shrink-0 text-muted-foreground">
-                      <GripVertical className="w-5 h-5" />
-                    </div>
 
-                    <div className="w-16 flex-shrink-0">
-                      {rankInputId === level.id ? (
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            min={1}
-                            max={levels.length}
-                            value={rankInputValue}
-                            onChange={(e) => setRankInputValue(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && confirmRankChange()}
-                            className="w-12 h-8 text-center p-1 bg-secondary"
-                            autoFocus
-                          />
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmRankChange}>
-                            <Check className="w-3 h-3 text-green-500" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRankInputId(null)}>
-                            <X className="w-3 h-3 text-destructive" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => startRankEdit(level)}
-                          className={`font-display font-bold text-xl hover:underline cursor-pointer ${
-                            index === 0 ? "rank-gold" :
-                            index === 1 ? "rank-silver" :
-                            index === 2 ? "rank-bronze" :
-                            "text-muted-foreground"
-                          }`}
-                          title="Click to change rank"
-                        >
-                          #{index + 1}
-                        </button>
-                      )}
-                    </div>
+              {/* Level List */}
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30 flex items-center justify-between">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <ArrowUpDown className="w-5 h-5 text-primary" />
+                    Level Rankings
+                  </h2>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                    {levels.length} levels
+                  </span>
+                </div>
 
-                    <div className="w-20 h-12 rounded bg-secondary overflow-hidden flex-shrink-0 relative group">
-                      {uploadingThumbnail === level.id ? (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                        </div>
-                      ) : thumbnailEditId === level.id ? (
-                        <div className="absolute inset-0 bg-card p-1 flex items-center gap-1 z-10">
-                          <Input
-                            type="text"
-                            placeholder="URL..."
-                            value={thumbnailInputValue}
-                            onChange={(e) => setThumbnailInputValue(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && confirmThumbnailChange()}
-                            className="h-full text-xs p-1 bg-secondary flex-1"
-                            autoFocus
-                          />
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmThumbnailChange}>
-                            <Check className="w-3 h-3 text-green-500" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setThumbnailEditId(null)}>
-                            <X className="w-3 h-3 text-destructive" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            id={`thumb-upload-${level.id}`}
-                            onChange={(e) => handleQuickThumbnailUpload(e, level.id)}
-                          />
-                          <div className="w-full h-full relative">
-                            {level.thumbnail_url ? (
-                              <img
-                                src={level.thumbnail_url}
-                                alt={level.name || "Level"}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Image className="w-4 h-4 text-muted-foreground" />
-                              </div>
-                            )}
-                            <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
-                              <button
-                                onClick={() => document.getElementById(`thumb-upload-${level.id}`)?.click()}
-                                className="p-1 rounded bg-primary/80 hover:bg-primary"
-                                title="Upload image"
-                              >
-                                <ImagePlus className="w-3 h-3 text-primary-foreground" />
-                              </button>
-                              <button
-                                onClick={() => startThumbnailEdit(level)}
-                                className="p-1 rounded bg-secondary/80 hover:bg-secondary"
-                                title="Enter URL"
-                              >
-                                <Edit2 className="w-3 h-3 text-foreground" />
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-foreground truncate">
-                        {level.name || "Unnamed Level"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        ID: {level.level_id} • By: {level.author || "Unknown"} • {level.points} pts
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => moveLevel(index, "up")}
-                        disabled={index === 0 || saving}
-                        className="h-8 w-8"
-                        title="Move up"
-                      >
-                        <ChevronUp className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => moveLevel(index, "down")}
-                        disabled={index === levels.length - 1 || saving}
-                        className="h-8 w-8"
-                        title="Move down"
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditModal(level)}
-                        className="h-8 w-8"
-                        title="Edit details"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteConfirmLevel(level)}
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        title="Remove level"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                {levels.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No levels added yet.
                   </div>
-                ))}
+                ) : (
+                  <div className="divide-y divide-border">
+                    {levels.map((level, index) => (
+                      <div
+                        key={level.id}
+                        draggable
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDrop={() => handleDrop(index)}
+                        onDragEnd={handleDragEnd}
+                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
+                          ${draggedIndex === index ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
+                          ${dragOverIndex === index && draggedIndex !== index ? "border-t-2 border-primary" : ""}
+                        `}
+                      >
+                        <div className="flex-shrink-0 text-muted-foreground hidden sm:block">
+                          <GripVertical className="w-5 h-5" />
+                        </div>
+
+                        <div className="w-12 md:w-16 flex-shrink-0">
+                          {rankInputId === level.id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min={1}
+                                max={levels.length}
+                                value={rankInputValue}
+                                onChange={(e) => setRankInputValue(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && confirmRankChange()}
+                                className="w-12 h-8 text-center p-1 bg-secondary"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmRankChange}>
+                                <Check className="w-3 h-3 text-green-500" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRankInputId(null)}>
+                                <X className="w-3 h-3 text-destructive" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startRankEdit(level)}
+                              className={`font-display font-bold text-lg md:text-xl hover:underline cursor-pointer ${
+                                index === 0 ? "rank-gold" :
+                                index === 1 ? "rank-silver" :
+                                index === 2 ? "rank-bronze" :
+                                "text-muted-foreground"
+                              }`}
+                              title="Click to change rank"
+                            >
+                              #{index + 1}
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="w-16 md:w-20 h-10 md:h-12 rounded bg-secondary overflow-hidden flex-shrink-0 relative group">
+                          {uploadingThumbnail === level.id ? (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            </div>
+                          ) : thumbnailEditId === level.id ? (
+                            <div className="absolute inset-0 bg-card p-1 flex items-center gap-1 z-10">
+                              <Input
+                                type="text"
+                                placeholder="URL..."
+                                value={thumbnailInputValue}
+                                onChange={(e) => setThumbnailInputValue(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && confirmThumbnailChange()}
+                                className="h-full text-xs p-1 bg-secondary flex-1"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmThumbnailChange}>
+                                <Check className="w-3 h-3 text-green-500" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setThumbnailEditId(null)}>
+                                <X className="w-3 h-3 text-destructive" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                id={`thumb-upload-${level.id}`}
+                                onChange={(e) => handleQuickThumbnailUpload(e, level.id)}
+                              />
+                              <div className="w-full h-full relative">
+                                {level.thumbnail_url ? (
+                                  <img
+                                    src={level.thumbnail_url}
+                                    alt={level.name || "Level"}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Image className="w-4 h-4 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                                  <button
+                                    onClick={() => document.getElementById(`thumb-upload-${level.id}`)?.click()}
+                                    className="p-1 rounded bg-primary/80 hover:bg-primary"
+                                    title="Upload image"
+                                  >
+                                    <ImagePlus className="w-3 h-3 text-primary-foreground" />
+                                  </button>
+                                  <button
+                                    onClick={() => startThumbnailEdit(level)}
+                                    className="p-1 rounded bg-secondary/80 hover:bg-secondary"
+                                    title="Enter URL"
+                                  >
+                                    <Edit2 className="w-3 h-3 text-foreground" />
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground truncate text-sm md:text-base">
+                            {level.name || "Unnamed Level"}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {level.author || "Unknown"} • {level.points} pts
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => moveLevel(index, "up")}
+                            disabled={index === 0 || saving}
+                            className="h-8 w-8 hidden sm:flex"
+                            title="Move up"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => moveLevel(index, "down")}
+                            disabled={index === levels.length - 1 || saving}
+                            className="h-8 w-8 hidden sm:flex"
+                            title="Move down"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditModal(level)}
+                            className="h-8 w-8"
+                            title="Edit details"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteConfirmLevel(level)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            title="Remove level"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </TabsContent>
+
+            <TabsContent value="future" className="space-y-6">
+              {/* Add Future Level */}
+              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
+                <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+                  <Hourglass className="w-5 h-5 text-primary" />
+                  Add Future Level
+                </h2>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Input
+                    placeholder="Enter level ID"
+                    value={newFutureLevelId}
+                    onChange={(e) => setNewFutureLevelId(e.target.value)}
+                    className="flex-1 bg-secondary border-border"
+                  />
+                  <Input
+                    placeholder="Estimated Rank"
+                    value={newFutureLevelRank}
+                    onChange={(e) => setNewFutureLevelRank(e.target.value)}
+                    className="w-full sm:w-32 bg-secondary border-border"
+                    type="number"
+                    min={1}
+                  />
+                  <Button onClick={addFutureLevel} disabled={addingFutureLevel || !newFutureLevelId.trim()}>
+                    {addingFutureLevel ? "Adding..." : "Add Level"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Future levels are unbeaten levels. When beaten, click "Move to Main" to add them to the main list.
+                </p>
+              </div>
+
+              {/* Future Level List */}
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <Hourglass className="w-5 h-5 text-primary" />
+                    Future Levels
+                  </h2>
+                </div>
+
+                {futureLevels.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No future levels added yet.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {futureLevels.map((level) => (
+                      <div key={level.id} className="flex items-center gap-3 p-4">
+                        <div className="w-16 flex-shrink-0">
+                          <span className="font-display font-bold text-lg text-primary">
+                            ~#{level.rank_position}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground truncate">
+                            {level.name || "Unnamed Level"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            ID: {level.level_id} • By: {level.author || "Unknown"}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => moveFutureLevelToMain(level)}
+                            className="gap-1"
+                          >
+                            <Check className="w-4 h-4" />
+                            Move to Main
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteConfirmFutureLevel(level)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="players" className="space-y-6">
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <Users className="w-5 h-5 text-primary" />
+                    Approved Players
+                  </h2>
+                </div>
+
+                {approvedPlayers.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No approved players yet.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {approvedPlayers.map((player) => (
+                      <div key={player.id} className="flex items-center gap-4 p-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground">
+                            {player.display_name || player.username}
+                          </div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>@{player.username}</span>
+                            {player.email && (
+                              <>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
+                                  <Mail className="w-3 h-3" />
+                                  {player.email}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => unlinkPlayer(player)}
+                          className="gap-1 text-destructive border-destructive/50 hover:bg-destructive/10"
+                        >
+                          <UserX className="w-4 h-4" />
+                          Unlink
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 
@@ -948,9 +1279,7 @@ export default function AdminPage() {
                 id="bulkIds"
                 value={bulkLevelIds}
                 onChange={(e) => setBulkLevelIds(e.target.value)}
-                placeholder="1743661104278
-1234567890123
-9876543210987"
+                placeholder="1743661104278&#10;1234567890123"
                 className="mt-1 bg-secondary border-border min-h-[200px] font-mono text-sm"
               />
             </div>
@@ -967,9 +1296,6 @@ export default function AdminPage() {
                 onChange={(e) => setBulkStartRank(e.target.value)}
                 className="mt-1 bg-secondary border-border"
               />
-              <p className="text-xs text-muted-foreground mt-2">
-                Existing levels will be shifted down to make room.
-              </p>
             </div>
 
             <div className="flex gap-2 justify-end pt-4">
@@ -1021,7 +1347,7 @@ export default function AdminPage() {
             
             <div className="space-y-4">
               <div>
-                <Label htmlFor="editThumbnail">Thumbnail URL (or upload above)</Label>
+                <Label htmlFor="editThumbnail">Thumbnail URL</Label>
                 <Input
                   id="editThumbnail"
                   value={editThumbnail}
@@ -1074,12 +1400,33 @@ export default function AdminPage() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete <strong>{deleteConfirmLevel?.name || "this level"}</strong>? 
-              This will remove it from the rankings and cannot be undone.
+              This will remove it from the rankings.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDeleteLevel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Future Level Confirmation */}
+      <AlertDialog open={!!deleteConfirmFutureLevel} onOpenChange={() => setDeleteConfirmFutureLevel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Delete Future Level?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteConfirmFutureLevel?.name || "this level"}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteFutureLevel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

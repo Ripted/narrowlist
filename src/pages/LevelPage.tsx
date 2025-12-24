@@ -10,7 +10,7 @@ import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Ha
 
 export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
-  const { level, leaderboard, rank, points, loading } = useLevel(levelId || "");
+  const { level, leaderboard, rank, points, thumbnailUrl, loading } = useLevel(levelId || "");
   const [runDetails, setRunDetails] = useState<Map<number, RunDetails>>(new Map());
   const [loadingRuns, setLoadingRuns] = useState(false);
 
@@ -157,10 +157,20 @@ export default function LevelPage() {
             </div>
 
             <div className="hidden lg:block">
-              <div className="aspect-video rounded-lg bg-secondary border border-border flex items-center justify-center">
-                <div className="text-6xl font-display font-bold text-muted-foreground/20">
-                  #{rank || "?"}
-                </div>
+              <div className="aspect-video rounded-lg bg-secondary border border-border overflow-hidden">
+                {thumbnailUrl ? (
+                  <img 
+                    src={thumbnailUrl} 
+                    alt={levelInfo.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="text-6xl font-display font-bold text-muted-foreground/20">
+                      #{rank || "?"}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
