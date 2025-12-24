@@ -59,6 +59,42 @@ export type Database = {
           },
         ]
       }
+      future_levels: {
+        Row: {
+          author: string | null
+          created_at: string
+          id: string
+          level_id: string
+          name: string | null
+          points: number
+          rank_position: number
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string
+          id?: string
+          level_id: string
+          name?: string | null
+          points: number
+          rank_position: number
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author?: string | null
+          created_at?: string
+          id?: string
+          level_id?: string
+          name?: string | null
+          points?: number
+          rank_position?: number
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       levels: {
         Row: {
           author: string | null
