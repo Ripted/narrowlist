@@ -28,7 +28,7 @@ export function Navbar() {
               </div>
             </div>
             <span className="font-display text-xl font-bold tracking-wider gradient-text">
-              HARDEST LIST
+              NARROWLIST
             </span>
           </Link>
 
