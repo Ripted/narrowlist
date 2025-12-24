@@ -1,10 +1,27 @@
+import { useState, useMemo } from "react";
 import { useLevels } from "@/hooks/useLevels";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
-import { Trophy, Zap, Target } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Target, Search } from "lucide-react";
 
 const Index = () => {
   const { levels, loading, error } = useLevels();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredLevels = useMemo(() => {
+    if (!searchQuery.trim()) return levels;
+    const query = searchQuery.toLowerCase();
+    return levels.filter(
+      (level) =>
+        level.levelInfo.name.toLowerCase().includes(query) ||
+        level.levelInfo.author.toLowerCase().includes(query)
+    );
+  }, [levels, searchQuery]);
+
+  const maxPoints = useMemo(() => {
+    return levels.reduce((sum, level) => sum + (level.points || 0), 0);
+  }, [levels]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -19,19 +36,10 @@ const Index = () => {
         {/* Hero Section */}
         <section className="container mx-auto px-4 mb-12">
           <div className="text-center space-y-4 animate-fade-in">
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/30 px-4 py-2 text-sm text-primary">
-              <Zap className="w-4 h-4" />
-              <span>The Ultimate Challenge</span>
-            </div>
-            
             <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight">
               <span className="gradient-text text-glow">NARROW</span>
               <span className="text-foreground">LIST</span>
             </h1>
-            
-            <p className="max-w-2xl mx-auto text-lg text-muted-foreground">
-              The definitive ranking of the most challenging levels.
-            </p>
 
             <div className="flex items-center justify-center gap-8 pt-4">
               <div className="text-center">
@@ -41,7 +49,7 @@ const Index = () => {
               <div className="w-px h-12 bg-border" />
               <div className="text-center">
                 <div className="font-display text-3xl font-bold text-accent">
-                  {levels.reduce((sum, level) => sum + (level.points || 0), 0)}
+                  {maxPoints}
                 </div>
                 <div className="text-sm text-muted-foreground">Max Points</div>
               </div>
@@ -51,9 +59,21 @@ const Index = () => {
 
         {/* Levels Grid */}
         <section className="container mx-auto px-4">
-          <div className="flex items-center gap-3 mb-6">
-            <Target className="w-5 h-5 text-primary" />
-            <h2 className="font-display text-2xl font-bold">Level Rankings</h2>
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <Target className="w-5 h-5 text-primary" />
+              <h2 className="font-display text-2xl font-bold">Level Rankings</h2>
+            </div>
+            
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search levels..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 bg-secondary border-border"
+              />
+            </div>
           </div>
 
           {loading ? (
@@ -69,19 +89,23 @@ const Index = () => {
             <div className="text-center py-12">
               <p className="text-destructive">{error}</p>
             </div>
-          ) : levels.length === 0 ? (
+          ) : filteredLevels.length === 0 ? (
             <div className="text-center py-12 space-y-4">
               <div className="w-20 h-20 mx-auto rounded-full bg-muted flex items-center justify-center">
                 <Target className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h3 className="font-display text-xl font-semibold">No Levels Yet</h3>
+              <h3 className="font-display text-xl font-semibold">
+                {searchQuery ? "No Results Found" : "No Levels Yet"}
+              </h3>
               <p className="text-muted-foreground">
-                Add level IDs to <code className="text-primary">src/config/levels.ts</code> to get started.
+                {searchQuery
+                  ? "Try a different search term."
+                  : "Add level IDs in the admin panel to get started."}
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {levels.map((level) => (
+              {filteredLevels.map((level) => (
                 <div
                   key={level.levelInfo.level_id}
                   className="animate-fade-in"

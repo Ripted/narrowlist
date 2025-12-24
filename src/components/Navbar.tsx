@@ -1,16 +1,38 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Trophy, List, Users, Shield, LogOut, LogIn } from "lucide-react";
+import { Trophy, List, Shield, LogOut, LogIn, User } from "lucide-react";
 
 export function Navbar() {
   const location = useLocation();
   const { user, isAdmin, signOut } = useAuth();
+  const [playerUsername, setPlayerUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      // Check if user has a linked profile
+      supabase
+        .from("profiles")
+        .select("username")
+        .eq("user_id", user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setPlayerUsername(data.username);
+          } else {
+            setPlayerUsername(null);
+          }
+        });
+    } else {
+      setPlayerUsername(null);
+    }
+  }, [user]);
 
   const navItems = [
     { path: "/", label: "Levels", icon: List },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    { path: "/players", label: "Players", icon: Users },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -48,6 +70,20 @@ export function Navbar() {
                 </Button>
               </Link>
             ))}
+            {playerUsername && (
+              <Link to={`/player/${playerUsername}`}>
+                <Button
+                  variant={location.pathname === `/player/${playerUsername}` ? "default" : "ghost"}
+                  size="sm"
+                  className={`gap-2 font-medium ${
+                    location.pathname === `/player/${playerUsername}` ? "glow-primary" : "hover:bg-secondary"
+                  }`}
+                >
+                  <User className="w-4 h-4" />
+                  Profile
+                </Button>
+              </Link>
+            )}
             {isAdmin && (
               <Link to="/admin">
                 <Button
