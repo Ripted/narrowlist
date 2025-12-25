@@ -4,9 +4,10 @@ import { useLevel, getPlayerProfile } from "@/hooks/useLevels";
 import { formatTime, formatDate, fetchRunDetails, RunDetails } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play } from "lucide-react";
 
 interface DbProfile {
   id: string;
@@ -29,11 +30,12 @@ interface ManualRunEntry {
 export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
   const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId } = useLevel(levelId || "");
+  const { toast } = useToast();
   const [runDetails, setRunDetails] = useState<Map<number, RunDetails>>(new Map());
   const [loadingRuns, setLoadingRuns] = useState(false);
   const [profiles, setProfiles] = useState<Map<string, DbProfile>>(new Map());
   const [manualRuns, setManualRuns] = useState<ManualRunEntry[]>([]);
-
+  const [sortMode, setSortMode] = useState<"time" | "date">("time");
   // Fetch profiles from DB
   useEffect(() => {
     async function loadProfiles() {
@@ -126,6 +128,38 @@ export default function LevelPage() {
     const details = runDetails.get(entry.run_id);
     return { ...entry, details };
   }, [leaderboard, runDetails, verifierRunId]);
+
+  // Sort leaderboard based on mode
+  const sortedLeaderboard = useMemo(() => {
+    if (sortMode === "time") {
+      // Already sorted by fastest time from API
+      return leaderboard;
+    }
+    // Sort by oldest completion date
+    return [...leaderboard].sort((a, b) => {
+      const aDetails = runDetails.get(a.run_id);
+      const bDetails = runDetails.get(b.run_id);
+      const aDate = a.created_at || a.finishedAt || a.finished_at || aDetails?.finishedAt;
+      const bDate = b.created_at || b.finishedAt || b.finished_at || bDetails?.finishedAt;
+      if (!aDate && !bDate) return 0;
+      if (!aDate) return 1;
+      if (!bDate) return -1;
+      return Date.parse(aDate) - Date.parse(bDate);
+    });
+  }, [leaderboard, runDetails, sortMode]);
+
+  const handleCopyId = () => {
+    if (levelId) {
+      navigator.clipboard.writeText(levelId);
+      toast({ title: "Copied!", description: `Level ID: ${levelId}` });
+    }
+  };
+
+  const handlePlay = () => {
+    if (levelId) {
+      window.open(`https://narrowarrow.xyz/levelid=${levelId}`, "_blank");
+    }
+  };
 
   if (loading) {
     return (
@@ -277,11 +311,39 @@ export default function LevelPage() {
           </div>
 
           <div className="rounded-lg bg-card border border-border overflow-hidden">
-            <div className="p-4 border-b border-border bg-secondary/30">
+            <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <h2 className="font-display text-xl font-bold flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-primary" />
                 Completions
               </h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyId}
+                  className="gap-2"
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy ID
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handlePlay}
+                  className="gap-2"
+                >
+                  <Play className="w-4 h-4" />
+                  Play
+                </Button>
+                <Button
+                  variant={sortMode === "time" ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setSortMode(sortMode === "time" ? "date" : "time")}
+                  className="gap-2"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  {sortMode === "time" ? "Fastest" : "Oldest"}
+                </Button>
+              </div>
             </div>
 
             {leaderboard.length === 0 && manualRuns.length === 0 ? (
@@ -353,7 +415,7 @@ export default function LevelPage() {
                 })}
 
                 {/* Regular leaderboard entries */}
-                {leaderboard.map((entry, index) => {
+                {sortedLeaderboard.map((entry, index) => {
                   const profile = getProfile(entry.username);
                   const details = runDetails.get(entry.run_id);
                   const isVerifier = verifierRunId !== null && entry.run_id === verifierRunId;
