@@ -86,13 +86,16 @@ export default function LevelPage() {
         leaderboard.map((entry) =>
           fetchRunDetails(entry.run_id).then((details) => ({
             runId: entry.run_id,
+            username: entry.username,
             details,
           }))
         )
       ).then((results) => {
         const map = new Map<number, RunDetails>();
-        results.forEach(({ runId, details }) => {
-          if (details) map.set(runId, details);
+        results.forEach(({ runId, username, details }) => {
+          if (details) {
+            map.set(runId, details);
+          }
         });
         setRunDetails(map);
         setLoadingRuns(false);
@@ -100,12 +103,10 @@ export default function LevelPage() {
     }
   }, [leaderboard]);
 
-  // Find verifier - check for verified boolean field on each run
-  // The run with verified=true indicates this person verified the level
+  // Find verifier - the run with verified=true indicates this person verified the level
   const verifierEntry = useMemo(() => {
     for (const entry of leaderboard) {
       const details = runDetails.get(entry.run_id);
-      // Use verified field - if true, this person is the verifier
       if (details?.verified === true) {
         return { ...entry, details };
       }
