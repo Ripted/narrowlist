@@ -107,7 +107,21 @@ Deno.serve(async (req) => {
             continue; // Skip if already exists
           }
 
-          // Insert new completion
+          // Fetch run details to get the actual completion date
+          let completedAt = new Date().toISOString();
+          try {
+            const runResponse = await fetch(`${API_BASE}/runs/${entry.run_id}`);
+            if (runResponse.ok) {
+              const runDetails = await runResponse.json();
+              if (runDetails.finishedAt) {
+                completedAt = runDetails.finishedAt;
+              }
+            }
+          } catch (runError) {
+            console.error(`Error fetching run details for ${entry.run_id}:`, runError);
+          }
+
+          // Insert new completion with actual date
           const { error: insertError } = await supabase
             .from("completions")
             .insert({
@@ -116,6 +130,7 @@ Deno.serve(async (req) => {
               run_id: entry.run_id,
               completion_time: entry.completion_time,
               arrow_name: entry.arrow_name,
+              completed_at: completedAt,
             });
 
           if (insertError) {
