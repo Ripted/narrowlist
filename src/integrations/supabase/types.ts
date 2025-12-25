@@ -158,6 +158,66 @@ export type Database = {
         }
         Relationships: []
       }
+      manual_runs: {
+        Row: {
+          added_by_admin_email: string
+          added_by_admin_id: string
+          arrow_name: string
+          completed_at: string
+          completion_time: number
+          created_at: string
+          id: string
+          is_verifier: boolean
+          level_id: string
+          note: string | null
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          added_by_admin_email: string
+          added_by_admin_id: string
+          arrow_name: string
+          completed_at: string
+          completion_time: number
+          created_at?: string
+          id?: string
+          is_verifier?: boolean
+          level_id: string
+          note?: string | null
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          added_by_admin_email?: string
+          added_by_admin_id?: string
+          arrow_name?: string
+          completed_at?: string
+          completion_time?: number
+          created_at?: string
+          id?: string
+          is_verifier?: boolean
+          level_id?: string
+          note?: string | null
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_runs_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_runs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_claim_requests: {
         Row: {
           created_at: string
