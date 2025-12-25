@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { LevelDetails, formatTime } from "@/lib/api";
 import { getPointsForRank } from "@/config/levels";
-import { Trophy, User, Clock, Heart, Copy, Play } from "lucide-react";
+import { Trophy, User, Clock, Heart, Copy, Play, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -9,9 +9,10 @@ interface LevelCardProps {
   level: LevelDetails;
   rank: number;
   thumbnailUrl?: string;
+  verifierUsername?: string;
 }
 
-export function LevelCard({ level, rank, thumbnailUrl }: LevelCardProps) {
+export function LevelCard({ level, rank, thumbnailUrl, verifierUsername }: LevelCardProps) {
   const { toast } = useToast();
   const points = getPointsForRank(rank);
   const { levelInfo, worldRecord } = level;
@@ -137,12 +138,13 @@ export function LevelCard({ level, rank, thumbnailUrl }: LevelCardProps) {
             )}
           </div>
 
-          {worldRecord && (
+          {verifierUsername && (
             <div className="pt-2 border-t border-border/50">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Shield className="w-3 h-3 text-primary" />
                 Verified by{" "}
                 <span className="text-primary font-medium">
-                  {worldRecord.username}
+                  {verifierUsername}
                 </span>
               </p>
             </div>

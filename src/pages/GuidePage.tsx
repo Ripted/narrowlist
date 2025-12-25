@@ -1,4 +1,7 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   BookOpen, Trophy, List, Clock, Users, Send, GitCompare, 
   HelpCircle, Star, Heart, Zap
@@ -11,7 +14,35 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 
+interface FounderProfile {
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 export default function GuidePage() {
+  const [founders, setFounders] = useState<{ sqm: FounderProfile | null; ripted: FounderProfile | null }>({
+    sqm: null,
+    ripted: null,
+  });
+
+  useEffect(() => {
+    async function loadFounders() {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url")
+        .in("username", ["sqm", "Ripted"]);
+      
+      if (data) {
+        setFounders({
+          sqm: data.find(p => p.username.toLowerCase() === "sqm") || null,
+          ripted: data.find(p => p.username.toLowerCase() === "ripted") || null,
+        });
+      }
+    }
+    loadFounders();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -227,24 +258,32 @@ export default function GuidePage() {
           </p>
 
           <div className="flex flex-wrap gap-4 mb-6">
-            <div className="flex items-center gap-3 px-4 py-3 bg-card/80 rounded-lg border border-border">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <span className="font-display font-bold text-primary-foreground">S</span>
+            <Link to="/player/sqm" className="flex items-center gap-3 px-4 py-3 bg-card/80 rounded-lg border border-border hover:border-primary/50 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center overflow-hidden">
+                {founders.sqm?.avatar_url ? (
+                  <img src={founders.sqm.avatar_url} alt="sqm" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-display font-bold text-primary-foreground">S</span>
+                )}
               </div>
               <div>
-                <div className="font-display font-semibold text-foreground">sqm</div>
-                <div className="text-xs text-muted-foreground">Co-Founder</div>
+                <div className="font-display font-semibold text-foreground">{founders.sqm?.display_name || "sqm"}</div>
+                <div className="text-xs text-muted-foreground">Founder</div>
               </div>
-            </div>
-            <div className="flex items-center gap-3 px-4 py-3 bg-card/80 rounded-lg border border-border">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-                <span className="font-display font-bold text-accent-foreground">R</span>
+            </Link>
+            <Link to="/player/Ripted" className="flex items-center gap-3 px-4 py-3 bg-card/80 rounded-lg border border-border hover:border-primary/50 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center overflow-hidden">
+                {founders.ripted?.avatar_url ? (
+                  <img src={founders.ripted.avatar_url} alt="Ripted" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-display font-bold text-accent-foreground">R</span>
+                )}
               </div>
               <div>
-                <div className="font-display font-semibold text-foreground">Ripted</div>
+                <div className="font-display font-semibold text-foreground">{founders.ripted?.display_name || "Ripted"}</div>
                 <div className="text-xs text-muted-foreground">Co-Founder</div>
               </div>
-            </div>
+            </Link>
           </div>
 
           <p className="text-sm text-muted-foreground">

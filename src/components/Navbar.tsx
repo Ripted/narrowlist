@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen, Palette } from "lucide-react";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useTheme } from "@/hooks/useTheme";
 import logoImg from "@/assets/logo.png";
 
@@ -210,7 +209,6 @@ export function Navbar() {
                 <DiscordIcon className="w-5 h-5" />
               </Button>
             </a>
-            <ThemeSwitcher />
             {user ? (
               <Button
                 variant="ghost"

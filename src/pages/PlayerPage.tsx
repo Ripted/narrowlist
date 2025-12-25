@@ -76,6 +76,15 @@ export default function PlayerPage() {
             setProfileData(data);
             setBioValue(data.bio || "");
             setCountryValue(data.country_code || null);
+            
+            // Fetch verified count - levels where this profile is the verifier
+            supabase
+              .from("levels")
+              .select("id")
+              .eq("verifier_profile_id", data.id)
+              .then(({ data: verifiedLevels }) => {
+                setVerifiedCount(verifiedLevels?.length || 0);
+              });
           }
         });
     }
@@ -446,10 +455,19 @@ export default function PlayerPage() {
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={progressionData}>
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 10 }} 
+                      type="category"
+                      interval="preserveStartEnd"
+                      tickFormatter={(value) => {
+                        const parts = value.split('-');
+                        return `${parts[1]}/${parts[2]}`;
+                      }}
+                    />
                     <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(220 25% 9%)', border: '1px solid hsl(220 20% 18%)', borderRadius: '8px' }} formatter={(value: number, name: string, props: any) => [`${value} levels`, props.payload.levelName]} />
-                    <Line type="monotone" dataKey="count" stroke="hsl(260 70% 60%)" strokeWidth={2} dot={{ fill: 'hsl(260 70% 60%)', strokeWidth: 0, r: 4 }} />
+                    <Line type="stepAfter" dataKey="count" stroke="hsl(260 70% 60%)" strokeWidth={2} dot={{ fill: 'hsl(260 70% 60%)', strokeWidth: 0, r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
