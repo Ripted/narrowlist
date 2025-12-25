@@ -366,6 +366,36 @@ export type Database = {
         }
         Relationships: []
       }
+      submission_banned_users: {
+        Row: {
+          banned_by: string
+          banned_by_email: string
+          created_at: string
+          email: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          banned_by: string
+          banned_by_email: string
+          created_at?: string
+          email: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          banned_by?: string
+          banned_by_email?: string
+          created_at?: string
+          email?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
