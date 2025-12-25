@@ -7,13 +7,15 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   ArrowLeft, Trophy, Target, Clock, Medal, UserPlus, Camera, Loader2, 
-  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, Star
+  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, Star, MapPin
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { countries, getCountryByCode } from "@/config/countries";
 
 interface ProfileData {
   id: string;
@@ -22,6 +24,7 @@ interface ProfileData {
   avatar_url: string | null;
   bio: string | null;
   display_name: string | null;
+  country_code: string | null;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -57,17 +60,22 @@ export default function PlayerPage() {
 
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   
+  const [editingCountry, setEditingCountry] = useState(false);
+  const [countryValue, setCountryValue] = useState<string | null>(null);
+  const [savingCountry, setSavingCountry] = useState(false);
+
   useEffect(() => {
     if (username) {
       supabase
         .from("profiles")
-        .select("id, user_id, banner_url, avatar_url, bio, display_name")
+        .select("id, user_id, banner_url, avatar_url, bio, display_name, country_code")
         .eq("username", username)
         .single()
         .then(({ data }) => {
           if (data) {
             setProfileData(data);
             setBioValue(data.bio || "");
+            setCountryValue(data.country_code || null);
           }
         });
     }
@@ -228,6 +236,25 @@ export default function PlayerPage() {
     }
   };
 
+  const saveCountry = async (code: string | null) => {
+    if (!profileData) return;
+    setSavingCountry(true);
+    try {
+      const { error } = await supabase.from("profiles").update({ country_code: code }).eq("id", profileData.id);
+      if (error) throw error;
+      setProfileData({ ...profileData, country_code: code });
+      setCountryValue(code);
+      setEditingCountry(false);
+      toast({ title: "Success", description: "Country updated" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingCountry(false);
+    }
+  };
+
+  const currentCountry = getCountryByCode(profileData?.country_code);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -318,8 +345,51 @@ export default function PlayerPage() {
 
             <div className="text-center md:text-left space-y-4 pt-4 flex-1">
               <div>
-                <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground">{profileData?.display_name || player.displayName || player.username}</h1>
+                <div className="flex items-center gap-2 justify-center md:justify-start flex-wrap">
+                  <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground">{profileData?.display_name || player.displayName || player.username}</h1>
+                  {currentCountry && (
+                    <span className="text-2xl" title={currentCountry.name}>{currentCountry.flag}</span>
+                  )}
+                </div>
                 {(profileData?.display_name || player.displayName) && <p className="text-muted-foreground">@{player.username}</p>}
+                
+                {/* Country selector for owner */}
+                {isOwner && (
+                  <div className="mt-2">
+                    {editingCountry ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Select
+                          value={countryValue || "none"}
+                          onValueChange={(val) => saveCountry(val === "none" ? null : val)}
+                          disabled={savingCountry}
+                        >
+                          <SelectTrigger className="w-[200px] h-9 bg-card border-border">
+                            <SelectValue placeholder="Select country" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border max-h-[300px] z-50">
+                            <SelectItem value="none">No country</SelectItem>
+                            {countries.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                <span className="flex items-center gap-2">
+                                  <span>{c.flag}</span>
+                                  <span>{c.name}</span>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingCountry(false)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="ghost" onClick={() => setEditingCountry(true)} className="gap-1 text-xs">
+                        <MapPin className="w-3 h-3" />
+                        {currentCountry ? `Change Country` : "Add Country"}
+                      </Button>
+                    )}
+                  </div>
+                )}
                 
                 {editingBio ? (
                   <div className="mt-3 max-w-md">
