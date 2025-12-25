@@ -6,13 +6,14 @@ export type ThemeName =
   | "slate" | "indigo" | "teal" | "coral" | "violet"
   | "mint" | "peach" | "sky" | "berry" | "gold"
   | "copper" | "sage" | "plum" | "arctic" | "flame"
-  | "marine" | "lilac" | "moss" | "rust" | "ice";
+  | "marine" | "lilac" | "moss" | "rust" | "ice"
+  | "spotify" | "discord" | "youtube" | "twitch" | "github";
 
 interface ThemeColors {
   primary: string;
+  secondary: string;
   accent: string;
-  glowPrimary: string;
-  glowAccent: string;
+  background: string;
   logoHueRotate: string;
 }
 
@@ -22,9 +23,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Arrow",
     colors: {
       primary: "235 80% 65%",
-      accent: "255 75% 60%",
-      glowPrimary: "235 80% 65%",
-      glowAccent: "255 75% 60%",
+      secondary: "255 75% 60%",
+      accent: "220 70% 55%",
+      background: "220 25% 6%",
       logoHueRotate: "0deg",
     },
   },
@@ -32,9 +33,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Midnight",
     colors: {
       primary: "260 70% 60%",
-      accent: "330 80% 55%",
-      glowPrimary: "260 70% 60%",
-      glowAccent: "330 80% 55%",
+      secondary: "330 80% 55%",
+      accent: "280 65% 50%",
+      background: "260 30% 6%",
       logoHueRotate: "25deg",
     },
   },
@@ -42,9 +43,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Sunset",
     colors: {
       primary: "25 90% 55%",
-      accent: "350 80% 55%",
-      glowPrimary: "25 90% 55%",
-      glowAccent: "350 80% 55%",
+      secondary: "350 80% 55%",
+      accent: "15 85% 50%",
+      background: "15 25% 6%",
       logoHueRotate: "150deg",
     },
   },
@@ -52,9 +53,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Emerald",
     colors: {
       primary: "160 70% 45%",
-      accent: "190 80% 50%",
-      glowPrimary: "160 70% 45%",
-      glowAccent: "190 80% 50%",
+      secondary: "190 80% 50%",
+      accent: "140 60% 40%",
+      background: "160 25% 6%",
       logoHueRotate: "-75deg",
     },
   },
@@ -62,20 +63,19 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Crimson",
     colors: {
       primary: "350 80% 55%",
-      accent: "25 90% 55%",
-      glowPrimary: "350 80% 55%",
-      glowAccent: "25 90% 55%",
+      secondary: "25 90% 55%",
+      accent: "0 70% 50%",
+      background: "350 25% 6%",
       logoHueRotate: "115deg",
     },
   },
-  // New themes
   ocean: {
     name: "Ocean",
     colors: {
       primary: "200 80% 50%",
-      accent: "180 70% 45%",
-      glowPrimary: "200 80% 50%",
-      glowAccent: "180 70% 45%",
+      secondary: "180 70% 45%",
+      accent: "210 75% 55%",
+      background: "200 30% 6%",
       logoHueRotate: "-35deg",
     },
   },
@@ -83,9 +83,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Lavender",
     colors: {
       primary: "270 60% 65%",
-      accent: "300 50% 60%",
-      glowPrimary: "270 60% 65%",
-      glowAccent: "300 50% 60%",
+      secondary: "300 50% 60%",
+      accent: "280 55% 55%",
+      background: "270 25% 6%",
       logoHueRotate: "35deg",
     },
   },
@@ -93,9 +93,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Forest",
     colors: {
       primary: "140 50% 40%",
-      accent: "100 60% 45%",
-      glowPrimary: "140 50% 40%",
-      glowAccent: "100 60% 45%",
+      secondary: "100 60% 45%",
+      accent: "120 45% 35%",
+      background: "140 30% 5%",
       logoHueRotate: "-95deg",
     },
   },
@@ -103,9 +103,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Amber",
     colors: {
       primary: "40 90% 50%",
-      accent: "30 85% 55%",
-      glowPrimary: "40 90% 50%",
-      glowAccent: "30 85% 55%",
+      secondary: "30 85% 55%",
+      accent: "45 80% 45%",
+      background: "35 25% 6%",
       logoHueRotate: "165deg",
     },
   },
@@ -113,9 +113,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Rose",
     colors: {
       primary: "340 75% 60%",
-      accent: "320 70% 55%",
-      glowPrimary: "340 75% 60%",
-      glowAccent: "320 70% 55%",
+      secondary: "320 70% 55%",
+      accent: "350 65% 50%",
+      background: "340 25% 6%",
       logoHueRotate: "105deg",
     },
   },
@@ -123,9 +123,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Slate",
     colors: {
       primary: "215 25% 55%",
-      accent: "220 30% 60%",
-      glowPrimary: "215 25% 55%",
-      glowAccent: "220 30% 60%",
+      secondary: "220 30% 60%",
+      accent: "210 20% 50%",
+      background: "215 20% 6%",
       logoHueRotate: "-20deg",
     },
   },
@@ -133,9 +133,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Indigo",
     colors: {
       primary: "240 70% 60%",
-      accent: "260 65% 55%",
-      glowPrimary: "240 70% 60%",
-      glowAccent: "260 65% 55%",
+      secondary: "260 65% 55%",
+      accent: "230 60% 50%",
+      background: "240 30% 6%",
       logoHueRotate: "5deg",
     },
   },
@@ -143,9 +143,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Teal",
     colors: {
       primary: "175 70% 45%",
-      accent: "165 65% 50%",
-      glowPrimary: "175 70% 45%",
-      glowAccent: "165 65% 50%",
+      secondary: "165 65% 50%",
+      accent: "180 60% 40%",
+      background: "175 30% 5%",
       logoHueRotate: "-60deg",
     },
   },
@@ -153,9 +153,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Coral",
     colors: {
       primary: "15 85% 60%",
-      accent: "5 80% 55%",
-      glowPrimary: "15 85% 60%",
-      glowAccent: "5 80% 55%",
+      secondary: "5 80% 55%",
+      accent: "20 75% 50%",
+      background: "15 25% 6%",
       logoHueRotate: "140deg",
     },
   },
@@ -163,9 +163,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Violet",
     colors: {
       primary: "280 70% 60%",
-      accent: "290 65% 55%",
-      glowPrimary: "280 70% 60%",
-      glowAccent: "290 65% 55%",
+      secondary: "290 65% 55%",
+      accent: "270 60% 50%",
+      background: "280 30% 6%",
       logoHueRotate: "45deg",
     },
   },
@@ -173,9 +173,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Mint",
     colors: {
       primary: "155 60% 50%",
-      accent: "145 55% 55%",
-      glowPrimary: "155 60% 50%",
-      glowAccent: "145 55% 55%",
+      secondary: "145 55% 55%",
+      accent: "160 50% 45%",
+      background: "155 25% 5%",
       logoHueRotate: "-80deg",
     },
   },
@@ -183,9 +183,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Peach",
     colors: {
       primary: "20 80% 65%",
-      accent: "10 75% 60%",
-      glowPrimary: "20 80% 65%",
-      glowAccent: "10 75% 60%",
+      secondary: "10 75% 60%",
+      accent: "25 70% 55%",
+      background: "20 25% 6%",
       logoHueRotate: "145deg",
     },
   },
@@ -193,9 +193,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Sky",
     colors: {
       primary: "195 85% 55%",
-      accent: "205 80% 50%",
-      glowPrimary: "195 85% 55%",
-      glowAccent: "205 80% 50%",
+      secondary: "205 80% 50%",
+      accent: "190 75% 45%",
+      background: "200 30% 6%",
       logoHueRotate: "-40deg",
     },
   },
@@ -203,9 +203,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Berry",
     colors: {
       primary: "330 70% 55%",
-      accent: "350 65% 50%",
-      glowPrimary: "330 70% 55%",
-      glowAccent: "350 65% 50%",
+      secondary: "350 65% 50%",
+      accent: "320 60% 45%",
+      background: "330 30% 6%",
       logoHueRotate: "95deg",
     },
   },
@@ -213,9 +213,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Gold",
     colors: {
       primary: "45 85% 50%",
-      accent: "35 80% 45%",
-      glowPrimary: "45 85% 50%",
-      glowAccent: "35 80% 45%",
+      secondary: "35 80% 45%",
+      accent: "50 75% 40%",
+      background: "40 25% 5%",
       logoHueRotate: "170deg",
     },
   },
@@ -223,9 +223,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Copper",
     colors: {
       primary: "25 70% 50%",
-      accent: "15 65% 45%",
-      glowPrimary: "25 70% 50%",
-      glowAccent: "15 65% 45%",
+      secondary: "15 65% 45%",
+      accent: "30 60% 40%",
+      background: "25 25% 5%",
       logoHueRotate: "150deg",
     },
   },
@@ -233,9 +233,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Sage",
     colors: {
       primary: "130 35% 50%",
-      accent: "120 30% 45%",
-      glowPrimary: "130 35% 50%",
-      glowAccent: "120 30% 45%",
+      secondary: "120 30% 45%",
+      accent: "140 25% 40%",
+      background: "130 20% 5%",
       logoHueRotate: "-105deg",
     },
   },
@@ -243,9 +243,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Plum",
     colors: {
       primary: "300 50% 50%",
-      accent: "310 45% 45%",
-      glowPrimary: "300 50% 50%",
-      glowAccent: "310 45% 45%",
+      secondary: "310 45% 45%",
+      accent: "290 40% 40%",
+      background: "300 30% 5%",
       logoHueRotate: "65deg",
     },
   },
@@ -253,9 +253,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Arctic",
     colors: {
       primary: "210 60% 60%",
-      accent: "220 55% 55%",
-      glowPrimary: "210 60% 60%",
-      glowAccent: "220 55% 55%",
+      secondary: "220 55% 55%",
+      accent: "200 50% 50%",
+      background: "210 25% 6%",
       logoHueRotate: "-25deg",
     },
   },
@@ -263,9 +263,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Flame",
     colors: {
       primary: "10 90% 55%",
-      accent: "25 85% 50%",
-      glowPrimary: "10 90% 55%",
-      glowAccent: "25 85% 50%",
+      secondary: "25 85% 50%",
+      accent: "0 80% 45%",
+      background: "10 30% 5%",
       logoHueRotate: "135deg",
     },
   },
@@ -273,9 +273,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Marine",
     colors: {
       primary: "220 75% 55%",
-      accent: "210 70% 50%",
-      glowPrimary: "220 75% 55%",
-      glowAccent: "210 70% 50%",
+      secondary: "210 70% 50%",
+      accent: "230 65% 45%",
+      background: "220 30% 6%",
       logoHueRotate: "-15deg",
     },
   },
@@ -283,9 +283,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Lilac",
     colors: {
       primary: "290 55% 65%",
-      accent: "280 50% 60%",
-      glowPrimary: "290 55% 65%",
-      glowAccent: "280 50% 60%",
+      secondary: "280 50% 60%",
+      accent: "300 45% 55%",
+      background: "290 25% 6%",
       logoHueRotate: "55deg",
     },
   },
@@ -293,9 +293,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Moss",
     colors: {
       primary: "110 45% 45%",
-      accent: "120 40% 40%",
-      glowPrimary: "110 45% 45%",
-      glowAccent: "120 40% 40%",
+      secondary: "120 40% 40%",
+      accent: "100 35% 35%",
+      background: "110 25% 5%",
       logoHueRotate: "-125deg",
     },
   },
@@ -303,9 +303,9 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Rust",
     colors: {
       primary: "15 75% 45%",
-      accent: "5 70% 40%",
-      glowPrimary: "15 75% 45%",
-      glowAccent: "5 70% 40%",
+      secondary: "5 70% 40%",
+      accent: "20 65% 35%",
+      background: "15 30% 5%",
       logoHueRotate: "140deg",
     },
   },
@@ -313,10 +313,61 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
     name: "Ice",
     colors: {
       primary: "190 50% 60%",
-      accent: "200 45% 55%",
-      glowPrimary: "190 50% 60%",
-      glowAccent: "200 45% 55%",
+      secondary: "200 45% 55%",
+      accent: "180 40% 50%",
+      background: "190 25% 6%",
       logoHueRotate: "-45deg",
+    },
+  },
+  // Popular brand themes
+  spotify: {
+    name: "Spotify",
+    colors: {
+      primary: "141 73% 42%",
+      secondary: "141 63% 35%",
+      accent: "141 80% 50%",
+      background: "0 0% 7%",
+      logoHueRotate: "-95deg",
+    },
+  },
+  discord: {
+    name: "Discord",
+    colors: {
+      primary: "235 86% 65%",
+      secondary: "235 51% 52%",
+      accent: "235 100% 70%",
+      background: "223 7% 20%",
+      logoHueRotate: "0deg",
+    },
+  },
+  youtube: {
+    name: "YouTube",
+    colors: {
+      primary: "0 100% 50%",
+      secondary: "0 90% 40%",
+      accent: "0 100% 60%",
+      background: "0 0% 7%",
+      logoHueRotate: "125deg",
+    },
+  },
+  twitch: {
+    name: "Twitch",
+    colors: {
+      primary: "264 100% 64%",
+      secondary: "264 80% 50%",
+      accent: "264 100% 75%",
+      background: "260 20% 8%",
+      logoHueRotate: "30deg",
+    },
+  },
+  github: {
+    name: "GitHub",
+    colors: {
+      primary: "215 14% 45%",
+      secondary: "215 10% 35%",
+      accent: "215 20% 55%",
+      background: "215 20% 6%",
+      logoHueRotate: "-20deg",
     },
   },
 };
@@ -341,13 +392,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     const colors = themes[theme].colors;
     
+    // Primary theme colors
     root.style.setProperty("--primary", colors.primary);
     root.style.setProperty("--ring", colors.primary);
-    root.style.setProperty("--accent", colors.accent);
-    root.style.setProperty("--glow-primary", colors.glowPrimary);
-    root.style.setProperty("--glow-accent", colors.glowAccent);
+    
+    // Secondary and accent
+    root.style.setProperty("--accent", colors.secondary);
+    root.style.setProperty("--theme-tertiary", colors.accent);
+    
+    // Glow colors
+    root.style.setProperty("--glow-primary", colors.primary);
+    root.style.setProperty("--glow-accent", colors.secondary);
+    
+    // Background with theme tint
+    root.style.setProperty("--background", colors.background);
+    root.style.setProperty("--card", colors.background.replace(/(\d+)%\s*\)?\s*$/, (_, l) => `${Math.min(parseInt(l) + 3, 15)}%`));
+    
+    // Sidebar
     root.style.setProperty("--sidebar-primary", colors.primary);
     root.style.setProperty("--sidebar-ring", colors.primary);
+    
+    // Logo
     root.style.setProperty("--logo-hue-rotate", colors.logoHueRotate);
     
     localStorage.setItem("narrowlist-theme", theme);
