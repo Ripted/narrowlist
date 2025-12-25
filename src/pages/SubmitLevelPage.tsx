@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, Search, Loader2, CheckCircle, Clock, XCircle, AlertCircle } from "lucide-react";
+import { Send, Search, Loader2, CheckCircle, Clock, XCircle, AlertCircle, Ban } from "lucide-react";
 
 interface LevelData {
   name: string;
@@ -25,6 +25,9 @@ interface Submission {
   admin_note: string | null;
 }
 
+const RATE_LIMIT_COUNT = 3;
+const RATE_LIMIT_HOURS = 24;
+
 export default function SubmitLevelPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -38,6 +41,9 @@ export default function SubmitLevelPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [mySubmissions, setMySubmissions] = useState<Submission[]>([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(true);
+  const [isBanned, setIsBanned] = useState(false);
+  const [banReason, setBanReason] = useState<string | null>(null);
+  const [recentSubmissionCount, setRecentSubmissionCount] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -49,8 +55,40 @@ export default function SubmitLevelPage() {
   useEffect(() => {
     if (user) {
       fetchMySubmissions();
+      checkBanStatus();
+      checkRateLimit();
     }
   }, [user]);
+
+  const checkBanStatus = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from("submission_banned_users")
+      .select("reason")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    if (data) {
+      setIsBanned(true);
+      setBanReason(data.reason);
+    }
+  };
+
+  const checkRateLimit = async () => {
+    if (!user) return;
+    
+    const cutoffTime = new Date();
+    cutoffTime.setHours(cutoffTime.getHours() - RATE_LIMIT_HOURS);
+    
+    const { count } = await supabase
+      .from("level_submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("submitted_by", user.id)
+      .gte("created_at", cutoffTime.toISOString());
+    
+    setRecentSubmissionCount(count || 0);
+  };
 
   const fetchMySubmissions = async () => {
     if (!user) return;
@@ -108,6 +146,22 @@ export default function SubmitLevelPage() {
   const handleSubmit = async () => {
     if (!user || !levelData || !suggestedRank) return;
 
+    // Check ban status
+    if (isBanned) {
+      toast({ title: "Banned", description: "You are banned from submitting levels", variant: "destructive" });
+      return;
+    }
+
+    // Check rate limit
+    if (recentSubmissionCount >= RATE_LIMIT_COUNT) {
+      toast({ 
+        title: "Rate Limited", 
+        description: `You can only submit ${RATE_LIMIT_COUNT} levels per ${RATE_LIMIT_HOURS} hours`, 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     const rank = parseInt(suggestedRank);
     if (isNaN(rank) || rank < 1) {
       toast({ title: "Invalid Rank", description: "Please enter a valid rank number", variant: "destructive" });
@@ -161,6 +215,7 @@ export default function SubmitLevelPage() {
       setLevelData(null);
       setSuggestedRank("");
       fetchMySubmissions();
+      checkRateLimit();
     } catch (error: any) {
       toast({ title: "Submission Failed", description: error.message, variant: "destructive" });
     } finally {
@@ -218,8 +273,39 @@ export default function SubmitLevelPage() {
           </div>
 
           <div className="space-y-6">
+            {/* Ban Notice */}
+            {isBanned && (
+              <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <Ban className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium text-destructive">You are banned from submitting levels</div>
+                  {banReason && (
+                    <div className="text-sm text-destructive/80 mt-1">Reason: {banReason}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Rate Limit Notice */}
+            {!isBanned && recentSubmissionCount >= RATE_LIMIT_COUNT && (
+              <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <Clock className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium text-yellow-500">Rate limit reached</div>
+                  <div className="text-sm text-yellow-500/80 mt-1">
+                    You can only submit {RATE_LIMIT_COUNT} levels per {RATE_LIMIT_HOURS} hours. Please try again later.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Submit Form */}
             <div className="bg-card border border-border rounded-lg p-4 md:p-6 space-y-4">
+              {!isBanned && recentSubmissionCount < RATE_LIMIT_COUNT && (
+                <div className="text-xs text-muted-foreground mb-2">
+                  Submissions: {recentSubmissionCount}/{RATE_LIMIT_COUNT} used (resets in {RATE_LIMIT_HOURS}h)
+                </div>
+              )}
               <div>
                 <Label htmlFor="levelId">Level ID</Label>
                 <div className="flex gap-2 mt-1">
@@ -233,10 +319,11 @@ export default function SubmitLevelPage() {
                       setFetchError(null);
                     }}
                     className="flex-1 bg-secondary border-border"
+                    disabled={isBanned || recentSubmissionCount >= RATE_LIMIT_COUNT}
                   />
                   <Button 
                     onClick={fetchLevelData} 
-                    disabled={!levelId.trim() || fetching}
+                    disabled={!levelId.trim() || fetching || isBanned || recentSubmissionCount >= RATE_LIMIT_COUNT}
                     variant="outline"
                   >
                     {fetching ? (

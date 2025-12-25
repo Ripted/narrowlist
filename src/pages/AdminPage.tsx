@@ -125,9 +125,19 @@ interface LevelSubmission {
   thumbnail_url: string | null;
   suggested_rank: number;
   final_rank: number | null;
+  submitted_by: string | null;
   submitted_by_email: string;
   status: string;
   admin_note: string | null;
+  created_at: string;
+}
+
+interface BannedUser {
+  id: string;
+  user_id: string;
+  email: string;
+  reason: string | null;
+  banned_by_email: string;
   created_at: string;
 }
 
@@ -145,6 +155,7 @@ export default function AdminPage() {
   const [manualRuns, setManualRuns] = useState<ManualRun[]>([]);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [levelSubmissions, setLevelSubmissions] = useState<LevelSubmission[]>([]);
+  const [bannedUsers, setBannedUsers] = useState<BannedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -154,6 +165,13 @@ export default function AdminPage() {
   const [submissionRank, setSubmissionRank] = useState("");
   const [submissionNote, setSubmissionNote] = useState("");
   const [processingSubmission, setProcessingSubmission] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editNoteValue, setEditNoteValue] = useState("");
+  
+  // Ban form
+  const [banEmail, setBanEmail] = useState("");
+  const [banReason, setBanReason] = useState("");
+  const [addingBan, setAddingBan] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -245,6 +263,7 @@ export default function AdminPage() {
       fetchManualRuns();
       fetchAllProfiles();
       fetchLevelSubmissions();
+      fetchBannedUsers();
     }
   }, [isAdmin]);
 
@@ -316,6 +335,93 @@ export default function AdminPage() {
       .order("created_at", { ascending: false });
     
     if (data) setLevelSubmissions(data);
+  };
+
+  const fetchBannedUsers = async () => {
+    const { data } = await supabase
+      .from("submission_banned_users")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data) setBannedUsers(data);
+  };
+
+  const banUserFromSubmissions = async () => {
+    if (!banEmail.trim() || !user) return;
+    setAddingBan(true);
+    
+    try {
+      // Find user by email in level_submissions
+      const { data: submissions } = await supabase
+        .from("level_submissions")
+        .select("submitted_by")
+        .eq("submitted_by_email", banEmail.trim())
+        .limit(1);
+      
+      if (!submissions || submissions.length === 0 || !submissions[0].submitted_by) {
+        throw new Error("No user found with this email in submissions");
+      }
+      
+      const { error } = await supabase.from("submission_banned_users").insert({
+        user_id: submissions[0].submitted_by,
+        email: banEmail.trim(),
+        reason: banReason || null,
+        banned_by: user.id,
+        banned_by_email: user.email || "unknown",
+      });
+      
+      if (error) {
+        if (error.code === '23505') throw new Error("User is already banned");
+        throw error;
+      }
+      
+      await logAction("Banned user from submissions", `${banEmail.trim()}${banReason ? ` - ${banReason}` : ""}`);
+      toast({ title: "User Banned", description: "User can no longer submit levels" });
+      setBanEmail("");
+      setBanReason("");
+      fetchBannedUsers();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setAddingBan(false);
+    }
+  };
+
+  const unbanUser = async (banned: BannedUser) => {
+    try {
+      const { error } = await supabase
+        .from("submission_banned_users")
+        .delete()
+        .eq("id", banned.id);
+      
+      if (error) throw error;
+      
+      await logAction("Unbanned user from submissions", banned.email);
+      toast({ title: "User Unbanned", description: "User can now submit levels again" });
+      fetchBannedUsers();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const updateSubmissionNote = async (submissionId: string, note: string) => {
+    try {
+      const { error } = await supabase
+        .from("level_submissions")
+        .update({ admin_note: note || null })
+        .eq("id", submissionId);
+      
+      if (error) throw error;
+      
+      toast({ title: "Note Updated" });
+      setEditingNoteId(null);
+      setEditNoteValue("");
+      fetchLevelSubmissions();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   };
 
   const handleSubmissionReview = async (submissionId: string, action: "approved" | "rejected") => {
@@ -1445,7 +1551,7 @@ export default function AdminPage() {
             </div>
           )}
 
-          <Tabs defaultValue="submissions" className="space-y-6">
+          <Tabs defaultValue="levels" className="space-y-6">
             <TabsList className="w-full justify-start overflow-x-auto flex-nowrap gap-1 h-auto p-1">
               <TabsTrigger value="submissions" className="text-xs sm:text-sm gap-1 flex-shrink-0">
                 <Send className="w-3 h-3 hidden sm:inline" />
@@ -1460,6 +1566,7 @@ export default function AdminPage() {
               <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
               <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
               <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
+              <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
               <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
             </TabsList>
 
@@ -1545,23 +1652,68 @@ export default function AdminPage() {
                                 </Button>
                               </>
                             ) : (
-                              <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm border ${
-                                submission.status === 'approved' 
-                                  ? 'bg-green-500/10 text-green-500 border-green-500/30' 
-                                  : 'bg-destructive/10 text-destructive border-destructive/30'
-                              }`}>
-                                {submission.status === 'approved' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
-                                <span className="capitalize">{submission.status}</span>
-                                {submission.final_rank && <span>at #{submission.final_rank}</span>}
-                              </div>
+                              <>
+                                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm border ${
+                                  submission.status === 'approved' 
+                                    ? 'bg-green-500/10 text-green-500 border-green-500/30' 
+                                    : 'bg-destructive/10 text-destructive border-destructive/30'
+                                }`}>
+                                  {submission.status === 'approved' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                                  <span className="capitalize">{submission.status}</span>
+                                  {submission.final_rank && <span>at #{submission.final_rank}</span>}
+                                </div>
+                                {submission.submitted_by && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-1 text-destructive border-destructive/50 hover:bg-destructive/10"
+                                    onClick={async () => {
+                                      setBanEmail(submission.submitted_by_email);
+                                      setBanReason("");
+                                    }}
+                                  >
+                                    <UserX className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Ban</span>
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
-                        {submission.admin_note && (
-                          <div className="mt-2 text-sm text-accent">
-                            Note: {submission.admin_note}
-                          </div>
-                        )}
+                        {/* Note section with edit capability */}
+                        <div className="mt-2">
+                          {editingNoteId === submission.id ? (
+                            <div className="flex gap-2 items-center">
+                              <Input
+                                value={editNoteValue}
+                                onChange={(e) => setEditNoteValue(e.target.value)}
+                                placeholder="Admin note..."
+                                className="flex-1 h-8 text-sm bg-secondary border-border"
+                              />
+                              <Button size="sm" variant="ghost" onClick={() => updateSubmissionNote(submission.id, editNoteValue)}>
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => { setEditingNoteId(null); setEditNoteValue(""); }}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="text-sm text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+                              onClick={() => {
+                                setEditingNoteId(submission.id);
+                                setEditNoteValue(submission.admin_note || "");
+                              }}
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              {submission.admin_note ? (
+                                <span className="text-accent">Note: {submission.admin_note}</span>
+                              ) : (
+                                <span className="italic">Add note...</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2060,6 +2212,85 @@ export default function AdminPage() {
                         >
                           <UserX className="w-4 h-4" />
                           Unlink
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Bans Tab */}
+            <TabsContent value="bans" className="space-y-6">
+              {/* Add Ban Form */}
+              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
+                <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+                  <UserX className="w-5 h-5 text-destructive" />
+                  Ban User from Submissions
+                </h2>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Input
+                    placeholder="User email"
+                    value={banEmail}
+                    onChange={(e) => setBanEmail(e.target.value)}
+                    className="flex-1 bg-secondary border-border"
+                  />
+                  <Input
+                    placeholder="Reason (optional)"
+                    value={banReason}
+                    onChange={(e) => setBanReason(e.target.value)}
+                    className="flex-1 bg-secondary border-border"
+                  />
+                  <Button 
+                    onClick={banUserFromSubmissions} 
+                    disabled={!banEmail.trim() || addingBan}
+                    variant="destructive"
+                  >
+                    {addingBan ? "Banning..." : "Ban User"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Rate limit: Users can only submit 3 levels per 24 hours.
+                </p>
+              </div>
+
+              {/* Banned Users List */}
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <UserX className="w-5 h-5 text-destructive" />
+                    Banned Users
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                      {bannedUsers.length} banned
+                    </span>
+                  </h2>
+                </div>
+
+                {bannedUsers.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No banned users.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {bannedUsers.map((banned) => (
+                      <div key={banned.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground">{banned.email}</div>
+                          {banned.reason && (
+                            <div className="text-sm text-muted-foreground">Reason: {banned.reason}</div>
+                          )}
+                          <div className="text-xs text-muted-foreground">
+                            Banned by {banned.banned_by_email} • {new Date(banned.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 text-green-500 border-green-500/50 hover:bg-green-500/10"
+                          onClick={() => unbanUser(banned)}
+                        >
+                          <UserCheck className="w-4 h-4" />
+                          Unban
                         </Button>
                       </div>
                     ))}
