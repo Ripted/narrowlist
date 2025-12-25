@@ -172,6 +172,8 @@ export default function AdminPage() {
   const [editFuturePoints, setEditFuturePoints] = useState("");
   const [editFutureThumbnail, setEditFutureThumbnail] = useState("");
   const [savingFutureLevel, setSavingFutureLevel] = useState(false);
+  const [uploadingFutureThumbnail, setUploadingFutureThumbnail] = useState(false);
+  const editFutureThumbnailInputRef = useRef<HTMLInputElement>(null);
   
   // Quick rank change
   const [rankInputId, setRankInputId] = useState<string | null>(null);
@@ -587,6 +589,35 @@ export default function AdminPage() {
       fetchChangelog();
     }
     setSavingFutureLevel(false);
+  };
+
+  const handleFutureThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingFutureLevel) return;
+    
+    setUploadingFutureThumbnail(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `future-${editingFutureLevel.id}-${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('level-thumbnails')
+        .upload(fileName, file, { upsert: true });
+      
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('level-thumbnails')
+        .getPublicUrl(data.path);
+      
+      setEditFutureThumbnail(publicUrl);
+      toast({ title: "Success", description: "Thumbnail uploaded" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingFutureThumbnail(false);
+      e.target.value = '';
+    }
   };
 
   const moveFutureLevelToMain = async (futureLevel: FutureLevel) => {
@@ -2165,6 +2196,36 @@ export default function AdminPage() {
             </h2>
             
             <div className="space-y-4">
+              {/* Thumbnail Preview with Upload */}
+              <div className="aspect-video rounded-lg bg-secondary overflow-hidden relative group">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={editFutureThumbnailInputRef}
+                  onChange={handleFutureThumbnailUpload}
+                />
+                {editFutureThumbnail ? (
+                  <img src={editFutureThumbnail} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    <Image className="w-8 h-8" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => editFutureThumbnailInputRef.current?.click()}
+                    disabled={uploadingFutureThumbnail}
+                    className="gap-2"
+                  >
+                    {uploadingFutureThumbnail ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                    Upload Image
+                  </Button>
+                </div>
+              </div>
+
               <div>
                 <Label htmlFor="editFutureThumbnail">Thumbnail URL</Label>
                 <Input
