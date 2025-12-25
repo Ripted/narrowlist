@@ -86,16 +86,13 @@ export default function LevelPage() {
         leaderboard.map((entry) =>
           fetchRunDetails(entry.run_id).then((details) => ({
             runId: entry.run_id,
-            username: entry.username,
             details,
           }))
         )
       ).then((results) => {
         const map = new Map<number, RunDetails>();
-        results.forEach(({ runId, username, details }) => {
-          if (details) {
-            map.set(runId, details);
-          }
+        results.forEach(({ runId, details }) => {
+          if (details) map.set(runId, details);
         });
         setRunDetails(map);
         setLoadingRuns(false);
@@ -103,16 +100,32 @@ export default function LevelPage() {
     }
   }, [leaderboard]);
 
-  // Find verifier - the run with verified=true indicates this person verified the level
-  const verifierEntry = useMemo(() => {
+  // Verifier: oldest completion (earliest timestamp) based on leaderboard/run timestamps
+  const verifierRunId = useMemo(() => {
+    let best: { runId: number; ts: number } | null = null;
+
     for (const entry of leaderboard) {
       const details = runDetails.get(entry.run_id);
-      if (details?.verified === true) {
-        return { ...entry, details };
-      }
+      const candidateDate =
+        entry.created_at || entry.finishedAt || entry.finished_at || details?.finishedAt;
+
+      if (!candidateDate) continue;
+      const ts = Date.parse(candidateDate);
+      if (Number.isNaN(ts)) continue;
+
+      if (!best || ts < best.ts) best = { runId: entry.run_id, ts };
     }
-    return null;
+
+    return best?.runId ?? null;
   }, [leaderboard, runDetails]);
+
+  const verifierEntry = useMemo(() => {
+    if (!verifierRunId) return null;
+    const entry = leaderboard.find((e) => e.run_id === verifierRunId);
+    if (!entry) return null;
+    const details = runDetails.get(entry.run_id);
+    return { ...entry, details };
+  }, [leaderboard, runDetails, verifierRunId]);
 
   if (loading) {
     return (
@@ -343,7 +356,7 @@ export default function LevelPage() {
                 {leaderboard.map((entry, index) => {
                   const profile = getProfile(entry.username);
                   const details = runDetails.get(entry.run_id);
-                  const isVerifier = details?.verified === true;
+                  const isVerifier = verifierRunId !== null && entry.run_id === verifierRunId;
                   
                   return (
                     <Link

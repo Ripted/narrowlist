@@ -35,6 +35,11 @@ export interface LeaderboardEntry {
   completion_time: number;
   username: string;
   arrow_name: string;
+  // Some API responses include an exact completion timestamp per entry.
+  // Keep these optional to avoid breaking if not present.
+  created_at?: string;
+  finishedAt?: string;
+  finished_at?: string;
 }
 
 export interface RunDetails {
