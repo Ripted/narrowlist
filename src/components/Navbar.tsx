@@ -4,7 +4,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import logoImg from "@/assets/logo.png";
 
@@ -47,24 +53,28 @@ export function Navbar() {
     }
   }, [user]);
 
-  const navItems = [
+  const mainNavItems = [
     { path: "/", label: "Main List", icon: List },
     { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  ];
+
+  const moreNavItems = [
     { path: "/recent", label: "Recent Runs", icon: Activity },
-    { path: "/compare", label: "Compare", icon: GitCompare },
+    { path: "/compare", label: "Compare Players", icon: GitCompare },
   ];
 
   const isActive = (path: string) => location.pathname === path;
+  const isMoreActive = moreNavItems.some(item => isActive(item.path));
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
-      {navItems.map(({ path, label, icon: Icon }) => (
+      {mainNavItems.map(({ path, label, icon: Icon }) => (
         <Link key={path} to={path} onClick={() => mobile && setMobileOpen(false)}>
           <Button
             variant={isActive(path) ? "default" : "ghost"}
             size="sm"
-            className={`gap-2 font-medium w-full justify-start ${mobile ? "" : ""} ${
+            className={`gap-2 font-medium w-full justify-start ${
               isActive(path) ? "glow-primary" : "hover:bg-secondary"
             }`}
           >
@@ -73,6 +83,53 @@ export function Navbar() {
           </Button>
         </Link>
       ))}
+
+      {/* More dropdown - Desktop only */}
+      {!mobile && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={isMoreActive ? "default" : "ghost"}
+              size="sm"
+              className={`gap-2 font-medium ${isMoreActive ? "glow-primary" : "hover:bg-secondary"}`}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+              More
+              <ChevronDown className="w-3 h-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 bg-card border-border z-50">
+            {moreNavItems.map(({ path, label, icon: Icon }) => (
+              <DropdownMenuItem key={path} asChild>
+                <Link 
+                  to={path} 
+                  className={`flex items-center gap-2 cursor-pointer ${isActive(path) ? "text-primary" : ""}`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {/* More items - Mobile (flat list) */}
+      {mobile && moreNavItems.map(({ path, label, icon: Icon }) => (
+        <Link key={path} to={path} onClick={() => setMobileOpen(false)}>
+          <Button
+            variant={isActive(path) ? "default" : "ghost"}
+            size="sm"
+            className={`gap-2 font-medium w-full justify-start ${
+              isActive(path) ? "glow-primary" : "hover:bg-secondary"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </Button>
+        </Link>
+      ))}
+
       {playerUsername && (
         <Link to={`/player/${playerUsername}`} onClick={() => mobile && setMobileOpen(false)}>
           <Button
