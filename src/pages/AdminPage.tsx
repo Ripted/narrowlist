@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
-  ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass
+  ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History
 } from "lucide-react";
 import {
   AlertDialog,
@@ -69,14 +69,23 @@ interface ApprovedPlayer {
   email?: string;
 }
 
+interface ChangelogEntry {
+  id: string;
+  admin_email: string;
+  action: string;
+  details: string | null;
+  created_at: string;
+}
+
 export default function AdminPage() {
-  const { isAdmin, isHeadAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, isHeadAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const [levels, setLevels] = useState<Level[]>([]);
   const [futureLevels, setFutureLevels] = useState<FutureLevel[]>([]);
   const [approvedPlayers, setApprovedPlayers] = useState<ApprovedPlayer[]>([]);
+  const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -142,8 +151,29 @@ export default function AdminPage() {
       fetchFutureLevels();
       fetchClaimRequests();
       fetchApprovedPlayers();
+      fetchChangelog();
     }
   }, [isAdmin]);
+
+  const logAction = async (action: string, details?: string) => {
+    if (!user) return;
+    await supabase.from("admin_changelog").insert({
+      admin_user_id: user.id,
+      admin_email: user.email || "unknown",
+      action,
+      details,
+    });
+  };
+
+  const fetchChangelog = async () => {
+    const { data } = await supabase
+      .from("admin_changelog")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    
+    if (data) setChangelog(data);
+  };
 
   const fetchLevels = async () => {
     setLoading(true);
@@ -285,10 +315,12 @@ export default function AdminPage() {
       
       if (error) throw error;
       
+      await logAction("Added level", `${data.levelInfo?.name || newLevelId} at rank #${targetRank}`);
       toast({ title: "Success", description: `Level added at rank #${targetRank}` });
       setNewLevelId("");
       setNewLevelRank("");
       fetchLevels();
+      fetchChangelog();
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to add level", variant: "destructive" });
     } finally {
@@ -324,10 +356,12 @@ export default function AdminPage() {
       
       if (error) throw error;
       
+      await logAction("Added future level", `${data.levelInfo?.name || newFutureLevelId} at estimated rank #${targetRank}`);
       toast({ title: "Success", description: `Future level added with estimated rank #${targetRank}` });
       setNewFutureLevelId("");
       setNewFutureLevelRank("");
       fetchFutureLevels();
+      fetchChangelog();
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to add future level", variant: "destructive" });
     } finally {
@@ -343,8 +377,10 @@ export default function AdminPage() {
     if (error) {
       toast({ title: "Error", description: "Failed to remove future level", variant: "destructive" });
     } else {
+      await logAction("Removed future level", deleteConfirmFutureLevel.name || deleteConfirmFutureLevel.level_id);
       toast({ title: "Success", description: "Future level removed" });
       fetchFutureLevels();
+      fetchChangelog();
     }
     
     setDeleteConfirmFutureLevel(null);
@@ -384,9 +420,11 @@ export default function AdminPage() {
       
       if (deleteError) throw deleteError;
       
+      await logAction("Moved future level to main", `${futureLevel.name || futureLevel.level_id} at rank #${targetRank}`);
       toast({ title: "Success", description: `Level moved to main list at rank #${targetRank}` });
       fetchLevels();
       fetchFutureLevels();
+      fetchChangelog();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -463,6 +501,8 @@ export default function AdminPage() {
       }
     }
     
+    await logAction("Bulk imported levels", `${successCount} levels starting at rank #${startRank}`);
+    
     setBulkImporting(false);
     setBulkImportOpen(false);
     setBulkLevelIds("");
@@ -474,6 +514,7 @@ export default function AdminPage() {
     });
     
     fetchLevels();
+    fetchChangelog();
   };
 
   const confirmDeleteLevel = async () => {
@@ -484,10 +525,12 @@ export default function AdminPage() {
     if (error) {
       toast({ title: "Error", description: "Failed to remove level", variant: "destructive" });
     } else {
+      await logAction("Removed level", deleteConfirmLevel.name || deleteConfirmLevel.level_id);
       toast({ title: "Success", description: "Level removed" });
       const remaining = levels.filter(l => l.id !== deleteConfirmLevel.id);
       await updateRanks(remaining.map((l, i) => ({ ...l, rank_position: i + 1 })));
       fetchLevels();
+      fetchChangelog();
     }
     
     setDeleteConfirmLevel(null);
@@ -563,9 +606,11 @@ export default function AdminPage() {
       points: calculatePoints(i + 1),
     }));
 
+    await logAction("Changed level rank", `${levelToMove.name} from #${currentIndex + 1} to #${newRank}`);
     setLevels(updatedLevels);
     setRankInputId(null);
     await updateRanks(updatedLevels);
+    fetchChangelog();
   };
 
   const startThumbnailEdit = (level: Level) => {
@@ -713,9 +758,11 @@ export default function AdminPage() {
     if (error) {
       toast({ title: "Error", description: "Failed to update level", variant: "destructive" });
     } else {
+      await logAction("Edited level", `${editName || editingLevel.level_id}`);
       toast({ title: "Success", description: "Level updated" });
       setEditingLevel(null);
       fetchLevels();
+      fetchChangelog();
     }
     setSaving(false);
   };
@@ -725,7 +772,9 @@ export default function AdminPage() {
     try {
       const response = await supabase.functions.invoke("sync-completions");
       if (response.error) throw response.error;
+      await logAction("Synced completions", "Manual sync triggered");
       toast({ title: "Sync Complete", description: "Completions have been updated" });
+      fetchChangelog();
     } catch (error: any) {
       toast({ title: "Sync Failed", description: error.message || "Failed to sync", variant: "destructive" });
     } finally {
@@ -759,6 +808,8 @@ export default function AdminPage() {
       
       if (error) throw error;
       
+      await logAction(`${action === "approved" ? "Approved" : "Rejected"} claim request`, `Profile: ${request.profile_username}, Email: ${request.email}`);
+      
       toast({ 
         title: action === "approved" ? "Claim Approved" : "Claim Rejected",
         description: action === "approved" 
@@ -768,6 +819,7 @@ export default function AdminPage() {
       
       fetchClaimRequests();
       fetchApprovedPlayers();
+      fetchChangelog();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -784,8 +836,10 @@ export default function AdminPage() {
       
       if (error) throw error;
       
+      await logAction("Unlinked player", `${player.display_name || player.username}`);
       toast({ title: "Success", description: "Player unlinked" });
       fetchApprovedPlayers();
+      fetchChangelog();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -898,10 +952,11 @@ export default function AdminPage() {
           )}
 
           <Tabs defaultValue="levels" className="space-y-6">
-            <TabsList className="w-full justify-start overflow-x-auto">
-              <TabsTrigger value="levels">Levels ({levels.length})</TabsTrigger>
-              <TabsTrigger value="future">Future List ({futureLevels.length})</TabsTrigger>
-              <TabsTrigger value="players">Players ({approvedPlayers.length})</TabsTrigger>
+            <TabsList className="w-full justify-start overflow-x-auto flex-wrap">
+              <TabsTrigger value="levels" className="text-xs sm:text-sm">Levels ({levels.length})</TabsTrigger>
+              <TabsTrigger value="future" className="text-xs sm:text-sm">Future ({futureLevels.length})</TabsTrigger>
+              <TabsTrigger value="players" className="text-xs sm:text-sm">Players ({approvedPlayers.length})</TabsTrigger>
+              <TabsTrigger value="changelog" className="text-xs sm:text-sm">Changelog</TabsTrigger>
             </TabsList>
 
             <TabsContent value="levels" className="space-y-6">
@@ -991,12 +1046,7 @@ export default function AdminPage() {
                           ) : (
                             <button
                               onClick={() => startRankEdit(level)}
-                              className={`font-display font-bold text-lg md:text-xl hover:underline cursor-pointer ${
-                                index === 0 ? "rank-gold" :
-                                index === 1 ? "rank-silver" :
-                                index === 2 ? "rank-bronze" :
-                                "text-muted-foreground"
-                              }`}
+                              className="font-display font-bold text-lg text-foreground hover:text-primary transition-colors"
                               title="Click to change rank"
                             >
                               #{index + 1}
@@ -1260,6 +1310,48 @@ export default function AdminPage() {
                 )}
               </div>
             </TabsContent>
+
+            <TabsContent value="changelog" className="space-y-6">
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <History className="w-5 h-5 text-primary" />
+                    Admin Changelog
+                  </h2>
+                </div>
+
+                {changelog.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No actions logged yet.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
+                    {changelog.map((entry) => (
+                      <div key={entry.id} className="p-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-foreground">
+                              {entry.action}
+                            </div>
+                            {entry.details && (
+                              <div className="text-sm text-muted-foreground truncate">
+                                {entry.details}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-sm text-foreground">{entry.admin_email}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(entry.created_at).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
       </main>
@@ -1377,7 +1469,7 @@ export default function AdminPage() {
                 />
               </div>
             </div>
-
+            
             <div className="flex gap-2 justify-end pt-4">
               <Button variant="outline" onClick={() => setEditingLevel(null)}>
                 Cancel
@@ -1399,20 +1491,23 @@ export default function AdminPage() {
               Delete Level?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteConfirmLevel?.name || "this level"}</strong>? 
-              This will remove it from the rankings.
+              This will permanently remove <strong>{deleteConfirmLevel?.name}</strong> from the list.
+              All rankings will be updated automatically.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteLevel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction 
+              onClick={confirmDeleteLevel}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Delete Future Level Confirmation */}
+      {/* Delete Future Level Confirmation Dialog */}
       <AlertDialog open={!!deleteConfirmFutureLevel} onOpenChange={() => setDeleteConfirmFutureLevel(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -1421,12 +1516,15 @@ export default function AdminPage() {
               Delete Future Level?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deleteConfirmFutureLevel?.name || "this level"}</strong>?
+              This will permanently remove <strong>{deleteConfirmFutureLevel?.name}</strong> from the future list.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={deleteFutureLevel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction 
+              onClick={deleteFutureLevel}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,18 +1,43 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useLevel } from "@/hooks/useLevels";
-import { getPlayerProfile } from "@/config/profiles";
+import { useLevel, getPlayerProfile } from "@/hooks/useLevels";
 import { formatTime, formatDate, fetchRunDetails, RunDetails } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { ArrowIcon } from "@/components/ArrowIcon";
-import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield } from "lucide-react";
+
+interface DbProfile {
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
   const { level, leaderboard, rank, points, thumbnailUrl, loading } = useLevel(levelId || "");
   const [runDetails, setRunDetails] = useState<Map<number, RunDetails>>(new Map());
   const [loadingRuns, setLoadingRuns] = useState(false);
+  const [profiles, setProfiles] = useState<Map<string, DbProfile>>(new Map());
+
+  // Fetch profiles from DB
+  useEffect(() => {
+    async function loadProfiles() {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url");
+      
+      if (data) {
+        const map = new Map<string, DbProfile>();
+        for (const p of data) {
+          map.set(p.username.toLowerCase(), p);
+        }
+        setProfiles(map);
+      }
+    }
+    loadProfiles();
+  }, []);
 
   useEffect(() => {
     if (leaderboard.length > 0) {
@@ -34,6 +59,17 @@ export default function LevelPage() {
       });
     }
   }, [leaderboard]);
+
+  // Find verifier
+  const verifierEntry = useMemo(() => {
+    for (const entry of leaderboard) {
+      const details = runDetails.get(entry.run_id);
+      if (details?.verifier) {
+        return { ...entry, details };
+      }
+    }
+    return null;
+  }, [leaderboard, runDetails]);
 
   if (loading) {
     return (
@@ -82,6 +118,8 @@ export default function LevelPage() {
     return "text-muted-foreground";
   };
 
+  const getProfile = (username: string) => profiles.get(username.toLowerCase());
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -126,7 +164,7 @@ export default function LevelPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="rounded-lg bg-card border border-border p-4 text-center">
                   <Trophy className="w-6 h-6 mx-auto mb-2 text-primary" />
                   <div className="font-display text-2xl font-bold text-primary">{points}</div>
@@ -152,6 +190,13 @@ export default function LevelPage() {
                     {worldRecord?.username || "N/A"}
                   </div>
                   <div className="text-xs text-muted-foreground">WR Holder</div>
+                </div>
+                <div className="rounded-lg bg-card border border-border p-4 text-center">
+                  <Shield className="w-6 h-6 mx-auto mb-2 text-primary" />
+                  <div className="font-display text-lg font-bold text-foreground truncate">
+                    {verifierEntry?.username || "N/A"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Verifier</div>
                 </div>
               </div>
             </div>
@@ -190,7 +235,7 @@ export default function LevelPage() {
             ) : (
               <div className="divide-y divide-border">
                 {leaderboard.map((entry, index) => {
-                  const profile = getPlayerProfile(entry.username);
+                  const profile = getProfile(entry.username);
                   const details = runDetails.get(entry.run_id);
                   const isVerifier = details?.verifier === true;
                   
@@ -211,8 +256,8 @@ export default function LevelPage() {
                       </div>
 
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0">
-                        {profile?.avatarUrl ? (
-                          <img src={profile.avatarUrl} alt={entry.username} className="w-full h-full object-cover" />
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt={entry.username} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-foreground font-bold">
                             {entry.username.charAt(0).toUpperCase()}
@@ -223,7 +268,7 @@ export default function LevelPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground truncate">
-                            {profile?.displayName || entry.username}
+                            {profile?.display_name || entry.username}
                           </span>
                           {isVerifier && (
                             <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
