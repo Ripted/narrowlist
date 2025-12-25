@@ -60,12 +60,13 @@ export default function LevelPage() {
     }
   }, [leaderboard]);
 
-  // Find verifier - check for verified boolean in run details
+  // Find verifier - check for verifier boolean field (not verified which means run was validated)
   const verifierEntry = useMemo(() => {
     for (const entry of leaderboard) {
       const details = runDetails.get(entry.run_id);
-      // Use verified field to identify the verifier (first verified completion)
-      if (details?.verified === true) {
+      // Use verifier field to identify the verifier (the person who verified the level)
+      // verified field just means the run was validated
+      if (details?.verifier === true) {
         return { ...entry, details };
       }
     }
@@ -238,7 +239,7 @@ export default function LevelPage() {
                 {leaderboard.map((entry, index) => {
                   const profile = getProfile(entry.username);
                   const details = runDetails.get(entry.run_id);
-                  const isVerifier = details?.verified === true;
+                  const isVerifier = details?.verifier === true;
                   
                   return (
                     <Link

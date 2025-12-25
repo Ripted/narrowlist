@@ -200,10 +200,13 @@ export function usePlayerLeaderboard() {
         return;
       }
 
-      // Create a map of level_id to level info
-      const levelMap = new Map<string, { id: string; name: string; points: number }>();
+      // Create maps: levelMapById maps UUID id to info (for completion lookups)
+      // levelMapByLevelId maps string level_id to info
+      const levelMapById = new Map<string, { level_id: string; name: string; points: number }>();
+      const levelMapByLevelId = new Map<string, { id: string; name: string; points: number }>();
       for (const level of dbLevels) {
-        levelMap.set(level.level_id, { id: level.id, name: level.name || "Unknown Level", points: level.points });
+        levelMapById.set(level.id, { level_id: level.level_id, name: level.name || "Unknown Level", points: level.points });
+        levelMapByLevelId.set(level.level_id, { id: level.id, name: level.name || "Unknown Level", points: level.points });
       }
 
       // Fetch all profiles to map profile_id to username
@@ -224,7 +227,8 @@ export function usePlayerLeaderboard() {
           if (!profileInfo) continue;
           
           const username = profileInfo.username;
-          const levelInfo = levelMap.get(completion.level_id);
+          // completion.level_id is the UUID (levels.id), so use levelMapById
+          const levelInfo = levelMapById.get(completion.level_id);
           if (!levelInfo) continue;
           
           if (!playerMap.has(username)) {
@@ -239,11 +243,11 @@ export function usePlayerLeaderboard() {
 
           const player = playerMap.get(username)!;
           
-          // Only count each level once
-          if (!player.completions.find((c) => c.levelId === completion.level_id)) {
+          // Only count each level once - use string level_id for dedup
+          if (!player.completions.find((c) => c.levelId === levelInfo.level_id)) {
             player.totalPoints += levelInfo.points;
             player.completions.push({
-              levelId: completion.level_id,
+              levelId: levelInfo.level_id,
               levelName: levelInfo.name,
               points: levelInfo.points,
               time: completion.completion_time,

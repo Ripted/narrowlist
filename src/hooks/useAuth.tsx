@@ -7,7 +7,6 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
-  isHeadAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -15,15 +14,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Head admin emails - permanent admins that cannot be removed
-const HEAD_ADMIN_EMAILS = ["sirsamyou@gmail.com", "narrow.ripted@gmail.com"];
+// Admin emails with full permissions
+const ADMIN_EMAILS = ["sirsamyou@gmail.com", "narrow.ripted@gmail.com"];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isHeadAdmin, setIsHeadAdmin] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -33,11 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (session?.user) {
           setTimeout(() => {
-            checkAdminRole(session.user.id);
+            checkAdminRole(session.user);
           }, 0);
         } else {
           setIsAdmin(false);
-          setIsHeadAdmin(false);
         }
       }
     );
@@ -46,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkAdminRole(session.user.id);
+        checkAdminRole(session.user);
       }
       setLoading(false);
     });
@@ -54,22 +51,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkAdminRole = async (userId: string) => {
+  const checkAdminRole = async (currentUser: User) => {
     try {
-      // Check if head admin via the database function
-      const { data: headAdminData } = await supabase.rpc('is_head_admin', { _user_id: userId });
-      
-      if (headAdminData) {
+      // Check if user is in admin emails list (simplified - no head admin distinction)
+      if (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) {
         setIsAdmin(true);
-        setIsHeadAdmin(true);
         return;
       }
 
-      // Check regular admin role
+      // Check admin role in database as fallback
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId)
+        .eq("user_id", currentUser.id)
         .eq("role", "admin")
         .maybeSingle();
 
@@ -78,10 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setIsAdmin(false);
       }
-      setIsHeadAdmin(false);
     } catch {
       setIsAdmin(false);
-      setIsHeadAdmin(false);
     }
   };
 
@@ -103,11 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setIsAdmin(false);
-    setIsHeadAdmin(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, isHeadAdmin, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, isAdmin, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
