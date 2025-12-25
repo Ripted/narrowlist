@@ -71,20 +71,52 @@ export default function PlayerPage() {
         .select("id, user_id, banner_url, avatar_url, bio, display_name, country_code")
         .eq("username", username)
         .single()
-        .then(({ data }) => {
+        .then(async ({ data }) => {
           if (data) {
             setProfileData(data);
             setBioValue(data.bio || "");
             setCountryValue(data.country_code || null);
             
-            // Fetch verified count - levels where this profile is the verifier
-            supabase
+            // Count verified levels - check both verifier_profile_id AND oldest completion
+            const { data: allLevels } = await supabase
               .from("levels")
-              .select("id")
-              .eq("verifier_profile_id", data.id)
-              .then(({ data: verifiedLevels }) => {
-                setVerifiedCount(verifiedLevels?.length || 0);
-              });
+              .select("id, verifier_profile_id");
+            
+            if (allLevels) {
+              // Get levels where this profile is explicitly set as verifier
+              const explicitVerifierCount = allLevels.filter(l => l.verifier_profile_id === data.id).length;
+              
+              // For levels without explicit verifier, check if this user has oldest completion
+              const levelsWithoutVerifier = allLevels.filter(l => !l.verifier_profile_id).map(l => l.id);
+              
+              if (levelsWithoutVerifier.length > 0) {
+                const { data: completions } = await supabase
+                  .from("completions")
+                  .select("level_id, profile_id, completed_at")
+                  .in("level_id", levelsWithoutVerifier)
+                  .order("completed_at", { ascending: true });
+                
+                // Find oldest completion per level
+                const oldestCompleterMap = new Map<string, string>();
+                if (completions) {
+                  for (const c of completions) {
+                    if (!oldestCompleterMap.has(c.level_id)) {
+                      oldestCompleterMap.set(c.level_id, c.profile_id);
+                    }
+                  }
+                }
+                
+                // Count how many levels this user is the oldest completer
+                let oldestCompleterCount = 0;
+                for (const [, profileId] of oldestCompleterMap) {
+                  if (profileId === data.id) oldestCompleterCount++;
+                }
+                
+                setVerifiedCount(explicitVerifierCount + oldestCompleterCount);
+              } else {
+                setVerifiedCount(explicitVerifierCount);
+              }
+            }
           }
         });
     }
@@ -450,7 +482,7 @@ export default function PlayerPage() {
           </div>
 
           {progressionData.length > 1 && (
-            <div className="rounded-xl bg-card border border-border p-6 mb-8">
+            <div className="rounded-xl bg-card border border-border p-4 sm:p-6 mb-8">
               <h2 className="font-display text-lg font-bold flex items-center gap-2 mb-4"><TrendingUp className="w-5 h-5 text-primary" />Progression</h2>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -458,16 +490,15 @@ export default function PlayerPage() {
                     <XAxis 
                       dataKey="date" 
                       tick={{ fontSize: 10 }} 
-                      type="category"
-                      interval="preserveStartEnd"
                       tickFormatter={(value) => {
                         const parts = value.split('-');
                         return `${parts[1]}/${parts[2]}`;
                       }}
+                      interval={Math.max(0, Math.floor(progressionData.length / 6))}
                     />
                     <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                     <Tooltip contentStyle={{ backgroundColor: 'hsl(220 25% 9%)', border: '1px solid hsl(220 20% 18%)', borderRadius: '8px' }} formatter={(value: number, name: string, props: any) => [`${value} levels`, props.payload.levelName]} />
-                    <Line type="stepAfter" dataKey="count" stroke="hsl(260 70% 60%)" strokeWidth={2} dot={{ fill: 'hsl(260 70% 60%)', strokeWidth: 0, r: 4 }} />
+                    <Line type="stepAfter" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }} activeDot={{ r: 5 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
