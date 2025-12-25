@@ -73,12 +73,29 @@ export default function RecentRunsPage() {
 
       if (allProfilesData) setAllProfiles(allProfilesData);
 
-      // Fetch levels
+      // Fetch levels with verifier_profile_id
       const levelIds = [...new Set(completions.map(c => c.level_id))];
       const { data: levels } = await supabase
         .from("levels")
         .select("id, name, rank_position, verifier_profile_id")
         .in("id", levelIds);
+
+      // Fetch ALL completions to determine oldest completion per level (for verifier detection)
+      const { data: allCompletionsForLevels } = await supabase
+        .from("completions")
+        .select("level_id, profile_id, completed_at")
+        .in("level_id", levelIds)
+        .order("completed_at", { ascending: true });
+
+      // Build a map of level_id -> oldest completer profile_id (verifier fallback)
+      const oldestCompleterMap = new Map<string, string>();
+      if (allCompletionsForLevels) {
+        for (const c of allCompletionsForLevels) {
+          if (!oldestCompleterMap.has(c.level_id)) {
+            oldestCompleterMap.set(c.level_id, c.profile_id);
+          }
+        }
+      }
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
       const levelMap = new Map(levels?.map(l => [l.id, l]) || []);
@@ -86,6 +103,11 @@ export default function RecentRunsPage() {
       const mappedRuns: RecentRun[] = completions.map(c => {
         const profile = profileMap.get(c.profile_id);
         const level = levelMap.get(c.level_id);
+        
+        // Determine verifier: use verifier_profile_id if set, otherwise oldest completion
+        const verifierId = level?.verifier_profile_id || oldestCompleterMap.get(c.level_id);
+        const isVerifier = verifierId === c.profile_id;
+        
         return {
           id: c.id,
           profile_id: c.profile_id,
@@ -100,7 +122,7 @@ export default function RecentRunsPage() {
           level_name: level?.name || "Unknown Level",
           level_db_id: c.level_id,
           level_rank: level?.rank_position || 0,
-          is_verifier: level?.verifier_profile_id === c.profile_id,
+          is_verifier: isVerifier,
         };
       });
 
@@ -236,13 +258,13 @@ export default function RecentRunsPage() {
                 </Button>
               )}
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {/* Verifications Toggle */}
               <Button
                 variant={showVerificationsOnly ? "default" : "outline"}
                 size="sm"
                 onClick={() => setShowVerificationsOnly(!showVerificationsOnly)}
-                className="gap-2"
+                className="gap-2 w-full justify-center"
               >
                 <CheckCircle className="w-4 h-4" />
                 Verifications Only
@@ -250,9 +272,9 @@ export default function RecentRunsPage() {
 
               {/* Date Range */}
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger className="w-[140px] h-9">
+                  <SelectTrigger className="flex-1 h-9">
                     <SelectValue placeholder="Date range" />
                   </SelectTrigger>
                   <SelectContent>
@@ -267,9 +289,9 @@ export default function RecentRunsPage() {
 
               {/* User Filter */}
               <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-muted-foreground" />
+                <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <Select value={selectedUser} onValueChange={setSelectedUser}>
-                  <SelectTrigger className="w-[180px] h-9">
+                  <SelectTrigger className="flex-1 h-9">
                     <SelectValue placeholder="Filter by player" />
                   </SelectTrigger>
                   <SelectContent>

@@ -222,17 +222,6 @@ export default function GuidePage() {
 
             <AccordionItem value="item-5">
               <AccordionTrigger className="text-left">
-                What are the different arrow types?
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                Narrow Arrow has different arrow types with varying abilities: Energy Arrow (balanced), 
-                Speedy Arrow (faster), and more. Completions track which arrow type was used, but all 
-                arrows earn the same points for rankings.
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="item-6">
-              <AccordionTrigger className="text-left">
                 Who decides level rankings?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
@@ -281,7 +270,7 @@ export default function GuidePage() {
               </div>
               <div>
                 <div className="font-display font-semibold text-foreground">{founders.ripted?.display_name || "Ripted"}</div>
-                <div className="text-xs text-muted-foreground">Co-Founder</div>
+                <div className="text-xs text-muted-foreground">Founder</div>
               </div>
             </Link>
           </div>
