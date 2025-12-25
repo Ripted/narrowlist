@@ -122,6 +122,60 @@ export type Database = {
         }
         Relationships: []
       }
+      level_submissions: {
+        Row: {
+          admin_note: string | null
+          author: string | null
+          created_at: string
+          final_rank: number | null
+          id: string
+          level_id: string
+          level_name: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by: string | null
+          submitted_by_email: string
+          suggested_rank: number
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_note?: string | null
+          author?: string | null
+          created_at?: string
+          final_rank?: number | null
+          id?: string
+          level_id: string
+          level_name?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_by_email: string
+          suggested_rank: number
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_note?: string | null
+          author?: string | null
+          created_at?: string
+          final_rank?: number | null
+          id?: string
+          level_id?: string
+          level_name?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_by_email?: string
+          suggested_rank?: number
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       levels: {
         Row: {
           author: string | null

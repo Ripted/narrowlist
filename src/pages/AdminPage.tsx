@@ -12,7 +12,7 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play
+  ListCollapse, List, Play, Send, MessageSquare
 } from "lucide-react";
 import {
   AlertDialog,
@@ -117,6 +117,20 @@ interface Profile {
   display_name: string | null;
 }
 
+interface LevelSubmission {
+  id: string;
+  level_id: string;
+  level_name: string | null;
+  author: string | null;
+  thumbnail_url: string | null;
+  suggested_rank: number;
+  final_rank: number | null;
+  submitted_by_email: string;
+  status: string;
+  admin_note: string | null;
+  created_at: string;
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export default function AdminPage() {
@@ -130,9 +144,16 @@ export default function AdminPage() {
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
   const [manualRuns, setManualRuns] = useState<ManualRun[]>([]);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [levelSubmissions, setLevelSubmissions] = useState<LevelSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  
+  // Submission review
+  const [reviewingSubmission, setReviewingSubmission] = useState<LevelSubmission | null>(null);
+  const [submissionRank, setSubmissionRank] = useState("");
+  const [submissionNote, setSubmissionNote] = useState("");
+  const [processingSubmission, setProcessingSubmission] = useState<string | null>(null);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -223,6 +244,7 @@ export default function AdminPage() {
       fetchChangelog();
       fetchManualRuns();
       fetchAllProfiles();
+      fetchLevelSubmissions();
     }
   }, [isAdmin]);
 
@@ -285,6 +307,80 @@ export default function AdminPage() {
       .order("username");
     
     if (data) setAllProfiles(data);
+  };
+
+  const fetchLevelSubmissions = async () => {
+    const { data } = await supabase
+      .from("level_submissions")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data) setLevelSubmissions(data);
+  };
+
+  const handleSubmissionReview = async (submissionId: string, action: "approved" | "rejected") => {
+    const submission = levelSubmissions.find(s => s.id === submissionId);
+    if (!submission) return;
+
+    setProcessingSubmission(submissionId);
+
+    try {
+      if (action === "approved") {
+        const rank = parseInt(submissionRank) || submission.suggested_rank;
+        
+        // Shift existing levels
+        const levelsToUpdate = levels.filter(l => l.rank_position >= rank);
+        for (const level of levelsToUpdate) {
+          await supabase
+            .from("levels")
+            .update({ 
+              rank_position: level.rank_position + 1,
+              points: calculatePoints(level.rank_position + 1)
+            })
+            .eq("id", level.id);
+        }
+
+        // Add to main list
+        const { error: insertError } = await supabase.from("levels").insert({
+          level_id: submission.level_id,
+          name: submission.level_name,
+          author: submission.author,
+          rank_position: rank,
+          points: calculatePoints(rank),
+          thumbnail_url: submission.thumbnail_url,
+        });
+
+        if (insertError) throw insertError;
+
+        await logAction("Approved level submission", `${submission.level_name || submission.level_id} at rank #${rank} (submitted by ${submission.submitted_by_email})`);
+        toast({ title: "Level Approved", description: `Added to main list at rank #${rank}` });
+        fetchLevels();
+      } else {
+        await logAction("Rejected level submission", `${submission.level_name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
+        toast({ title: "Submission Rejected" });
+      }
+
+      // Update submission status
+      await supabase
+        .from("level_submissions")
+        .update({ 
+          status: action,
+          final_rank: action === "approved" ? (parseInt(submissionRank) || submission.suggested_rank) : null,
+          admin_note: submissionNote || null,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", submissionId);
+
+      setReviewingSubmission(null);
+      setSubmissionRank("");
+      setSubmissionNote("");
+      fetchLevelSubmissions();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setProcessingSubmission(null);
+    }
   };
 
   const fetchLevels = async () => {
@@ -1349,14 +1445,129 @@ export default function AdminPage() {
             </div>
           )}
 
-          <Tabs defaultValue="levels" className="space-y-6">
-            <TabsList className="w-full justify-start overflow-x-auto flex-wrap">
-              <TabsTrigger value="levels" className="text-xs sm:text-sm">Main List ({levels.length})</TabsTrigger>
-              <TabsTrigger value="future" className="text-xs sm:text-sm">Future List ({futureLevels.length})</TabsTrigger>
-              <TabsTrigger value="manual-runs" className="text-xs sm:text-sm">Manual Runs ({manualRuns.length})</TabsTrigger>
-              <TabsTrigger value="players" className="text-xs sm:text-sm">Players ({approvedPlayers.length})</TabsTrigger>
-              <TabsTrigger value="changelog" className="text-xs sm:text-sm">Changelog</TabsTrigger>
+          <Tabs defaultValue="submissions" className="space-y-6">
+            <TabsList className="w-full justify-start overflow-x-auto flex-nowrap gap-1 h-auto p-1">
+              <TabsTrigger value="submissions" className="text-xs sm:text-sm gap-1 flex-shrink-0">
+                <Send className="w-3 h-3 hidden sm:inline" />
+                Submissions
+                {levelSubmissions.filter(s => s.status === 'pending').length > 0 && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-500 text-yellow-950 rounded-full">
+                    {levelSubmissions.filter(s => s.status === 'pending').length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
+              <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
+              <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
+              <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
+              <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
             </TabsList>
+
+            {/* Level Submissions Tab */}
+            <TabsContent value="submissions" className="space-y-6">
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <Send className="w-5 h-5 text-primary" />
+                    Level Submissions
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                      {levelSubmissions.filter(s => s.status === 'pending').length} pending
+                    </span>
+                  </h2>
+                </div>
+
+                {levelSubmissions.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No level submissions yet.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {levelSubmissions.map(submission => (
+                      <div key={submission.id} className="p-4">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                          <div className="flex items-start gap-4">
+                            {submission.thumbnail_url && (
+                              <div className="w-20 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 hidden sm:block">
+                                <img src={submission.thumbnail_url} alt={submission.level_name || ""} className="w-full h-full object-cover" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-medium text-foreground truncate">
+                                {submission.level_name || submission.level_id}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                by {submission.author || "Unknown"} • Suggested: #{submission.suggested_rank}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Submitted by {submission.submitted_by_email} • {new Date(submission.created_at).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {submission.status === 'pending' ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1"
+                                  onClick={() => {
+                                    setReviewingSubmission(submission);
+                                    setSubmissionRank(submission.suggested_rank.toString());
+                                    setSubmissionNote("");
+                                  }}
+                                >
+                                  <MessageSquare className="w-4 h-4" />
+                                  Review
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 text-green-500 border-green-500/50 hover:bg-green-500/10"
+                                  onClick={() => {
+                                    setSubmissionRank(submission.suggested_rank.toString());
+                                    handleSubmissionReview(submission.id, "approved");
+                                  }}
+                                  disabled={processingSubmission === submission.id}
+                                >
+                                  <Check className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Quick Approve</span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 text-destructive border-destructive/50 hover:bg-destructive/10"
+                                  onClick={() => handleSubmissionReview(submission.id, "rejected")}
+                                  disabled={processingSubmission === submission.id}
+                                >
+                                  <X className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Reject</span>
+                                </Button>
+                              </>
+                            ) : (
+                              <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm border ${
+                                submission.status === 'approved' 
+                                  ? 'bg-green-500/10 text-green-500 border-green-500/30' 
+                                  : 'bg-destructive/10 text-destructive border-destructive/30'
+                              }`}>
+                                {submission.status === 'approved' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                                <span className="capitalize">{submission.status}</span>
+                                {submission.final_rank && <span>at #{submission.final_rank}</span>}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {submission.admin_note && (
+                          <div className="mt-2 text-sm text-accent">
+                            Note: {submission.admin_note}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
 
             <TabsContent value="levels" className="space-y-6">
               {/* Add New Level */}
@@ -2338,6 +2549,91 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Submission Review Modal */}
+      {reviewingSubmission && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg p-4 md:p-6 w-full max-w-md space-y-4">
+            <h2 className="font-display text-lg font-bold flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              Review Submission
+            </h2>
+            
+            <div className="space-y-4">
+              {reviewingSubmission.thumbnail_url && (
+                <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+                  <img 
+                    src={reviewingSubmission.thumbnail_url} 
+                    alt={reviewingSubmission.level_name || ""} 
+                    className="w-full h-full object-cover" 
+                  />
+                </div>
+              )}
+              
+              <div className="p-3 bg-secondary/50 rounded-lg">
+                <div className="font-medium text-foreground">
+                  {reviewingSubmission.level_name || reviewingSubmission.level_id}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  by {reviewingSubmission.author || "Unknown"}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Submitted by {reviewingSubmission.submitted_by_email}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="submissionRank">Final Rank (suggested: #{reviewingSubmission.suggested_rank})</Label>
+                <Input
+                  id="submissionRank"
+                  type="number"
+                  min={1}
+                  value={submissionRank}
+                  onChange={(e) => setSubmissionRank(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                  placeholder={`1-${levels.length + 1}`}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="submissionNote">Admin Note (optional)</Label>
+                <Input
+                  id="submissionNote"
+                  value={submissionNote}
+                  onChange={(e) => setSubmissionNote(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                  placeholder="Reason for approval/rejection..."
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setReviewingSubmission(null)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => handleSubmissionReview(reviewingSubmission.id, "rejected")}
+                variant="outline"
+                className="flex-1 text-destructive border-destructive/50 hover:bg-destructive/10"
+                disabled={processingSubmission === reviewingSubmission.id}
+              >
+                Reject
+              </Button>
+              <Button 
+                onClick={() => handleSubmissionReview(reviewingSubmission.id, "approved")}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                disabled={processingSubmission === reviewingSubmission.id || !submissionRank}
+              >
+                {processingSubmission === reviewingSubmission.id ? "Processing..." : `Approve at #${submissionRank}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
