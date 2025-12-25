@@ -14,7 +14,7 @@ export interface PlayerStats {
   displayName?: string;
   avatarUrl?: string;
   totalPoints: number;
-  completions: { levelId: string; levelName: string; points: number; time: number }[];
+  completions: { levelId: string; levelName: string; points: number; time: number; completedAt?: string }[];
 }
 
 interface DbLevel {
@@ -179,68 +179,121 @@ export function usePlayerLeaderboard() {
     async function loadPlayerStats() {
       setLoading(true);
       
-      // Fetch profiles and levels in parallel
-      const [profileCacheResult, levelsResult] = await Promise.all([
+      // Fetch profiles, levels, and completions in parallel
+      const [profileCacheResult, levelsResult, completionsResult] = await Promise.all([
         getProfileCache(),
         supabase
           .from("levels")
           .select("id, level_id, points, rank_position, name")
           .order("rank_position", { ascending: true }),
+        supabase
+          .from("completions")
+          .select("profile_id, level_id, completed_at, completion_time"),
       ]);
 
       const dbLevels = levelsResult.data;
+      const completions = completionsResult.data;
+      
       if (!dbLevels || dbLevels.length === 0) {
         setPlayers([]);
         setLoading(false);
         return;
       }
 
+      // Create a map of level_id to level info
+      const levelMap = new Map<string, { id: string; name: string; points: number }>();
+      for (const level of dbLevels) {
+        levelMap.set(level.level_id, { id: level.id, name: level.name || "Unknown Level", points: level.points });
+      }
+
+      // Fetch all profiles to map profile_id to username
+      const { data: profilesData } = await supabase.from("profiles").select("id, username, display_name, avatar_url");
+      const profileIdMap = new Map<string, { username: string; display_name: string | null; avatar_url: string | null }>();
+      if (profilesData) {
+        for (const p of profilesData) {
+          profileIdMap.set(p.id, { username: p.username, display_name: p.display_name, avatar_url: p.avatar_url });
+        }
+      }
+
       const playerMap = new Map<string, PlayerStats>();
-      
-      // Fetch leaderboards for all levels
-      const leaderboardPromises = dbLevels.map((level) =>
-        fetchLeaderboard(level.level_id).then((lb) => ({
-          levelId: level.level_id,
-          levelName: level.name || "Unknown Level",
-          points: level.points,
-          leaderboard: lb,
-        }))
-      );
 
-      const results = await Promise.all(leaderboardPromises);
-
-      // Aggregate player stats
-      for (const { levelId, levelName, points, leaderboard } of results) {
-        for (const entry of leaderboard) {
-          const username = entry.username;
-          const profile = profileCacheResult.get(username.toLowerCase());
+      // Use DB completions if available
+      if (completions && completions.length > 0) {
+        for (const completion of completions) {
+          const profileInfo = profileIdMap.get(completion.profile_id);
+          if (!profileInfo) continue;
+          
+          const username = profileInfo.username;
+          const levelInfo = levelMap.get(completion.level_id);
+          if (!levelInfo) continue;
           
           if (!playerMap.has(username)) {
             playerMap.set(username, {
               username,
-              displayName: profile?.display_name || undefined,
-              avatarUrl: profile?.avatar_url || undefined,
+              displayName: profileInfo.display_name || undefined,
+              avatarUrl: profileInfo.avatar_url || undefined,
               totalPoints: 0,
               completions: [],
             });
           }
 
           const player = playerMap.get(username)!;
-          // Update profile info if available
-          if (profile) {
-            player.displayName = profile.display_name || player.displayName;
-            player.avatarUrl = profile.avatar_url || player.avatarUrl;
-          }
           
-          // Only count each level once (first completion)
-          if (!player.completions.find((c) => c.levelId === levelId)) {
-            player.totalPoints += points;
+          // Only count each level once
+          if (!player.completions.find((c) => c.levelId === completion.level_id)) {
+            player.totalPoints += levelInfo.points;
             player.completions.push({
-              levelId,
-              levelName,
-              points,
-              time: entry.completion_time,
+              levelId: completion.level_id,
+              levelName: levelInfo.name,
+              points: levelInfo.points,
+              time: completion.completion_time,
+              completedAt: completion.completed_at,
             });
+          }
+        }
+      } else {
+        // Fallback to API leaderboards if no DB completions
+        const leaderboardPromises = dbLevels.map((level) =>
+          fetchLeaderboard(level.level_id).then((lb) => ({
+            levelId: level.level_id,
+            levelName: level.name || "Unknown Level",
+            points: level.points,
+            leaderboard: lb,
+          }))
+        );
+
+        const results = await Promise.all(leaderboardPromises);
+
+        for (const { levelId, levelName, points, leaderboard } of results) {
+          for (const entry of leaderboard) {
+            const username = entry.username;
+            const profile = profileCacheResult.get(username.toLowerCase());
+            
+            if (!playerMap.has(username)) {
+              playerMap.set(username, {
+                username,
+                displayName: profile?.display_name || undefined,
+                avatarUrl: profile?.avatar_url || undefined,
+                totalPoints: 0,
+                completions: [],
+              });
+            }
+
+            const player = playerMap.get(username)!;
+            if (profile) {
+              player.displayName = profile.display_name || player.displayName;
+              player.avatarUrl = profile.avatar_url || player.avatarUrl;
+            }
+            
+            if (!player.completions.find((c) => c.levelId === levelId)) {
+              player.totalPoints += points;
+              player.completions.push({
+                levelId,
+                levelName,
+                points,
+                time: entry.completion_time,
+              });
+            }
           }
         }
       }

@@ -373,7 +373,7 @@ export default function PlayerPage() {
             ) : (
               <>
                 <div className="divide-y divide-border">
-                  {paginatedCompletions.map((completion) => {
+                {paginatedCompletions.map((completion) => {
                     const levelData = levelRankMap.get(completion.levelId);
                     return (
                       <Link key={completion.levelId} to={`/level/${completion.levelId}`} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
@@ -383,6 +383,12 @@ export default function PlayerPage() {
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><Medal className="w-4 h-4 text-primary" /></div>
                         <div className="flex-1 min-w-0"><div className="font-medium text-foreground truncate">{completion.levelName}</div></div>
                         <div className="flex items-center gap-4 text-sm">
+                          {completion.completedAt && (
+                            <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
+                              <Calendar className="w-4 h-4" />
+                              <span>{formatDate(completion.completedAt)}</span>
+                            </div>
+                          )}
                           <div className="flex items-center gap-1 text-muted-foreground"><Clock className="w-4 h-4" /><span className="font-mono">{formatTime(completion.time)}</span></div>
                           <div className="flex items-center gap-1 text-primary"><Trophy className="w-4 h-4" /><span className="font-mono font-bold">+{completion.points}</span></div>
                         </div>
