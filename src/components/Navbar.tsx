@@ -10,8 +10,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send } from "lucide-react";
+import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { useTheme } from "@/hooks/useTheme";
 import logoImg from "@/assets/logo.png";
 
 const DISCORD_LINK = "https://discord.gg/53p8cZ3SS6";
@@ -31,6 +32,7 @@ const DiscordIcon = ({ className }: { className?: string }) => (
 export function Navbar() {
   const location = useLocation();
   const { user, isAdmin, signOut } = useAuth();
+  const { theme } = useTheme();
   const [playerUsername, setPlayerUsername] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -61,19 +63,19 @@ export function Navbar() {
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
 
+  // Admin is now a main item (not in more)
+  const adminItem = isAdmin ? { path: "/admin", label: "Admin", icon: Shield } : null;
+
   const getMoreNavItems = () => {
     const items = [
       { path: "/recent", label: "Recent Runs", icon: Activity },
       { path: "/compare", label: "Compare Players", icon: GitCompare },
       { path: "/submit", label: "Submit Level", icon: Send },
+      { path: "/guide", label: "Guide", icon: BookOpen },
     ];
     
     if (playerUsername) {
       items.push({ path: `/player/${playerUsername}`, label: "Profile", icon: User });
-    }
-    
-    if (isAdmin) {
-      items.push({ path: "/admin", label: "Admin", icon: Shield });
     }
     
     return items;
@@ -101,6 +103,22 @@ export function Navbar() {
         </Link>
       ))}
 
+      {/* Admin button - separate from more menu */}
+      {adminItem && (
+        <Link to={adminItem.path} onClick={() => mobile && setMobileOpen(false)}>
+          <Button
+            variant={isActive(adminItem.path) ? "default" : "ghost"}
+            size="sm"
+            className={`gap-2 font-medium w-full justify-start ${
+              isActive(adminItem.path) ? "glow-accent" : "hover:bg-secondary"
+            } text-accent`}
+          >
+            <Shield className="w-4 h-4" />
+            {adminItem.label}
+          </Button>
+        </Link>
+      )}
+
       {/* More dropdown - Desktop only */}
       {!mobile && (
         <DropdownMenu open={moreOpen} onOpenChange={setMoreOpen}>
@@ -123,7 +141,7 @@ export function Navbar() {
               <DropdownMenuItem key={path} asChild className="transition-colors duration-150">
                 <Link 
                   to={path} 
-                  className={`flex items-center gap-2 cursor-pointer ${isActive(path) || location.pathname === path ? "text-primary" : ""} ${path === "/admin" ? "text-accent" : ""}`}
+                  className={`flex items-center gap-2 cursor-pointer ${isActive(path) || location.pathname === path ? "text-primary" : ""}`}
                 >
                   <Icon className="w-4 h-4" />
                   {label}
@@ -142,7 +160,7 @@ export function Navbar() {
             size="sm"
             className={`gap-2 font-medium w-full justify-start ${
               isActive(path) || location.pathname === path ? "glow-primary" : "hover:bg-secondary"
-            } ${path === "/admin" ? "text-accent" : ""}`}
+            }`}
           >
             <Icon className="w-4 h-4" />
             {label}
@@ -160,7 +178,14 @@ export function Navbar() {
           <Link to="/" className="flex items-center gap-3">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
-              <img src={logoImg} alt="Narrowlist Logo" className="relative w-10 h-10 object-contain" />
+              <img 
+                src={logoImg} 
+                alt="Narrowlist Logo" 
+                className="relative w-10 h-10 object-contain transition-all duration-300"
+                style={{
+                  filter: theme !== 'arrow' ? 'hue-rotate(var(--logo-hue-rotate, 0deg)) saturate(1.2)' : 'none',
+                }}
+              />
             </div>
             <span className="font-display text-xl font-bold tracking-wider gradient-text">
               NARROWLIST

@@ -1653,15 +1653,41 @@ export default function AdminPage() {
                               </>
                             ) : (
                               <>
-                                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm border ${
-                                  submission.status === 'approved' 
-                                    ? 'bg-green-500/10 text-green-500 border-green-500/30' 
-                                    : 'bg-destructive/10 text-destructive border-destructive/30'
-                                }`}>
-                                  {submission.status === 'approved' ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
-                                  <span className="capitalize">{submission.status}</span>
-                                  {submission.final_rank && <span>at #{submission.final_rank}</span>}
-                                </div>
+                                <Select
+                                  value={submission.status}
+                                  onValueChange={async (newStatus) => {
+                                    try {
+                                      await supabase
+                                        .from("level_submissions")
+                                        .update({ status: newStatus })
+                                        .eq("id", submission.id);
+                                      await logAction("Changed submission status", `${submission.level_name || submission.level_id}: ${submission.status} → ${newStatus}`);
+                                      toast({ title: "Status Updated", description: `Changed to ${newStatus}` });
+                                      fetchLevelSubmissions();
+                                      fetchChangelog();
+                                    } catch (error: any) {
+                                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className={`w-32 h-8 text-sm ${
+                                    submission.status === 'approved' 
+                                      ? 'bg-green-500/10 text-green-500 border-green-500/30' 
+                                      : submission.status === 'rejected'
+                                        ? 'bg-destructive/10 text-destructive border-destructive/30'
+                                        : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'
+                                  }`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                {submission.final_rank && (
+                                  <span className="text-sm text-muted-foreground">at #{submission.final_rank}</span>
+                                )}
                                 {submission.submitted_by && (
                                   <Button
                                     size="sm"
@@ -1676,6 +1702,29 @@ export default function AdminPage() {
                                     <span className="hidden sm:inline">Ban</span>
                                   </Button>
                                 )}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={async () => {
+                                    if (confirm(`Delete submission for "${submission.level_name || submission.level_id}"?`)) {
+                                      try {
+                                        await supabase
+                                          .from("level_submissions")
+                                          .delete()
+                                          .eq("id", submission.id);
+                                        await logAction("Deleted submission", `${submission.level_name || submission.level_id} (${submission.submitted_by_email})`);
+                                        toast({ title: "Submission Deleted" });
+                                        fetchLevelSubmissions();
+                                        fetchChangelog();
+                                      } catch (error: any) {
+                                        toast({ title: "Error", description: error.message, variant: "destructive" });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
                               </>
                             )}
                           </div>

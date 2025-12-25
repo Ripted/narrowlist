@@ -7,6 +7,7 @@ interface ThemeColors {
   accent: string;
   glowPrimary: string;
   glowAccent: string;
+  logoHueRotate: string;
 }
 
 export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = {
@@ -17,6 +18,7 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
       accent: "255 75% 60%",
       glowPrimary: "235 80% 65%",
       glowAccent: "255 75% 60%",
+      logoHueRotate: "0deg",
     },
   },
   midnight: {
@@ -26,6 +28,7 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
       accent: "330 80% 55%",
       glowPrimary: "260 70% 60%",
       glowAccent: "330 80% 55%",
+      logoHueRotate: "25deg",
     },
   },
   sunset: {
@@ -35,6 +38,7 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
       accent: "350 80% 55%",
       glowPrimary: "25 90% 55%",
       glowAccent: "350 80% 55%",
+      logoHueRotate: "150deg",
     },
   },
   emerald: {
@@ -44,6 +48,7 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
       accent: "190 80% 50%",
       glowPrimary: "160 70% 45%",
       glowAccent: "190 80% 50%",
+      logoHueRotate: "-75deg",
     },
   },
   crimson: {
@@ -53,6 +58,7 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
       accent: "25 90% 55%",
       glowPrimary: "350 80% 55%",
       glowAccent: "25 90% 55%",
+      logoHueRotate: "115deg",
     },
   },
 };
@@ -84,8 +90,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty("--glow-accent", colors.glowAccent);
     root.style.setProperty("--sidebar-primary", colors.primary);
     root.style.setProperty("--sidebar-ring", colors.primary);
+    root.style.setProperty("--logo-hue-rotate", colors.logoHueRotate);
     
     localStorage.setItem("narrowlist-theme", theme);
+  }, [theme]);
   }, [theme]);
 
   const setTheme = (newTheme: ThemeName) => {
