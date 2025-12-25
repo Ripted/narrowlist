@@ -33,7 +33,7 @@ export default function PlayerPage() {
   const { username } = useParams<{ username: string }>();
   const { players, loading } = usePlayerLeaderboard();
   const { levels } = useLevels();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { toast } = useToast();
   
   const [claiming, setClaiming] = useState(false);
@@ -96,6 +96,7 @@ export default function PlayerPage() {
   }, [user]);
 
   const isOwner = user && profileData?.user_id === user.id;
+  const canEdit = isOwner || isAdmin;
   const canClaim = user && !profileData?.user_id && !isOwner && !userHasProfile;
 
   const levelRankMap = useMemo(() => {
@@ -198,13 +199,14 @@ export default function PlayerPage() {
   };
 
   const uploadImage = async (file: File, type: "avatar" | "banner") => {
-    if (!user || !profileData) return;
+    if (!canEdit || !profileData) return;
     const setUploading = type === "avatar" ? setUploadingAvatar : setUploadingBanner;
     const setLocalUrl = type === "avatar" ? setLocalAvatarUrl : setLocalBannerUrl;
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${type}-${Date.now()}.${fileExt}`;
+      const uploaderId = user?.id || 'admin';
+      const fileName = `${uploaderId}/${type}-${profileData.id}-${Date.now()}.${fileExt}`;
       const { data, error } = await supabase.storage.from('profile-images').upload(fileName, file, { upsert: true });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('profile-images').getPublicUrl(data.path);
@@ -212,7 +214,7 @@ export default function PlayerPage() {
       const { error: updateError } = await supabase.from("profiles").update({ [updateField]: publicUrl }).eq("id", profileData.id);
       if (updateError) throw updateError;
       setLocalUrl(publicUrl);
-      toast({ title: "Success", description: `${type === "avatar" ? "Profile picture" : "Banner"} updated` });
+      toast({ title: "Success", description: `${type === "avatar" ? "Profile picture" : "Banner"} updated${isAdmin && !isOwner ? " (Admin)" : ""}` });
     } catch (error: any) {
       toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
     } finally {
@@ -307,11 +309,11 @@ export default function PlayerPage() {
 
           <div className="relative h-32 md:h-48 rounded-xl bg-gradient-to-r from-primary/20 to-accent/20 mb-8 overflow-hidden group">
             {displayBannerUrl && <img src={displayBannerUrl} alt="Banner" className="w-full h-full object-cover" />}
-            {isOwner && (
+            {canEdit && (
               <>
                 <input type="file" accept="image/*" className="hidden" ref={bannerInputRef} onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "banner")} />
-                <button onClick={() => bannerInputRef.current?.click()} disabled={uploadingBanner} className="absolute bottom-4 right-4 p-2 rounded-lg bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity">
-                  {uploadingBanner ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}
+                <button onClick={() => bannerInputRef.current?.click()} disabled={uploadingBanner} className={`absolute bottom-4 right-4 p-2 rounded-lg bg-background/80 hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity ${isAdmin && !isOwner ? "ring-2 ring-accent" : ""}`}>
+                  {uploadingBanner ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className={`w-5 h-5 ${isAdmin && !isOwner ? "text-accent" : ""}`} />}
                 </button>
               </>
             )}
@@ -333,11 +335,11 @@ export default function PlayerPage() {
                   <Trophy className={`w-5 h-5 ${rank === 1 ? "text-glow-gold" : rank === 2 ? "text-glow-silver" : "text-glow-bronze"}`} />
                 </div>
               )}
-              {isOwner && (
+              {canEdit && (
                 <>
                   <input type="file" accept="image/*" className="hidden" ref={avatarInputRef} onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "avatar")} />
-                  <button onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="absolute -top-1 -left-1 p-2 rounded-full bg-background border border-border hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                    {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                  <button onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className={`absolute -top-1 -left-1 p-2 rounded-full bg-background border hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity z-20 ${isAdmin && !isOwner ? "border-accent" : "border-border"}`}>
+                    {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className={`w-4 h-4 ${isAdmin && !isOwner ? "text-accent" : ""}`} />}
                   </button>
                 </>
               )}
@@ -353,8 +355,8 @@ export default function PlayerPage() {
                 </div>
                 {(profileData?.display_name || player.displayName) && <p className="text-muted-foreground">@{player.username}</p>}
                 
-                {/* Country selector for owner */}
-                {isOwner && (
+                {/* Country selector for owner or admin */}
+                {canEdit && (
                   <div className="mt-2">
                     {editingCountry ? (
                       <div className="flex items-center gap-2 flex-wrap">
@@ -363,7 +365,7 @@ export default function PlayerPage() {
                           onValueChange={(val) => saveCountry(val === "none" ? null : val)}
                           disabled={savingCountry}
                         >
-                          <SelectTrigger className="w-[200px] h-9 bg-card border-border">
+                          <SelectTrigger className={`w-[200px] h-9 bg-card ${isAdmin && !isOwner ? "border-accent" : "border-border"}`}>
                             <SelectValue placeholder="Select country" />
                           </SelectTrigger>
                           <SelectContent className="bg-card border-border max-h-[300px] z-50">
@@ -383,9 +385,9 @@ export default function PlayerPage() {
                         </Button>
                       </div>
                     ) : (
-                      <Button size="sm" variant="ghost" onClick={() => setEditingCountry(true)} className="gap-1 text-xs">
+                      <Button size="sm" variant="ghost" onClick={() => setEditingCountry(true)} className={`gap-1 text-xs ${isAdmin && !isOwner ? "text-accent" : ""}`}>
                         <MapPin className="w-3 h-3" />
-                        {currentCountry ? `Change Country` : "Add Country"}
+                        {currentCountry ? `Change Country` : "Add Country"}{isAdmin && !isOwner ? " (Admin)" : ""}
                       </Button>
                     )}
                   </div>
@@ -401,8 +403,8 @@ export default function PlayerPage() {
                   </div>
                 ) : (
                   <div className="mt-3 max-w-md">
-                    {profileData?.bio ? <p className="text-muted-foreground">{profileData.bio}</p> : isOwner ? <p className="text-muted-foreground/50 italic">No bio yet</p> : null}
-                    {isOwner && <Button size="sm" variant="ghost" onClick={() => setEditingBio(true)} className="mt-1 gap-1 text-xs"><Edit2 className="w-3 h-3" />{profileData?.bio ? "Edit Bio" : "Add Bio"}</Button>}
+                    {profileData?.bio ? <p className="text-muted-foreground">{profileData.bio}</p> : canEdit ? <p className="text-muted-foreground/50 italic">No bio yet</p> : null}
+                    {canEdit && <Button size="sm" variant="ghost" onClick={() => setEditingBio(true)} className={`mt-1 gap-1 text-xs ${isAdmin && !isOwner ? "text-accent" : ""}`}><Edit2 className="w-3 h-3" />{profileData?.bio ? "Edit Bio" : "Add Bio"}{isAdmin && !isOwner ? " (Admin)" : ""}</Button>}
                   </div>
                 )}
               </div>
