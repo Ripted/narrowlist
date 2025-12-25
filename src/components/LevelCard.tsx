@@ -140,7 +140,7 @@ export function LevelCard({ level, rank, thumbnailUrl }: LevelCardProps) {
           {worldRecord && (
             <div className="pt-2 border-t border-border/50">
               <p className="text-xs text-muted-foreground">
-                WR by{" "}
+                Verified by{" "}
                 <span className="text-primary font-medium">
                   {worldRecord.username}
                 </span>
