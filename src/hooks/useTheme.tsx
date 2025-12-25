@@ -94,7 +94,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     
     localStorage.setItem("narrowlist-theme", theme);
   }, [theme]);
-  }, [theme]);
 
   const setTheme = (newTheme: ThemeName) => {
     setThemeState(newTheme);
