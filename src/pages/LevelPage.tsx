@@ -270,12 +270,75 @@ export default function LevelPage() {
               </h2>
             </div>
 
-            {leaderboard.length === 0 ? (
+            {leaderboard.length === 0 && manualRuns.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 No completions yet. Be the first!
               </div>
             ) : (
               <div className="divide-y divide-border">
+                {/* Manual runs first with special indicator */}
+                {manualRuns.map((run, index) => {
+                  const profile = getProfile(run.username);
+                  
+                  return (
+                    <Link
+                      key={`manual-${run.run_id}`}
+                      to={`/player/${run.username}`}
+                      className={`flex items-center gap-4 p-4 hover:bg-secondary/20 transition-colors bg-accent/5 border-l-2 border-accent ${
+                        run.is_verifier ? "bg-primary/5 border-l-2 border-primary" : ""
+                      }`}
+                    >
+                      <div className="w-8 text-center flex-shrink-0">
+                        <span className="font-mono text-muted-foreground">-</span>
+                      </div>
+
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0">
+                        {profile?.avatar_url ? (
+                          <img src={profile.avatar_url} alt={run.username} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-foreground font-bold">
+                            {run.username.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-foreground truncate">
+                            {profile?.display_name || run.username}
+                          </span>
+                          {run.is_verifier && (
+                            <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                              <CheckCircle className="w-3 h-3" />
+                              Verifier
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                            <Info className="w-3 h-3" />
+                            Not on API
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <ArrowIcon arrowName={run.arrow_name} className="w-4 h-4" />
+                          <span>•</span>
+                          <span>{formatDate(run.completed_at)}</span>
+                          {run.note && (
+                            <>
+                              <span>•</span>
+                              <span className="italic">{run.note}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="font-mono text-primary font-medium">
+                        {formatTime(run.completion_time)}
+                      </div>
+                    </Link>
+                  );
+                })}
+
+                {/* Regular leaderboard entries */}
                 {leaderboard.map((entry, index) => {
                   const profile = getProfile(entry.username);
                   const details = runDetails.get(entry.run_id);
