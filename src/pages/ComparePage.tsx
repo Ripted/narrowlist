@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { GitCompare, Search, X, Plus, Trophy, Target, Clock } from "lucide-react";
+import { GitCompare, Search, X, Plus, Trophy, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from "recharts";
 
 interface Profile {
   id: string;
@@ -18,6 +19,7 @@ interface CompletionData {
   level_id: string;
   level_name: string | null;
   level_rank: number;
+  level_points: number;
   completion_time: number;
   completed_at: string;
 }
@@ -25,6 +27,8 @@ interface CompletionData {
 interface PlayerData extends Profile {
   completions: CompletionData[];
 }
+
+const PLAYER_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#22c55e", "#f59e0b"];
 
 export default function ComparePage() {
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
@@ -61,17 +65,15 @@ export default function ComparePage() {
 
     setLoadingPlayer(true);
 
-    // Fetch completions for this player
     const { data: completions } = await supabase
       .from("completions")
       .select("level_id, completion_time, completed_at")
       .eq("profile_id", profile.id);
 
-    // Fetch level info
     const levelIds = [...new Set(completions?.map(c => c.level_id) || [])];
     const { data: levels } = await supabase
       .from("levels")
-      .select("id, name, rank_position")
+      .select("id, name, rank_position, points")
       .in("id", levelIds);
 
     const levelMap = new Map(levels?.map(l => [l.id, l]) || []);
@@ -82,6 +84,7 @@ export default function ComparePage() {
         level_id: c.level_id,
         level_name: levelMap.get(c.level_id)?.name || "Unknown",
         level_rank: levelMap.get(c.level_id)?.rank_position || 0,
+        level_points: levelMap.get(c.level_id)?.points || 0,
         completion_time: c.completion_time,
         completed_at: c.completed_at,
       })).sort((a, b) => a.level_rank - b.level_rank),
@@ -96,7 +99,6 @@ export default function ComparePage() {
     setSelectedPlayers(prev => prev.filter(p => p.id !== id));
   };
 
-  // Get all unique levels from selected players
   const allLevels = useMemo(() => {
     const levelSet = new Map<string, { id: string; name: string; rank: number }>();
     selectedPlayers.forEach(player => {
@@ -107,6 +109,74 @@ export default function ComparePage() {
       });
     });
     return Array.from(levelSet.values()).sort((a, b) => a.rank - b.rank);
+  }, [selectedPlayers]);
+
+  // Chart data: completions count comparison
+  const completionsChartData = useMemo(() => {
+    return selectedPlayers.map((player, index) => ({
+      name: player.display_name || player.username,
+      completions: player.completions.length,
+      fill: PLAYER_COLORS[index],
+    }));
+  }, [selectedPlayers]);
+
+  // Chart data: points comparison
+  const pointsChartData = useMemo(() => {
+    return selectedPlayers.map((player, index) => ({
+      name: player.display_name || player.username,
+      points: player.total_points || 0,
+      fill: PLAYER_COLORS[index],
+    }));
+  }, [selectedPlayers]);
+
+  // Chart data: level difficulty distribution (how many levels completed per rank range)
+  const difficultyDistribution = useMemo(() => {
+    const ranges = [
+      { label: "Top 10", min: 1, max: 10 },
+      { label: "11-25", min: 11, max: 25 },
+      { label: "26-50", min: 26, max: 50 },
+      { label: "51-100", min: 51, max: 100 },
+      { label: "100+", min: 101, max: 9999 },
+    ];
+
+    return ranges.map(range => {
+      const data: Record<string, number | string> = { range: range.label };
+      selectedPlayers.forEach((player, index) => {
+        const count = player.completions.filter(
+          c => c.level_rank >= range.min && c.level_rank <= range.max
+        ).length;
+        data[player.display_name || player.username] = count;
+      });
+      return data;
+    });
+  }, [selectedPlayers]);
+
+  // Chart data: points over time (cumulative)
+  const pointsOverTime = useMemo(() => {
+    if (selectedPlayers.length === 0) return [];
+
+    // Get all completion dates across all players
+    const allDates = new Set<string>();
+    selectedPlayers.forEach(player => {
+      player.completions.forEach(c => {
+        const date = new Date(c.completed_at).toISOString().split('T')[0];
+        allDates.add(date);
+      });
+    });
+
+    const sortedDates = Array.from(allDates).sort();
+    
+    // Calculate cumulative points for each player at each date
+    return sortedDates.map(date => {
+      const data: Record<string, number | string> = { date };
+      selectedPlayers.forEach(player => {
+        const cumulativePoints = player.completions
+          .filter(c => new Date(c.completed_at).toISOString().split('T')[0] <= date)
+          .reduce((sum, c) => sum + c.level_points, 0);
+        data[player.display_name || player.username] = cumulativePoints;
+      });
+      return data;
+    });
   }, [selectedPlayers]);
 
   const formatTime = (ms: number) => {
@@ -134,16 +204,20 @@ export default function ComparePage() {
           {/* Player Selection */}
           <div className="bg-card border border-border rounded-lg p-4 mb-6">
             <div className="flex flex-wrap gap-3 mb-4">
-              {selectedPlayers.map(player => (
+              {selectedPlayers.map((player, index) => (
                 <div
                   key={player.id}
-                  className="flex items-center gap-2 bg-secondary rounded-full px-3 py-1.5"
+                  className="flex items-center gap-2 rounded-full px-3 py-1.5"
+                  style={{ backgroundColor: `${PLAYER_COLORS[index]}20` }}
                 >
-                  <div className="w-6 h-6 rounded-full bg-muted overflow-hidden">
+                  <div 
+                    className="w-6 h-6 rounded-full overflow-hidden"
+                    style={{ border: `2px solid ${PLAYER_COLORS[index]}` }}
+                  >
                     {player.avatar_url ? (
                       <img src={player.avatar_url} alt={player.username} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs font-bold">
+                      <div className="w-full h-full flex items-center justify-center text-xs font-bold bg-muted">
                         {(player.display_name || player.username).charAt(0)}
                       </div>
                     )}
@@ -206,10 +280,17 @@ export default function ComparePage() {
           {/* Stats Summary */}
           {selectedPlayers.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              {selectedPlayers.map(player => (
-                <div key={player.id} className="bg-card border border-border rounded-lg p-4 text-center">
+              {selectedPlayers.map((player, index) => (
+                <div 
+                  key={player.id} 
+                  className="bg-card border border-border rounded-lg p-4 text-center"
+                  style={{ borderColor: `${PLAYER_COLORS[index]}40` }}
+                >
                   <Link to={`/player/${player.username}`}>
-                    <div className="w-16 h-16 rounded-full bg-secondary mx-auto mb-3 overflow-hidden border-2 border-primary/50 hover:border-primary transition-colors">
+                    <div 
+                      className="w-16 h-16 rounded-full bg-secondary mx-auto mb-3 overflow-hidden transition-colors"
+                      style={{ border: `3px solid ${PLAYER_COLORS[index]}` }}
+                    >
                       {player.avatar_url ? (
                         <img src={player.avatar_url} alt={player.username} className="w-full h-full object-cover" />
                       ) : (
@@ -222,7 +303,7 @@ export default function ComparePage() {
                       {player.display_name || player.username}
                     </div>
                   </Link>
-                  <div className="flex items-center justify-center gap-1 text-primary mt-1">
+                  <div className="flex items-center justify-center gap-1 mt-1" style={{ color: PLAYER_COLORS[index] }}>
                     <Trophy className="w-4 h-4" />
                     <span className="font-mono">{player.total_points || 0} pts</span>
                   </div>
@@ -234,16 +315,148 @@ export default function ComparePage() {
             </div>
           )}
 
+          {/* Charts Section */}
+          {selectedPlayers.length >= 2 && (
+            <div className="space-y-6 mb-6">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-primary" />
+                <h2 className="font-display text-xl font-bold">Statistics Comparison</h2>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Points Comparison Bar Chart */}
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <h3 className="font-medium mb-4 text-center">Total Points</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={pointsChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Bar dataKey="points" radius={[4, 4, 0, 0]}>
+                        {pointsChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Completions Comparison Bar Chart */}
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <h3 className="font-medium mb-4 text-center">Total Completions</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={completionsChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Bar dataKey="completions" radius={[4, 4, 0, 0]}>
+                        {completionsChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Difficulty Distribution */}
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <h3 className="font-medium mb-4 text-center">Completions by Difficulty</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={difficultyDistribution}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="range" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Legend />
+                      {selectedPlayers.map((player, index) => (
+                        <Bar 
+                          key={player.id} 
+                          dataKey={player.display_name || player.username} 
+                          fill={PLAYER_COLORS[index]}
+                          radius={[2, 2, 0, 0]}
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Points Over Time */}
+                {pointsOverTime.length > 1 && (
+                  <div className="bg-card border border-border rounded-lg p-4">
+                    <h3 className="font-medium mb-4 text-center">Points Over Time</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={pointsOverTime}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis 
+                          dataKey="date" 
+                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                          tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        />
+                        <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
+                        <Tooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'hsl(var(--card))', 
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '8px'
+                          }}
+                          labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                        />
+                        <Legend />
+                        {selectedPlayers.map((player, index) => (
+                          <Line 
+                            key={player.id}
+                            type="monotone"
+                            dataKey={player.display_name || player.username}
+                            stroke={PLAYER_COLORS[index]}
+                            strokeWidth={2}
+                            dot={false}
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Comparison Table */}
           {selectedPlayers.length >= 2 && allLevels.length > 0 && (
             <div className="bg-card border border-border rounded-lg overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <h3 className="font-medium">Level-by-Level Comparison</h3>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-border bg-secondary/50">
                       <th className="text-left p-4 font-medium text-muted-foreground">Level</th>
-                      {selectedPlayers.map(player => (
-                        <th key={player.id} className="text-center p-4 font-medium text-foreground min-w-[120px]">
+                      {selectedPlayers.map((player, index) => (
+                        <th 
+                          key={player.id} 
+                          className="text-center p-4 font-medium min-w-[120px]"
+                          style={{ color: PLAYER_COLORS[index] }}
+                        >
                           {player.display_name || player.username}
                         </th>
                       ))}
@@ -264,13 +477,13 @@ export default function ComparePage() {
                               <div className="font-medium">#{level.rank} {level.name}</div>
                             </Link>
                           </td>
-                          {selectedPlayers.map(player => {
+                          {selectedPlayers.map((player, index) => {
                             const completion = player.completions.find(c => c.level_id === level.id);
                             const isBest = completion?.completion_time === bestTime;
                             return (
                               <td key={player.id} className="text-center p-4">
                                 {completion ? (
-                                  <span className={`font-mono ${isBest ? "text-primary font-bold" : "text-foreground"}`}>
+                                  <span className={`font-mono ${isBest ? "font-bold" : "text-foreground"}`} style={isBest ? { color: PLAYER_COLORS[index] } : {}}>
                                     {formatTime(completion.completion_time)}
                                     {isBest && <span className="text-xs ml-1">👑</span>}
                                   </span>

@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
-import { Activity, Search, Clock, Trophy, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Activity, Search, Clock, CheckCircle, Filter, Calendar, User } from "lucide-react";
 import { formatTime } from "@/lib/api";
 
 interface RecentRun {
@@ -14,7 +16,6 @@ interface RecentRun {
   completed_at: string;
   arrow_name: string | null;
   run_id: number;
-  // Joined data
   username: string;
   display_name: string | null;
   avatar_url: string | null;
@@ -24,29 +25,33 @@ interface RecentRun {
   is_verifier: boolean;
 }
 
+interface Profile {
+  id: string;
+  username: string;
+  display_name: string | null;
+}
+
 export default function RecentRunsPage() {
   const [runs, setRuns] = useState<RecentRun[]>([]);
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Filters
+  const [showVerificationsOnly, setShowVerificationsOnly] = useState(false);
+  const [dateRange, setDateRange] = useState<string>("all");
+  const [selectedUser, setSelectedUser] = useState<string>("all");
 
   useEffect(() => {
-    async function loadRecentRuns() {
+    async function loadData() {
       setLoading(true);
 
-      // Fetch completions with profile and level data
+      // Fetch completions
       const { data: completions, error } = await supabase
         .from("completions")
-        .select(`
-          id,
-          profile_id,
-          level_id,
-          completion_time,
-          completed_at,
-          arrow_name,
-          run_id
-        `)
+        .select(`id, profile_id, level_id, completion_time, completed_at, arrow_name, run_id`)
         .order("completed_at", { ascending: false })
-        .limit(100);
+        .limit(200);
 
       if (error || !completions) {
         setLoading(false);
@@ -60,6 +65,14 @@ export default function RecentRunsPage() {
         .select("id, username, display_name, avatar_url")
         .in("id", profileIds);
 
+      // Fetch all profiles for filter dropdown
+      const { data: allProfilesData } = await supabase
+        .from("profiles")
+        .select("id, username, display_name")
+        .order("username");
+
+      if (allProfilesData) setAllProfiles(allProfilesData);
+
       // Fetch levels
       const levelIds = [...new Set(completions.map(c => c.level_id))];
       const { data: levels } = await supabase
@@ -70,7 +83,6 @@ export default function RecentRunsPage() {
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
       const levelMap = new Map(levels?.map(l => [l.id, l]) || []);
 
-      // Map and add verifier info
       const mappedRuns: RecentRun[] = completions.map(c => {
         const profile = profileMap.get(c.profile_id);
         const level = levelMap.get(c.level_id);
@@ -96,18 +108,64 @@ export default function RecentRunsPage() {
       setLoading(false);
     }
 
-    loadRecentRuns();
+    loadData();
   }, []);
 
-  const filteredRuns = runs.filter(run => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      run.username.toLowerCase().includes(query) ||
-      run.display_name?.toLowerCase().includes(query) ||
-      run.level_name?.toLowerCase().includes(query)
-    );
-  });
+  const filteredRuns = useMemo(() => {
+    let result = runs;
+
+    // Text search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(run =>
+        run.username.toLowerCase().includes(query) ||
+        run.display_name?.toLowerCase().includes(query) ||
+        run.level_name?.toLowerCase().includes(query)
+      );
+    }
+
+    // Verifications only filter
+    if (showVerificationsOnly) {
+      result = result.filter(run => run.is_verifier);
+    }
+
+    // User filter
+    if (selectedUser !== "all") {
+      result = result.filter(run => run.profile_id === selectedUser);
+    }
+
+    // Date range filter
+    if (dateRange !== "all") {
+      const now = new Date();
+      let cutoffDate: Date;
+      
+      switch (dateRange) {
+        case "today":
+          cutoffDate = new Date(now.setHours(0, 0, 0, 0));
+          break;
+        case "week":
+          cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case "month":
+          cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case "year":
+          cutoffDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+        default:
+          cutoffDate = new Date(0);
+      }
+      
+      result = result.filter(run => new Date(run.completed_at) >= cutoffDate);
+    }
+
+    return result;
+  }, [runs, searchQuery, showVerificationsOnly, dateRange, selectedUser]);
+
+  const verificationCount = useMemo(() => 
+    filteredRuns.filter(r => r.is_verifier).length, 
+    [filteredRuns]
+  );
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -121,6 +179,15 @@ export default function RecentRunsPage() {
     if (days < 7) return `${days}d ago`;
     return date.toLocaleDateString();
   };
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setShowVerificationsOnly(false);
+    setDateRange("all");
+    setSelectedUser("all");
+  };
+
+  const hasActiveFilters = searchQuery || showVerificationsOnly || dateRange !== "all" || selectedUser !== "all";
 
   return (
     <div className="min-h-screen bg-background">
@@ -138,8 +205,13 @@ export default function RecentRunsPage() {
                 <h1 className="font-display text-2xl font-bold">Recent Runs</h1>
               </div>
               <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded font-mono">
-                {runs.length} Runs
+                {filteredRuns.length} Runs
               </span>
+              {verificationCount > 0 && (
+                <span className="text-sm text-primary bg-primary/10 px-2 py-1 rounded font-mono">
+                  {verificationCount} Verifications
+                </span>
+              )}
             </div>
 
             <div className="relative w-full sm:w-64">
@@ -150,6 +222,66 @@ export default function RecentRunsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 bg-secondary border-border"
               />
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="bg-card border border-border rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filters</span>
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="ml-auto text-xs">
+                  Clear all
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {/* Verifications Toggle */}
+              <Button
+                variant={showVerificationsOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowVerificationsOnly(!showVerificationsOnly)}
+                className="gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Verifications Only
+              </Button>
+
+              {/* Date Range */}
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <Select value={dateRange} onValueChange={setDateRange}>
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue placeholder="Date range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">Last 7 Days</SelectItem>
+                    <SelectItem value="month">Last 30 Days</SelectItem>
+                    <SelectItem value="year">Last Year</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* User Filter */}
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-muted-foreground" />
+                <Select value={selectedUser} onValueChange={setSelectedUser}>
+                  <SelectTrigger className="w-[180px] h-9">
+                    <SelectValue placeholder="Filter by player" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Players</SelectItem>
+                    {allProfiles.map(profile => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.display_name || profile.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -165,11 +297,14 @@ export default function RecentRunsPage() {
                 <Activity className="w-10 h-10 text-muted-foreground" />
               </div>
               <h3 className="font-display text-xl font-semibold">
-                {searchQuery ? "No Results Found" : "No Recent Runs"}
+                {hasActiveFilters ? "No Results Found" : "No Recent Runs"}
               </h3>
               <p className="text-muted-foreground">
-                {searchQuery ? "Try a different search term." : "No runs have been recorded yet."}
+                {hasActiveFilters ? "Try adjusting your filters." : "No runs have been recorded yet."}
               </p>
+              {hasActiveFilters && (
+                <Button variant="outline" onClick={clearFilters}>Clear Filters</Button>
+              )}
             </div>
           ) : (
             <div className="rounded-lg bg-card border border-border overflow-hidden">
@@ -181,7 +316,6 @@ export default function RecentRunsPage() {
                       run.is_verifier ? "bg-primary/5 border-l-4 border-l-primary" : ""
                     }`}
                   >
-                    {/* Player Avatar */}
                     <Link to={`/player/${run.username}`} className="flex-shrink-0">
                       <div className="w-12 h-12 rounded-full bg-secondary overflow-hidden border-2 border-border hover:border-primary transition-colors">
                         {run.avatar_url ? (
@@ -194,7 +328,6 @@ export default function RecentRunsPage() {
                       </div>
                     </Link>
 
-                    {/* Run Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Link to={`/player/${run.username}`} className="font-medium text-foreground hover:text-primary transition-colors">
@@ -216,7 +349,6 @@ export default function RecentRunsPage() {
                       </div>
                     </div>
 
-                    {/* Time */}
                     <div className="text-right flex-shrink-0">
                       <div className="flex items-center gap-1 text-primary font-mono">
                         <Clock className="w-4 h-4" />
