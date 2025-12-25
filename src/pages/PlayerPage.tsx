@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   ArrowLeft, Trophy, Target, Clock, Medal, UserPlus, Camera, Loader2, 
-  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar
+  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, Star
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -45,6 +45,7 @@ export default function PlayerPage() {
   const [verifiedCount, setVerifiedCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [userHasProfile, setUserHasProfile] = useState(false);
+  const [sortMode, setSortMode] = useState<"time" | "date">("time");
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -136,10 +137,26 @@ export default function PlayerPage() {
 
   const filteredCompletions = useMemo(() => {
     if (!player) return [];
-    if (!searchQuery.trim()) return player.completions;
-    const q = searchQuery.toLowerCase();
-    return player.completions.filter((c) => c.levelName.toLowerCase().includes(q));
-  }, [player, searchQuery]);
+    let completions = player.completions;
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      completions = completions.filter((c) => c.levelName.toLowerCase().includes(q));
+    }
+    
+    // Apply sorting
+    if (sortMode === "date") {
+      completions = [...completions].sort((a, b) => {
+        if (!a.completedAt && !b.completedAt) return 0;
+        if (!a.completedAt) return 1;
+        if (!b.completedAt) return -1;
+        return Date.parse(a.completedAt) - Date.parse(b.completedAt);
+      });
+    }
+    
+    return completions;
+  }, [player, searchQuery, sortMode]);
 
   const totalPages = Math.ceil(filteredCompletions.length / ITEMS_PER_PAGE);
   const paginatedCompletions = useMemo(() => {
@@ -370,9 +387,20 @@ export default function PlayerPage() {
           <div className="rounded-xl bg-card border border-border overflow-hidden">
             <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <h2 className="font-display text-xl font-bold flex items-center gap-2"><Target className="w-5 h-5 text-primary" />Completed Levels<span className="text-sm font-normal text-muted-foreground">({filteredCompletions.length})</span></h2>
-              <div className="relative w-full sm:w-48">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-sm bg-secondary border-border" />
+              <div className="flex items-center gap-2">
+                <div className="relative w-full sm:w-48">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-sm bg-secondary border-border" />
+                </div>
+                <Button
+                  variant={sortMode === "time" ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setSortMode(sortMode === "time" ? "date" : "time")}
+                  className="gap-2 flex-shrink-0"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  <span className="hidden sm:inline">{sortMode === "time" ? "Fastest" : "Oldest"}</span>
+                </Button>
               </div>
             </div>
 
@@ -383,13 +411,24 @@ export default function PlayerPage() {
                 <div className="divide-y divide-border">
                 {paginatedCompletions.map((completion) => {
                     const levelData = levelRankMap.get(completion.levelId);
+                    const isHardest = hardestLevel?.levelId === completion.levelId;
                     return (
-                      <Link key={completion.levelId} to={`/level/${completion.levelId}`} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
+                      <Link key={completion.levelId} to={`/level/${completion.levelId}`} className={`flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors ${isHardest ? "bg-glow-gold/5 border-l-2 border-glow-gold" : ""}`}>
                         <div className="w-12 text-center flex-shrink-0">
                           <span className={`font-display font-bold text-lg ${levelData?.rank === 1 ? "rank-gold" : levelData?.rank === 2 ? "rank-silver" : levelData?.rank === 3 ? "rank-bronze" : "text-muted-foreground"}`}>#{levelData?.rank || "?"}</span>
                         </div>
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><Medal className="w-4 h-4 text-primary" /></div>
-                        <div className="flex-1 min-w-0"><div className="font-medium text-foreground truncate">{completion.levelName}</div></div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground truncate">{completion.levelName}</span>
+                            {isHardest && (
+                              <span className="flex items-center gap-1 text-xs text-glow-gold bg-glow-gold/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                <Star className="w-3 h-3" />
+                                Hardest
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         <div className="flex items-center gap-4 text-sm">
                           {completion.completedAt && (
                             <div className="hidden sm:flex items-center gap-1 text-muted-foreground">

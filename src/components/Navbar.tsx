@@ -4,8 +4,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock } from "lucide-react";
+import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, MessageCircle } from "lucide-react";
 import logoImg from "@/assets/logo.png";
+
+const DISCORD_LINK = "https://discord.gg/53p8cZ3SS6";
 
 export function Navbar() {
   const location = useLocation();
@@ -109,6 +111,16 @@ export function Navbar() {
 
           {/* Auth & Mobile */}
           <div className="flex items-center gap-2">
+            <a href={DISCORD_LINK} target="_blank" rel="noopener noreferrer">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 border-[#5865F2]/50 hover:border-[#5865F2] hover:bg-[#5865F2]/10 text-[#5865F2]"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">Discord</span>
+              </Button>
+            </a>
             {user ? (
               <Button
                 variant="ghost"

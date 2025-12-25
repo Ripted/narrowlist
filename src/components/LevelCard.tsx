@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
 import { LevelDetails, formatTime } from "@/lib/api";
 import { getPointsForRank } from "@/config/levels";
-import { Trophy, User, Clock, Heart } from "lucide-react";
+import { Trophy, User, Clock, Heart, Copy, Play } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface LevelCardProps {
   level: LevelDetails;
@@ -10,6 +12,7 @@ interface LevelCardProps {
 }
 
 export function LevelCard({ level, rank, thumbnailUrl }: LevelCardProps) {
+  const { toast } = useToast();
   const points = getPointsForRank(rank);
   const { levelInfo, worldRecord } = level;
 
@@ -25,6 +28,19 @@ export function LevelCard({ level, rank, thumbnailUrl }: LevelCardProps) {
     if (rank === 2) return "border-glow-silver/50 hover:border-glow-silver";
     if (rank === 3) return "border-glow-bronze/50 hover:border-glow-bronze";
     return "border-border hover:border-primary/50";
+  };
+
+  const handleCopyId = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(levelInfo.level_id);
+    toast({ title: "Copied!", description: `Level ID: ${levelInfo.level_id}` });
+  };
+
+  const handlePlay = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(`https://narrowarrow.xyz/levelid=${levelInfo.level_id}`, "_blank");
   };
 
   return (
@@ -68,6 +84,28 @@ export function LevelCard({ level, rank, thumbnailUrl }: LevelCardProps) {
                 {points}pts
               </span>
             </div>
+          </div>
+
+          {/* Action buttons - appear on hover */}
+          <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 w-8 p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
+              onClick={handleCopyId}
+              title="Copy Level ID"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              className="h-8 w-8 p-0"
+              onClick={handlePlay}
+              title="Play Level"
+            >
+              <Play className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
