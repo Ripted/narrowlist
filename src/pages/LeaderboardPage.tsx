@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { usePlayerLeaderboard } from "@/hooks/useLevels";
 import { PlayerCard } from "@/components/PlayerCard";
 import { Navbar } from "@/components/Navbar";

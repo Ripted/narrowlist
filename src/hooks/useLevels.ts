@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchLevelDetails, fetchLeaderboard, LevelDetails, LeaderboardEntry } from "@/lib/api";
-import { getPlayerProfile } from "@/config/profiles";
 
 export interface LevelWithRank extends LevelDetails {
   rank: number;
@@ -26,6 +25,35 @@ interface DbLevel {
   rank_position: number;
   points: number;
   thumbnail_url: string | null;
+}
+
+interface DbProfile {
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+// Cache for profiles to avoid repeated queries
+let profileCache: Map<string, DbProfile> | null = null;
+
+async function getProfileCache(): Promise<Map<string, DbProfile>> {
+  if (profileCache) return profileCache;
+  
+  const { data } = await supabase
+    .from("profiles")
+    .select("username, display_name, avatar_url");
+  
+  profileCache = new Map();
+  if (data) {
+    for (const p of data) {
+      profileCache.set(p.username.toLowerCase(), p);
+    }
+  }
+  return profileCache;
+}
+
+export function getPlayerProfile(username: string): DbProfile | undefined {
+  return profileCache?.get(username.toLowerCase());
 }
 
 export function useLevels() {
@@ -151,12 +179,16 @@ export function usePlayerLeaderboard() {
     async function loadPlayerStats() {
       setLoading(true);
       
-      // Fetch from database first
-      const { data: dbLevels } = await supabase
-        .from("levels")
-        .select("id, level_id, points, rank_position, name")
-        .order("rank_position", { ascending: true });
+      // Fetch profiles and levels in parallel
+      const [profileCacheResult, levelsResult] = await Promise.all([
+        getProfileCache(),
+        supabase
+          .from("levels")
+          .select("id, level_id, points, rank_position, name")
+          .order("rank_position", { ascending: true }),
+      ]);
 
+      const dbLevels = levelsResult.data;
       if (!dbLevels || dbLevels.length === 0) {
         setPlayers([]);
         setLoading(false);
@@ -181,19 +213,25 @@ export function usePlayerLeaderboard() {
       for (const { levelId, levelName, points, leaderboard } of results) {
         for (const entry of leaderboard) {
           const username = entry.username;
-          const profile = getPlayerProfile(username);
+          const profile = profileCacheResult.get(username.toLowerCase());
           
           if (!playerMap.has(username)) {
             playerMap.set(username, {
               username,
-              displayName: profile?.displayName,
-              avatarUrl: profile?.avatarUrl,
+              displayName: profile?.display_name || undefined,
+              avatarUrl: profile?.avatar_url || undefined,
               totalPoints: 0,
               completions: [],
             });
           }
 
           const player = playerMap.get(username)!;
+          // Update profile info if available
+          if (profile) {
+            player.displayName = profile.display_name || player.displayName;
+            player.avatarUrl = profile.avatar_url || player.avatarUrl;
+          }
+          
           // Only count each level once (first completion)
           if (!player.completions.find((c) => c.levelId === levelId)) {
             player.totalPoints += points;
