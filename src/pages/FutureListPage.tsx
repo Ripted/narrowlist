@@ -57,32 +57,19 @@ export default function FutureListPage() {
       <div className="fixed top-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
       
       <main className="relative pt-24 pb-12">
-        <section className="container mx-auto px-4 mb-12">
-          <div className="text-center space-y-4 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-accent to-primary mb-4">
-              <Clock className="w-8 h-8 text-primary-foreground" />
-            </div>
-            <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight">
-              <span className="gradient-text-accent text-glow-accent">Future</span>
-              <span className="text-foreground"> List</span>
-            </h1>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Levels that have been rated but not yet beaten. Once completed, they'll move to the main list.
-            </p>
-          </div>
-        </section>
-
         <section className="container mx-auto px-4">
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3">
-              <Target className="w-5 h-5 text-accent" />
-              <h2 className="font-display text-2xl font-bold">Upcoming Levels</h2>
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                {futureLevels.length} levels
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-accent" />
+                <h1 className="font-display text-2xl font-bold">Future List</h1>
+              </div>
+              <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded font-mono">
+                {futureLevels.length} Levels
               </span>
             </div>
             
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search levels..."
@@ -117,7 +104,7 @@ export default function FutureListPage() {
                 {filteredLevels.map((level) => (
                   <div
                     key={level.id}
-                    className="flex items-center gap-4 p-4 hover:bg-secondary/20 transition-colors"
+                    className="flex items-center gap-4 p-5 hover:bg-secondary/20 transition-colors"
                   >
                     <div className="w-16 text-center flex-shrink-0">
                       <span className="font-display font-bold text-xl text-accent">
@@ -125,43 +112,38 @@ export default function FutureListPage() {
                       </span>
                     </div>
                     
-                    <div className="w-16 h-10 rounded bg-secondary overflow-hidden flex-shrink-0">
+                    <div className="w-20 h-14 rounded bg-secondary overflow-hidden flex-shrink-0">
                       {level.thumbnail_url ? (
                         <img src={level.thumbnail_url} alt={level.name || "Level"} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Target className="w-4 h-4 text-muted-foreground" />
+                          <Target className="w-5 h-5 text-muted-foreground" />
                         </div>
                       )}
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-foreground truncate">
+                      <div className="font-medium text-foreground truncate text-lg">
                         {level.name || "Unnamed Level"}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-sm text-muted-foreground">
                         By: {level.author || "Unknown"} • {level.points} pts
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="h-8 w-8 p-0"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          window.open(`https://narrowarrow.xyz/levelid=${level.level_id}`, "_blank");
-                        }}
-                        title="Play Level"
-                      >
-                        <Play className="w-4 h-4" />
-                      </Button>
-                      <span className="text-xs text-muted-foreground bg-accent/10 text-accent px-2 py-1 rounded">
-                        Unbeaten
-                      </span>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-9 w-9 p-0"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(`https://narrowarrow.xyz/levelid=${level.level_id}`, "_blank");
+                      }}
+                      title="Play Level"
+                    >
+                      <Play className="w-4 h-4" />
+                    </Button>
                   </div>
                 ))}
               </div>

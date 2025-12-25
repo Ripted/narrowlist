@@ -30,21 +30,21 @@ export default function LeaderboardPage() {
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-4">
           {/* Header */}
-          <div className="text-center mb-12 space-y-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent mb-4">
-              <Trophy className="w-8 h-8 text-primary-foreground" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-5 h-5 text-primary" />
+                <h1 className="font-display text-2xl font-bold">Leaderboard</h1>
+              </div>
+              {!loading && players.length > 0 && (
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                  <span className="bg-muted px-2 py-1 rounded font-mono">{players.length} Players</span>
+                  <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">{players[0]?.totalPoints || 0} Top Score</span>
+                </div>
+              )}
             </div>
-            <h1 className="font-display text-4xl md:text-5xl font-bold">
-              <span className="gradient-text">Global</span> Leaderboard
-            </h1>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              The best players ranked by total points earned.
-            </p>
-          </div>
-
-          {/* Search */}
-          <div className="max-w-md mx-auto mb-8">
-            <div className="relative">
+            
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search players..."
@@ -54,23 +54,6 @@ export default function LeaderboardPage() {
               />
             </div>
           </div>
-
-          {/* Stats */}
-          {!loading && players.length > 0 && (
-            <div className="flex items-center justify-center gap-8 mb-8">
-              <div className="text-center">
-                <div className="font-display text-3xl font-bold text-foreground">{players.length}</div>
-                <div className="text-sm text-muted-foreground">Players</div>
-              </div>
-              <div className="w-px h-12 bg-border" />
-              <div className="text-center">
-                <div className="font-display text-3xl font-bold text-primary">
-                  {players[0]?.totalPoints || 0}
-                </div>
-                <div className="text-sm text-muted-foreground">Top Score</div>
-              </div>
-            </div>
-          )}
 
           {/* Top 3 Podium */}
           {!loading && players.length >= 3 && !searchQuery && (
