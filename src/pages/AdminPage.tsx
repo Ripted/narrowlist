@@ -58,6 +58,16 @@ interface FutureLevel {
   thumbnail_url: string | null;
 }
 
+// State for editing future level
+interface FutureLevelEdit {
+  id: string;
+  name: string;
+  author: string;
+  rank_position: number;
+  points: number;
+  thumbnail_url: string;
+}
+
 interface ClaimRequest {
   id: string;
   profile_id: string;
@@ -153,6 +163,15 @@ export default function AdminPage() {
   const [deleteConfirmLevel, setDeleteConfirmLevel] = useState<Level | null>(null);
   const [deleteConfirmFutureLevel, setDeleteConfirmFutureLevel] = useState<FutureLevel | null>(null);
   const [deleteConfirmManualRun, setDeleteConfirmManualRun] = useState<ManualRun | null>(null);
+  
+  // Edit future level
+  const [editingFutureLevel, setEditingFutureLevel] = useState<FutureLevel | null>(null);
+  const [editFutureName, setEditFutureName] = useState("");
+  const [editFutureAuthor, setEditFutureAuthor] = useState("");
+  const [editFutureRank, setEditFutureRank] = useState("");
+  const [editFuturePoints, setEditFuturePoints] = useState("");
+  const [editFutureThumbnail, setEditFutureThumbnail] = useState("");
+  const [savingFutureLevel, setSavingFutureLevel] = useState(false);
   
   // Quick rank change
   const [rankInputId, setRankInputId] = useState<string | null>(null);
@@ -532,6 +551,42 @@ export default function AdminPage() {
     }
     
     setDeleteConfirmFutureLevel(null);
+  };
+
+  const openEditFutureLevel = (level: FutureLevel) => {
+    setEditingFutureLevel(level);
+    setEditFutureName(level.name || "");
+    setEditFutureAuthor(level.author || "");
+    setEditFutureRank(String(level.rank_position));
+    setEditFuturePoints(String(level.points));
+    setEditFutureThumbnail(level.thumbnail_url || "");
+  };
+
+  const saveEditedFutureLevel = async () => {
+    if (!editingFutureLevel) return;
+    
+    setSavingFutureLevel(true);
+    const { error } = await supabase
+      .from("future_levels")
+      .update({
+        name: editFutureName || null,
+        author: editFutureAuthor || null,
+        rank_position: parseInt(editFutureRank) || 1,
+        points: parseInt(editFuturePoints) || calculatePoints(parseInt(editFutureRank) || 1),
+        thumbnail_url: editFutureThumbnail || null,
+      })
+      .eq("id", editingFutureLevel.id);
+    
+    if (error) {
+      toast({ title: "Error", description: "Failed to update future level", variant: "destructive" });
+    } else {
+      await logAction("Edited future level", `${editFutureName || editingFutureLevel.level_id}`);
+      toast({ title: "Success", description: "Future level updated" });
+      setEditingFutureLevel(null);
+      fetchFutureLevels();
+      fetchChangelog();
+    }
+    setSavingFutureLevel(false);
   };
 
   const moveFutureLevelToMain = async (futureLevel: FutureLevel) => {
@@ -1561,7 +1616,7 @@ export default function AdminPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Future levels are unbeaten levels. When beaten, click "Move to Main" to add them to the main list.
+                  Future levels are unbeaten levels. Use "Check Verified Levels" to automatically move verified levels to the main list.
                 </p>
               </div>
 
@@ -1592,27 +1647,38 @@ export default function AdminPage() {
                   <div className="divide-y divide-border">
                     {futureLevels.map((level) => (
                       <div key={level.id} className="flex items-center gap-3 p-4">
+                        <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-secondary overflow-hidden">
+                          {level.thumbnail_url ? (
+                            <img src={level.thumbnail_url} alt={level.name || "Level"} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Image className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
                         <div className="w-16 flex-shrink-0">
                           <span className="font-display font-bold text-lg text-primary">
                             ~#{level.rank_position}
                           </span>
+                          <div className="text-xs text-muted-foreground">{level.points} pts</div>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-foreground truncate">
                             {level.name || "Unnamed Level"}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            ID: {level.level_id} • By: {level.author || "Unknown"}
+                            By: {level.author || "Unknown"}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
+                            variant="outline"
                             size="sm"
-                            onClick={() => moveFutureLevelToMain(level)}
+                            onClick={() => openEditFutureLevel(level)}
                             className="gap-1"
                           >
-                            <Check className="w-4 h-4" />
-                            Move to Main
+                            <Edit2 className="w-4 h-4" />
+                            Edit Info
                           </Button>
                           <Button
                             variant="ghost"
@@ -2088,6 +2154,83 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Future Level Modal */}
+      {editingFutureLevel && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
+            <h2 className="font-display text-lg font-bold flex items-center gap-2">
+              <Edit2 className="w-5 h-5 text-primary" />
+              Edit Future Level
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="editFutureThumbnail">Thumbnail URL</Label>
+                <Input
+                  id="editFutureThumbnail"
+                  value={editFutureThumbnail}
+                  onChange={(e) => setEditFutureThumbnail(e.target.value)}
+                  placeholder="https://..."
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="editFutureRank">Estimated Rank</Label>
+                  <Input
+                    id="editFutureRank"
+                    type="number"
+                    value={editFutureRank}
+                    onChange={(e) => setEditFutureRank(e.target.value)}
+                    className="mt-1 bg-secondary border-border"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="editFuturePoints">Points</Label>
+                  <Input
+                    id="editFuturePoints"
+                    type="number"
+                    value={editFuturePoints}
+                    onChange={(e) => setEditFuturePoints(e.target.value)}
+                    className="mt-1 bg-secondary border-border"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="editFutureName">Level Name</Label>
+                <Input
+                  id="editFutureName"
+                  value={editFutureName}
+                  onChange={(e) => setEditFutureName(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="editFutureAuthor">Author</Label>
+                <Input
+                  id="editFutureAuthor"
+                  value={editFutureAuthor}
+                  onChange={(e) => setEditFutureAuthor(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2 justify-end pt-4">
+              <Button variant="outline" onClick={() => setEditingFutureLevel(null)}>
+                Cancel
+              </Button>
+              <Button onClick={saveEditedFutureLevel} disabled={savingFutureLevel}>
+                {savingFutureLevel ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Manual Run Confirmation Dialog */}
       <AlertDialog open={!!deleteConfirmManualRun} onOpenChange={() => setDeleteConfirmManualRun(null)}>

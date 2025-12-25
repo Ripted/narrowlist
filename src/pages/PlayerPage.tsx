@@ -116,15 +116,23 @@ export default function PlayerPage() {
 
   const progressionData = useMemo(() => {
     if (!player) return [];
-    return player.completions
-      .map((c, i) => ({
-        name: c.levelName.length > 12 ? c.levelName.slice(0, 12) + "..." : c.levelName,
-        fullName: c.levelName,
-        rank: levelRankMap.get(c.levelId)?.rank || 0,
-        index: i,
-      }))
-      .sort((a, b) => b.rank - a.rank);
-  }, [player, levelRankMap]);
+    
+    // Sort completions by date and accumulate count
+    const completionsWithDates = player.completions
+      .filter(c => c.completedAt)
+      .sort((a, b) => new Date(a.completedAt!).getTime() - new Date(b.completedAt!).getTime());
+    
+    let cumulativeCount = 0;
+    return completionsWithDates.map((c) => {
+      cumulativeCount++;
+      const date = new Date(c.completedAt!);
+      return {
+        date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+        count: cumulativeCount,
+        levelName: c.levelName,
+      };
+    });
+  }, [player]);
 
   const filteredCompletions = useMemo(() => {
     if (!player) return [];
@@ -276,18 +284,18 @@ export default function PlayerPage() {
                   </div>
                 )}
               </div>
+              {rank && rank <= 3 && (
+                <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-background border-2 border-primary flex items-center justify-center z-10">
+                  <Trophy className={`w-5 h-5 ${rank === 1 ? "text-glow-gold" : rank === 2 ? "text-glow-silver" : "text-glow-bronze"}`} />
+                </div>
+              )}
               {isOwner && (
                 <>
                   <input type="file" accept="image/*" className="hidden" ref={avatarInputRef} onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "avatar")} />
-                  <button onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="absolute bottom-0 right-0 p-2 rounded-full bg-background border border-border hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar} className="absolute -top-1 -left-1 p-2 rounded-full bg-background border border-border hover:bg-secondary opacity-0 group-hover:opacity-100 transition-opacity z-20">
                     {uploadingAvatar ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
                   </button>
                 </>
-              )}
-              {rank && rank <= 3 && (
-                <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-background border-2 border-primary flex items-center justify-center">
-                  <Trophy className={`w-5 h-5 ${rank === 1 ? "text-glow-gold" : rank === 2 ? "text-glow-silver" : "text-glow-bronze"}`} />
-                </div>
               )}
             </div>
 
@@ -349,10 +357,10 @@ export default function PlayerPage() {
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={progressionData}>
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                    <YAxis reversed domain={[1, 'auto']} tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(220 25% 9%)', border: '1px solid hsl(220 20% 18%)', borderRadius: '8px' }} formatter={(value: number, name: string, props: any) => [`#${value}`, props.payload.fullName]} />
-                    <Line type="monotone" dataKey="rank" stroke="hsl(260 70% 60%)" strokeWidth={2} dot={{ fill: 'hsl(260 70% 60%)', strokeWidth: 0, r: 4 }} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ backgroundColor: 'hsl(220 25% 9%)', border: '1px solid hsl(220 20% 18%)', borderRadius: '8px' }} formatter={(value: number, name: string, props: any) => [`${value} levels`, props.payload.levelName]} />
+                    <Line type="monotone" dataKey="count" stroke="hsl(260 70% 60%)" strokeWidth={2} dot={{ fill: 'hsl(260 70% 60%)', strokeWidth: 0, r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
