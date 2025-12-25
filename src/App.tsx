@@ -13,6 +13,7 @@ import FutureListPage from "./pages/FutureListPage";
 import RecentRunsPage from "./pages/RecentRunsPage";
 import ComparePage from "./pages/ComparePage";
 import SubmitLevelPage from "./pages/SubmitLevelPage";
+import GuidePage from "./pages/GuidePage";
 import AuthPage from "./pages/AuthPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/recent" element={<RecentRunsPage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/submit" element={<SubmitLevelPage />} />
+              <Route path="/guide" element={<GuidePage />} />
               <Route path="/player/:username" element={<PlayerPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/admin" element={<AdminPage />} />
