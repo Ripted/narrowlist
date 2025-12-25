@@ -483,10 +483,12 @@ export default function ComparePage() {
                             return (
                               <td key={player.id} className="text-center p-4">
                                 {completion ? (
-                                  <span className={`font-mono ${isBest ? "font-bold" : "text-foreground"}`} style={isBest ? { color: PLAYER_COLORS[index] } : {}}>
-                                    {formatTime(completion.completion_time)}
-                                    {isBest && <span className="text-xs ml-1">👑</span>}
-                                  </span>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <span className={`font-mono ${isBest ? "font-bold" : "text-foreground"}`} style={isBest ? { color: PLAYER_COLORS[index] } : {}}>
+                                      {formatTime(completion.completion_time)}
+                                    </span>
+                                    {isBest && <Trophy className="w-3 h-3 text-primary" />}
+                                  </div>
                                 ) : (
                                   <span className="text-muted-foreground">—</span>
                                 )}

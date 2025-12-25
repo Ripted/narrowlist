@@ -53,19 +53,35 @@ export function Navbar() {
     }
   }, [user]);
 
+  const [moreOpen, setMoreOpen] = useState(false);
+
   const mainNavItems = [
     { path: "/", label: "Main List", icon: List },
     { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
 
-  const moreNavItems = [
-    { path: "/recent", label: "Recent Runs", icon: Activity },
-    { path: "/compare", label: "Compare Players", icon: GitCompare },
-  ];
+  const getMoreNavItems = () => {
+    const items = [
+      { path: "/recent", label: "Recent Runs", icon: Activity },
+      { path: "/compare", label: "Compare Players", icon: GitCompare },
+    ];
+    
+    if (playerUsername) {
+      items.push({ path: `/player/${playerUsername}`, label: "Profile", icon: User });
+    }
+    
+    if (isAdmin) {
+      items.push({ path: "/admin", label: "Admin", icon: Shield });
+    }
+    
+    return items;
+  };
+
+  const moreNavItems = getMoreNavItems();
 
   const isActive = (path: string) => location.pathname === path;
-  const isMoreActive = moreNavItems.some(item => isActive(item.path));
+  const isMoreActive = moreNavItems.some(item => isActive(item.path)) || location.pathname.startsWith('/player/');
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
@@ -86,24 +102,27 @@ export function Navbar() {
 
       {/* More dropdown - Desktop only */}
       {!mobile && (
-        <DropdownMenu>
+        <DropdownMenu open={moreOpen} onOpenChange={setMoreOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               variant={isMoreActive ? "default" : "ghost"}
               size="sm"
-              className={`gap-2 font-medium ${isMoreActive ? "glow-primary" : "hover:bg-secondary"}`}
+              className={`gap-2 font-medium transition-all duration-200 ${isMoreActive ? "glow-primary" : "hover:bg-secondary"}`}
             >
-              <MoreHorizontal className="w-4 h-4" />
+              <MoreHorizontal className={`w-4 h-4 transition-transform duration-200 ${moreOpen ? "rotate-90" : ""}`} />
               More
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`} />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 bg-card border-border z-50">
+          <DropdownMenuContent 
+            align="end" 
+            className="w-48 bg-card border-border z-50 animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-200"
+          >
             {moreNavItems.map(({ path, label, icon: Icon }) => (
-              <DropdownMenuItem key={path} asChild>
+              <DropdownMenuItem key={path} asChild className="transition-colors duration-150">
                 <Link 
                   to={path} 
-                  className={`flex items-center gap-2 cursor-pointer ${isActive(path) ? "text-primary" : ""}`}
+                  className={`flex items-center gap-2 cursor-pointer ${isActive(path) || location.pathname === path ? "text-primary" : ""} ${path === "/admin" ? "text-accent" : ""}`}
                 >
                   <Icon className="w-4 h-4" />
                   {label}
@@ -118,46 +137,17 @@ export function Navbar() {
       {mobile && moreNavItems.map(({ path, label, icon: Icon }) => (
         <Link key={path} to={path} onClick={() => setMobileOpen(false)}>
           <Button
-            variant={isActive(path) ? "default" : "ghost"}
+            variant={isActive(path) || location.pathname === path ? "default" : "ghost"}
             size="sm"
             className={`gap-2 font-medium w-full justify-start ${
-              isActive(path) ? "glow-primary" : "hover:bg-secondary"
-            }`}
+              isActive(path) || location.pathname === path ? "glow-primary" : "hover:bg-secondary"
+            } ${path === "/admin" ? "text-accent" : ""}`}
           >
             <Icon className="w-4 h-4" />
             {label}
           </Button>
         </Link>
       ))}
-
-      {playerUsername && (
-        <Link to={`/player/${playerUsername}`} onClick={() => mobile && setMobileOpen(false)}>
-          <Button
-            variant={location.pathname === `/player/${playerUsername}` ? "default" : "ghost"}
-            size="sm"
-            className={`gap-2 font-medium w-full justify-start ${
-              location.pathname === `/player/${playerUsername}` ? "glow-primary" : "hover:bg-secondary"
-            }`}
-          >
-            <User className="w-4 h-4" />
-            Profile
-          </Button>
-        </Link>
-      )}
-      {isAdmin && (
-        <Link to="/admin" onClick={() => mobile && setMobileOpen(false)}>
-          <Button
-            variant={isActive("/admin") ? "default" : "ghost"}
-            size="sm"
-            className={`gap-2 font-medium w-full justify-start ${
-              isActive("/admin") ? "glow-accent bg-accent text-accent-foreground" : "hover:bg-secondary text-accent"
-            }`}
-          >
-            <Shield className="w-4 h-4" />
-            Admin
-          </Button>
-        </Link>
-      )}
     </>
   );
 
