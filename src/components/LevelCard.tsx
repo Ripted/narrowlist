@@ -50,7 +50,7 @@ export function LevelCard({ level, rank, thumbnailUrl }: LevelCardProps) {
         style={{ animationDelay: `${rank * 50}ms` }}
       >
         {/* Thumbnail */}
-        <div className="relative h-32 overflow-hidden bg-gradient-to-br from-secondary to-muted">
+        <div className="relative h-40 overflow-hidden bg-gradient-to-br from-secondary to-muted">
           {thumbnailUrl ? (
             <img
               src={thumbnailUrl}

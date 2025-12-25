@@ -33,39 +33,21 @@ const Index = () => {
       <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
       
       <main className="relative pt-24 pb-12">
-        {/* Hero Section */}
-        <section className="container mx-auto px-4 mb-12">
-          <div className="text-center space-y-4 animate-fade-in">
-            <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight">
-              <span className="gradient-text text-glow">NARROW</span>
-              <span className="text-foreground">LIST</span>
-            </h1>
-
-            <div className="flex items-center justify-center gap-8 pt-4">
-              <div className="text-center">
-                <div className="font-display text-3xl font-bold text-primary">{levels.length}</div>
-                <div className="text-sm text-muted-foreground">Levels</div>
-              </div>
-              <div className="w-px h-12 bg-border" />
-              <div className="text-center">
-                <div className="font-display text-3xl font-bold text-accent">
-                  {maxPoints}
-                </div>
-                <div className="text-sm text-muted-foreground">Max Points</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* Levels Grid */}
         <section className="container mx-auto px-4">
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3">
-              <Target className="w-5 h-5 text-primary" />
-              <h2 className="font-display text-2xl font-bold">Level Rankings</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <Target className="w-5 h-5 text-primary" />
+                <h1 className="font-display text-2xl font-bold">Main List</h1>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">{levels.length} Levels</span>
+                <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono">{maxPoints} Max Points</span>
+              </div>
             </div>
             
-            <div className="relative w-64">
+            <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search levels..."

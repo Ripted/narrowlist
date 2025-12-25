@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock } from "lucide-react";
+import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import logoImg from "@/assets/logo.png";
 
@@ -51,6 +51,8 @@ export function Navbar() {
     { path: "/", label: "Main List", icon: List },
     { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
+    { path: "/recent", label: "Recent Runs", icon: Activity },
+    { path: "/compare", label: "Compare", icon: GitCompare },
   ];
 
   const isActive = (path: string) => location.pathname === path;
