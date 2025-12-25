@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/Navbar";
 import { 
   BookOpen, Trophy, List, Clock, Users, Send, GitCompare, 
-  HelpCircle, ChevronDown, Star, Heart, Zap
+  HelpCircle, Star, Heart, Zap
 } from "lucide-react";
 import {
   Accordion,
@@ -65,7 +65,7 @@ export default function GuidePage() {
           />
         </div>
 
-        {/* Points Distribution */}
+        {/* Points Distribution - ACCURATE */}
         <div className="rounded-xl bg-card border border-border p-6 md:p-8 mb-12">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -76,20 +76,62 @@ export default function GuidePage() {
           
           <p className="text-muted-foreground mb-6">
             Points are awarded based on a level's rank position. Harder levels (lower rank numbers) 
-            award more points. Here's how the system works:
+            award more points. Here's the exact breakdown:
           </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <PointsExample rank={1} points={250} label="Hardest" />
-            <PointsExample rank={10} points={175} label="Top 10" />
-            <PointsExample rank={50} points={100} label="Top 50" />
-            <PointsExample rank={100} points={55} label="Top 100" />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 font-display font-semibold text-foreground">Rank Position</th>
+                  <th className="text-right py-3 px-4 font-display font-semibold text-primary">Points</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                <tr className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-4 text-foreground font-medium">#1 (Hardest)</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">10 pts</td>
+                </tr>
+                <tr className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-4 text-foreground font-medium">#2</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">8 pts</td>
+                </tr>
+                <tr className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-4 text-foreground font-medium">#3</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">7 pts</td>
+                </tr>
+                <tr className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-4 text-foreground font-medium">#4</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">6 pts</td>
+                </tr>
+                <tr className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-4 text-foreground font-medium">#5</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">5 pts</td>
+                </tr>
+                <tr className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-4 text-foreground font-medium">#6 - #10</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">4 pts</td>
+                </tr>
+                <tr className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-4 text-foreground font-medium">#11 - #25</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">3 pts</td>
+                </tr>
+                <tr className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-4 text-foreground font-medium">#26 - #50</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">2 pts</td>
+                </tr>
+                <tr className="hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-4 text-foreground font-medium">#51+</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">1 pt</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <div className="text-sm text-muted-foreground bg-secondary/50 rounded-lg p-4">
-            <strong className="text-foreground">Formula:</strong> Points decrease as rank increases, 
-            with the first level worth 250 points and gradually decreasing. The exact formula ensures 
-            a fair balance between early and late levels.
+          <div className="text-sm text-muted-foreground bg-secondary/50 rounded-lg p-4 mt-6">
+            <strong className="text-foreground">Tip:</strong> Focus on completing the hardest levels 
+            you can manage to maximize your points. A single #1 completion is worth as much as 10 levels 
+            ranked #51 or below!
           </div>
         </div>
 
@@ -252,16 +294,6 @@ function FeatureCard({ icon: Icon, title, description }: {
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
-    </div>
-  );
-}
-
-function PointsExample({ rank, points, label }: { rank: number; points: number; label: string }) {
-  return (
-    <div className="text-center p-4 rounded-lg bg-secondary/50 border border-border">
-      <div className="text-xs text-muted-foreground mb-1">{label}</div>
-      <div className="font-display font-bold text-foreground">#{rank}</div>
-      <div className="text-primary font-mono font-semibold">{points} pts</div>
     </div>
   );
 }

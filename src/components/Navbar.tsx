@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen } from "lucide-react";
+import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen, Palette } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useTheme } from "@/hooks/useTheme";
 import logoImg from "@/assets/logo.png";
@@ -72,6 +72,7 @@ export function Navbar() {
       { path: "/compare", label: "Compare Players", icon: GitCompare },
       { path: "/submit", label: "Submit Level", icon: Send },
       { path: "/guide", label: "Guide", icon: BookOpen },
+      { path: "/themes", label: "Themes", icon: Palette },
     ];
     
     if (playerUsername) {
