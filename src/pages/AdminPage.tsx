@@ -201,6 +201,59 @@ export default function AdminPage() {
     }
   };
 
+  // Auto-move levels with 0 completions to future list
+  const checkAndMoveEmptyLevels = async (currentLevels: Level[]) => {
+    const { fetchLeaderboard } = await import("@/lib/api");
+    const emptyLevels: Level[] = [];
+    
+    for (const level of currentLevels) {
+      const leaderboard = await fetchLeaderboard(level.level_id);
+      if (leaderboard.length === 0) {
+        emptyLevels.push(level);
+      }
+    }
+    
+    if (emptyLevels.length === 0) return;
+    
+    for (const level of emptyLevels) {
+      // Move to future list
+      const { error: insertError } = await supabase.from("future_levels").insert({
+        level_id: level.level_id,
+        name: level.name,
+        author: level.author,
+        rank_position: level.rank_position,
+        points: level.points,
+        thumbnail_url: level.thumbnail_url,
+      });
+      
+      if (insertError) continue;
+      
+      // Remove from main list
+      await supabase.from("levels").delete().eq("id", level.id);
+      
+      await logAction("Auto-moved level to future list", `${level.name || level.level_id} (0 completions)`);
+    }
+    
+    // Re-rank remaining levels
+    const remaining = currentLevels.filter(l => !emptyLevels.find(e => e.id === l.id));
+    for (let i = 0; i < remaining.length; i++) {
+      await supabase
+        .from("levels")
+        .update({ rank_position: i + 1, points: calculatePoints(i + 1) })
+        .eq("id", remaining[i].id);
+    }
+    
+    if (emptyLevels.length > 0) {
+      toast({ 
+        title: "Levels Moved", 
+        description: `${emptyLevels.length} level(s) with no completions moved to future list` 
+      });
+      fetchLevels();
+      fetchFutureLevels();
+      fetchChangelog();
+    }
+  };
+
   const fetchApprovedPlayers = async () => {
     const { data, error } = await supabase
       .from("profiles")
@@ -775,6 +828,11 @@ export default function AdminPage() {
       await logAction("Synced completions", "Manual sync triggered");
       toast({ title: "Sync Complete", description: "Completions have been updated" });
       fetchChangelog();
+      // Check for empty levels after sync
+      const { data: currentLevels } = await supabase.from("levels").select("*").order("rank_position");
+      if (currentLevels) {
+        await checkAndMoveEmptyLevels(currentLevels);
+      }
     } catch (error: any) {
       toast({ title: "Sync Failed", description: error.message || "Failed to sync", variant: "destructive" });
     } finally {
@@ -953,8 +1011,8 @@ export default function AdminPage() {
 
           <Tabs defaultValue="levels" className="space-y-6">
             <TabsList className="w-full justify-start overflow-x-auto flex-wrap">
-              <TabsTrigger value="levels" className="text-xs sm:text-sm">Levels ({levels.length})</TabsTrigger>
-              <TabsTrigger value="future" className="text-xs sm:text-sm">Future ({futureLevels.length})</TabsTrigger>
+              <TabsTrigger value="levels" className="text-xs sm:text-sm">Main List ({levels.length})</TabsTrigger>
+              <TabsTrigger value="future" className="text-xs sm:text-sm">Future List ({futureLevels.length})</TabsTrigger>
               <TabsTrigger value="players" className="text-xs sm:text-sm">Players ({approvedPlayers.length})</TabsTrigger>
               <TabsTrigger value="changelog" className="text-xs sm:text-sm">Changelog</TabsTrigger>
             </TabsList>

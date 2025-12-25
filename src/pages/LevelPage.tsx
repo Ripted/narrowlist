@@ -60,11 +60,12 @@ export default function LevelPage() {
     }
   }, [leaderboard]);
 
-  // Find verifier
+  // Find verifier - check for verified boolean in run details
   const verifierEntry = useMemo(() => {
     for (const entry of leaderboard) {
       const details = runDetails.get(entry.run_id);
-      if (details?.verifier) {
+      // Use verified field to identify the verifier (first verified completion)
+      if (details?.verified === true) {
         return { ...entry, details };
       }
     }
@@ -237,7 +238,7 @@ export default function LevelPage() {
                 {leaderboard.map((entry, index) => {
                   const profile = getProfile(entry.username);
                   const details = runDetails.get(entry.run_id);
-                  const isVerifier = details?.verifier === true;
+                  const isVerifier = details?.verified === true;
                   
                   return (
                     <Link

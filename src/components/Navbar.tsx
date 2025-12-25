@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock } from "lucide-react";
+import logoImg from "@/assets/logo.png";
 
 export function Navbar() {
   const location = useLocation();
@@ -32,7 +33,7 @@ export function Navbar() {
   }, [user]);
 
   const navItems = [
-    { path: "/", label: "Levels", icon: List },
+    { path: "/", label: "Main List", icon: List },
     { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
@@ -94,9 +95,7 @@ export function Navbar() {
           <Link to="/" className="flex items-center gap-3">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
-              <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <Trophy className="w-5 h-5 text-primary-foreground" />
-              </div>
+              <img src={logoImg} alt="Narrowlist Logo" className="relative w-10 h-10 object-contain" />
             </div>
             <span className="font-display text-xl font-bold tracking-wider gradient-text">
               NARROWLIST
