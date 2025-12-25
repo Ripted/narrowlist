@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/Navbar";
 import { useTheme, themes, ThemeName } from "@/hooks/useTheme";
-import { Check, Palette, Sparkles } from "lucide-react";
+import { Check, Palette, Sparkles, Star } from "lucide-react";
 import { useState } from "react";
 
 export default function ThemesPage() {
@@ -9,12 +9,75 @@ export default function ThemesPage() {
   
   const themeKeys = Object.keys(themes) as ThemeName[];
   
+  // Group themes by category
+  const brandThemes: ThemeName[] = ["spotify", "discord", "youtube", "twitch", "github"];
+  const regularThemes = themeKeys.filter(t => !brandThemes.includes(t));
+  
   const getThemeColor = (themeName: ThemeName) => {
     return `hsl(${themes[themeName].colors.primary})`;
   };
   
-  const getAccentColor = (themeName: ThemeName) => {
+  const getSecondaryColor = (themeName: ThemeName) => {
+    return `hsl(${themes[themeName].colors.secondary})`;
+  };
+  
+  const getTertiaryColor = (themeName: ThemeName) => {
     return `hsl(${themes[themeName].colors.accent})`;
+  };
+
+  const ThemeCard = ({ themeName }: { themeName: ThemeName }) => {
+    const isSelected = theme === themeName;
+    const isHovered = hoveredTheme === themeName;
+    const isBrand = brandThemes.includes(themeName);
+    
+    return (
+      <button
+        onClick={() => setTheme(themeName)}
+        onMouseEnter={() => setHoveredTheme(themeName)}
+        onMouseLeave={() => setHoveredTheme(null)}
+        className={`relative group rounded-xl p-4 border-2 transition-all duration-200 text-left ${
+          isSelected 
+            ? 'scale-[1.02] shadow-lg' 
+            : 'hover:scale-[1.02] hover:shadow-md'
+        }`}
+        style={{ 
+          borderColor: isSelected || isHovered ? getThemeColor(themeName) : 'hsl(var(--border))',
+          backgroundColor: isSelected ? `${getThemeColor(themeName)}15` : 'hsl(var(--card))'
+        }}
+      >
+        {/* Color Preview - 3 colors */}
+        <div className="flex gap-1 mb-3">
+          <div 
+            className="w-6 h-6 rounded-md shadow-sm"
+            style={{ backgroundColor: getThemeColor(themeName) }}
+          />
+          <div 
+            className="w-6 h-6 rounded-md shadow-sm"
+            style={{ backgroundColor: getSecondaryColor(themeName) }}
+          />
+          <div 
+            className="w-6 h-6 rounded-md shadow-sm"
+            style={{ backgroundColor: getTertiaryColor(themeName) }}
+          />
+        </div>
+        
+        {/* Theme Name */}
+        <div className="font-display font-semibold text-sm text-foreground truncate flex items-center gap-1">
+          {themes[themeName].name}
+          {isBrand && <Star className="w-3 h-3 text-primary fill-primary" />}
+        </div>
+        
+        {/* Selected Indicator */}
+        {isSelected && (
+          <div 
+            className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: getThemeColor(themeName) }}
+          >
+            <Check className="w-4 h-4 text-white" />
+          </div>
+        )}
+      </button>
+    );
   };
 
   return (
@@ -42,13 +105,13 @@ export default function ThemesPage() {
             className="rounded-2xl p-6 md:p-8 border-2 transition-all duration-300"
             style={{ 
               borderColor: getThemeColor(theme),
-              background: `linear-gradient(135deg, ${getThemeColor(theme)}15, ${getAccentColor(theme)}15)`
+              background: `linear-gradient(135deg, ${getThemeColor(theme)}15, ${getSecondaryColor(theme)}10, ${getTertiaryColor(theme)}05)`
             }}
           >
             <div className="flex items-center gap-4 mb-4">
               <div 
                 className="w-16 h-16 rounded-xl flex items-center justify-center"
-                style={{ background: `linear-gradient(135deg, ${getThemeColor(theme)}, ${getAccentColor(theme)})` }}
+                style={{ background: `linear-gradient(135deg, ${getThemeColor(theme)}, ${getSecondaryColor(theme)}, ${getTertiaryColor(theme)})` }}
               >
                 <Sparkles className="w-8 h-8 text-white" />
               </div>
@@ -64,78 +127,57 @@ export default function ThemesPage() {
                 className="px-4 py-2 rounded-lg text-sm font-medium text-white"
                 style={{ backgroundColor: getThemeColor(theme) }}
               >
-                Primary Color
+                Primary
               </div>
               <div 
                 className="px-4 py-2 rounded-lg text-sm font-medium text-white"
-                style={{ backgroundColor: getAccentColor(theme) }}
+                style={{ backgroundColor: getSecondaryColor(theme) }}
               >
-                Accent Color
+                Secondary
+              </div>
+              <div 
+                className="px-4 py-2 rounded-lg text-sm font-medium text-white"
+                style={{ backgroundColor: getTertiaryColor(theme) }}
+              >
+                Accent
               </div>
               <div className="px-4 py-2 rounded-lg text-sm font-medium bg-card border border-border text-foreground">
-                Card Style
+                Card
               </div>
             </div>
           </div>
         </div>
 
-        {/* Theme Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-          {themeKeys.map((themeName) => {
-            const isSelected = theme === themeName;
-            const isHovered = hoveredTheme === themeName;
-            
-            return (
-              <button
-                key={themeName}
-                onClick={() => setTheme(themeName)}
-                onMouseEnter={() => setHoveredTheme(themeName)}
-                onMouseLeave={() => setHoveredTheme(null)}
-                className={`relative group rounded-xl p-4 border-2 transition-all duration-200 text-left ${
-                  isSelected 
-                    ? 'scale-[1.02] shadow-lg' 
-                    : 'hover:scale-[1.02] hover:shadow-md'
-                }`}
-                style={{ 
-                  borderColor: isSelected || isHovered ? getThemeColor(themeName) : 'hsl(var(--border))',
-                  backgroundColor: isSelected ? `${getThemeColor(themeName)}10` : 'hsl(var(--card))'
-                }}
-              >
-                {/* Color Preview */}
-                <div className="flex gap-1.5 mb-3">
-                  <div 
-                    className="w-8 h-8 rounded-lg shadow-sm"
-                    style={{ backgroundColor: getThemeColor(themeName) }}
-                  />
-                  <div 
-                    className="w-8 h-8 rounded-lg shadow-sm"
-                    style={{ backgroundColor: getAccentColor(themeName) }}
-                  />
-                </div>
-                
-                {/* Theme Name */}
-                <div className="font-display font-semibold text-sm text-foreground truncate">
-                  {themes[themeName].name}
-                </div>
-                
-                {/* Selected Indicator */}
-                {isSelected && (
-                  <div 
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: getThemeColor(themeName) }}
-                  >
-                    <Check className="w-4 h-4 text-white" />
-                  </div>
-                )}
-              </button>
-            );
-          })}
+        {/* Popular Brand Themes */}
+        <div className="mb-8">
+          <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+            <Star className="w-5 h-5 text-primary" />
+            Popular Brand Themes
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
+            {brandThemes.map((themeName) => (
+              <ThemeCard key={themeName} themeName={themeName} />
+            ))}
+          </div>
+        </div>
+
+        {/* All Themes */}
+        <div>
+          <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+            <Palette className="w-5 h-5 text-primary" />
+            All Themes
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+            {regularThemes.map((themeName) => (
+              <ThemeCard key={themeName} themeName={themeName} />
+            ))}
+          </div>
         </div>
 
         {/* Info Footer */}
         <div className="mt-12 text-center">
           <p className="text-sm text-muted-foreground">
-            Themes affect the entire website including navigation, buttons, cards, and highlights.
+            Themes affect the entire website including backgrounds, navigation, buttons, cards, and highlights.
             <br className="hidden sm:block" />
             Your preference is saved locally and will persist across sessions.
           </p>
