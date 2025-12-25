@@ -46,6 +46,7 @@ interface Level {
   rank_position: number;
   points: number;
   thumbnail_url: string | null;
+  verifier_profile_id: string | null;
 }
 
 interface FutureLevel {
@@ -158,6 +159,7 @@ export default function AdminPage() {
   const [editName, setEditName] = useState("");
   const [editAuthor, setEditAuthor] = useState("");
   const [editThumbnail, setEditThumbnail] = useState("");
+  const [editVerifier, setEditVerifier] = useState<string>("");
   
   // Delete confirmation
   const [deleteConfirmLevel, setDeleteConfirmLevel] = useState<Level | null>(null);
@@ -974,6 +976,7 @@ export default function AdminPage() {
     setEditName(level.name || "");
     setEditAuthor(level.author || "");
     setEditThumbnail(level.thumbnail_url || "");
+    setEditVerifier(level.verifier_profile_id || "");
   };
 
   const saveEditedLevel = async () => {
@@ -986,13 +989,15 @@ export default function AdminPage() {
         name: editName || null,
         author: editAuthor || null,
         thumbnail_url: editThumbnail || null,
+        verifier_profile_id: editVerifier || null,
       })
       .eq("id", editingLevel.id);
     
     if (error) {
       toast({ title: "Error", description: "Failed to update level", variant: "destructive" });
     } else {
-      await logAction("Edited level", `${editName || editingLevel.level_id}`);
+      const verifierName = allProfiles.find(p => p.id === editVerifier)?.username || "none";
+      await logAction("Edited level", `${editName || editingLevel.level_id} (verifier: ${verifierName})`);
       toast({ title: "Success", description: "Level updated" });
       setEditingLevel(null);
       fetchLevels();
@@ -2122,6 +2127,23 @@ export default function AdminPage() {
                   onChange={(e) => setEditAuthor(e.target.value)}
                   className="mt-1 bg-secondary border-border"
                 />
+              </div>
+              
+              <div>
+                <Label>Verifier</Label>
+                <Select value={editVerifier} onValueChange={setEditVerifier}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border">
+                    <SelectValue placeholder="Select verifier (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No verifier set</SelectItem>
+                    {allProfiles.map(profile => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.display_name || profile.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             

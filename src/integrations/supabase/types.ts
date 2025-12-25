@@ -133,6 +133,7 @@ export type Database = {
           rank_position: number
           thumbnail_url: string | null
           updated_at: string
+          verifier_profile_id: string | null
         }
         Insert: {
           author?: string | null
@@ -144,6 +145,7 @@ export type Database = {
           rank_position: number
           thumbnail_url?: string | null
           updated_at?: string
+          verifier_profile_id?: string | null
         }
         Update: {
           author?: string | null
@@ -155,8 +157,17 @@ export type Database = {
           rank_position?: number
           thumbnail_url?: string | null
           updated_at?: string
+          verifier_profile_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "levels_verifier_profile_id_fkey"
+            columns: ["verifier_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       manual_runs: {
         Row: {

@@ -29,7 +29,7 @@ interface ManualRunEntry {
 
 export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
-  const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId } = useLevel(levelId || "");
+  const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId, verifierProfileId } = useLevel(levelId || "");
   const { toast } = useToast();
   const [runDetails, setRunDetails] = useState<Map<number, RunDetails>>(new Map());
   const [loadingRuns, setLoadingRuns] = useState(false);
@@ -102,32 +102,36 @@ export default function LevelPage() {
     }
   }, [leaderboard]);
 
-  // Verifier: oldest completion (earliest timestamp) based on leaderboard/run timestamps
-  const verifierRunId = useMemo(() => {
-    let best: { runId: number; ts: number } | null = null;
-
+  // Get verifier username from database profile ID, or fallback to oldest completion
+  const verifierUsername = useMemo(() => {
+    // If we have a verifier set in the database, look up their username
+    if (verifierProfileId) {
+      for (const [username, profile] of profiles) {
+        if (profile.id === verifierProfileId) {
+          return profile.display_name || username;
+        }
+      }
+    }
+    
+    // Fallback: oldest completion (earliest timestamp) based on leaderboard/run timestamps
+    let best: { username: string; ts: number } | null = null;
     for (const entry of leaderboard) {
       const details = runDetails.get(entry.run_id);
-      const candidateDate =
-        entry.created_at || entry.finishedAt || entry.finished_at || details?.finishedAt;
-
+      const candidateDate = entry.created_at || entry.finishedAt || entry.finished_at || details?.finishedAt;
       if (!candidateDate) continue;
       const ts = Date.parse(candidateDate);
       if (Number.isNaN(ts)) continue;
-
-      if (!best || ts < best.ts) best = { runId: entry.run_id, ts };
+      if (!best || ts < best.ts) best = { username: entry.username, ts };
     }
+    return best?.username ?? null;
+  }, [verifierProfileId, profiles, leaderboard, runDetails]);
 
-    return best?.runId ?? null;
-  }, [leaderboard, runDetails]);
-
-  const verifierEntry = useMemo(() => {
-    if (!verifierRunId) return null;
-    const entry = leaderboard.find((e) => e.run_id === verifierRunId);
-    if (!entry) return null;
-    const details = runDetails.get(entry.run_id);
-    return { ...entry, details };
-  }, [leaderboard, runDetails, verifierRunId]);
+  // Find verifier run ID for highlighting in the list
+  const verifierRunId = useMemo(() => {
+    if (!verifierUsername) return null;
+    const entry = leaderboard.find(e => e.username.toLowerCase() === verifierUsername.toLowerCase());
+    return entry?.run_id ?? null;
+  }, [verifierUsername, leaderboard]);
 
   // Sort leaderboard based on mode
   const sortedLeaderboard = useMemo(() => {
@@ -284,7 +288,7 @@ export default function LevelPage() {
                 <div className="rounded-lg bg-card border border-border p-4 text-center">
                   <Shield className="w-6 h-6 mx-auto mb-2 text-primary" />
                   <div className="font-display text-lg font-bold text-foreground truncate">
-                    {verifierEntry?.username || "N/A"}
+                    {verifierUsername || "N/A"}
                   </div>
                   <div className="text-xs text-muted-foreground">Verifier</div>
                 </div>

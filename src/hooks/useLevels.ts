@@ -129,6 +129,7 @@ export function useLevel(levelId: string) {
   const [points, setPoints] = useState<number>(0);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [levelDbId, setLevelDbId] = useState<string | null>(null);
+  const [verifierProfileId, setVerifierProfileId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -141,7 +142,7 @@ export function useLevel(levelId: string) {
         fetchLeaderboard(levelId),
         supabase
           .from("levels")
-          .select("id, rank_position, points, name, author, thumbnail_url")
+          .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id")
           .eq("level_id", levelId)
           .maybeSingle(),
       ]);
@@ -159,6 +160,7 @@ export function useLevel(levelId: string) {
         setPoints(dbResult.data.points);
         setThumbnailUrl(dbResult.data.thumbnail_url);
         setLevelDbId(dbResult.data.id);
+        setVerifierProfileId(dbResult.data.verifier_profile_id);
       } else {
         setLevel(details);
       }
@@ -170,7 +172,7 @@ export function useLevel(levelId: string) {
     load();
   }, [levelId]);
 
-  return { level, leaderboard, rank, points, thumbnailUrl, levelDbId, loading };
+  return { level, leaderboard, rank, points, thumbnailUrl, levelDbId, verifierProfileId, loading };
 }
 
 export function usePlayerLeaderboard() {

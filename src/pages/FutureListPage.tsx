@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
-import { Clock, Search, Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Clock, Search, Target, Play } from "lucide-react";
 
 interface FutureLevel {
   id: string;
@@ -144,6 +145,19 @@ export default function FutureListPage() {
                     </div>
                     
                     <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="h-8 w-8 p-0"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          window.open(`https://narrowarrow.xyz/levelid=${level.level_id}`, "_blank");
+                        }}
+                        title="Play Level"
+                      >
+                        <Play className="w-4 h-4" />
+                      </Button>
                       <span className="text-xs text-muted-foreground bg-accent/10 text-accent px-2 py-1 rounded">
                         Unbeaten
                       </span>
