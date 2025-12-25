@@ -78,7 +78,7 @@ interface ChangelogEntry {
 }
 
 export default function AdminPage() {
-  const { user, isAdmin, isHeadAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -840,6 +840,57 @@ export default function AdminPage() {
     }
   };
 
+  // Manual check for empty levels without syncing
+  const manualCheckEmptyLevels = async () => {
+    setSyncing(true);
+    try {
+      const { data: currentLevels } = await supabase.from("levels").select("*").order("rank_position");
+      if (currentLevels) {
+        await checkAndMoveEmptyLevels(currentLevels);
+      }
+      toast({ title: "Check Complete", description: "Empty levels check finished" });
+    } catch (error: any) {
+      toast({ title: "Check Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Check if future levels have been verified and move them to main list
+  const checkVerifiedFutureLevels = async () => {
+    setSyncing(true);
+    try {
+      const { fetchLeaderboard, fetchRunDetails } = await import("@/lib/api");
+      let movedCount = 0;
+      
+      for (const futureLevel of futureLevels) {
+        const leaderboard = await fetchLeaderboard(futureLevel.level_id);
+        if (leaderboard.length === 0) continue;
+        
+        // Check if any run has a verifier (the person who verified the level)
+        for (const entry of leaderboard) {
+          const runDetails = await fetchRunDetails(entry.run_id);
+          if (runDetails?.verifier === true) {
+            // Level has been verified, move to main list
+            await moveFutureLevelToMain(futureLevel);
+            movedCount++;
+            break;
+          }
+        }
+      }
+      
+      if (movedCount > 0) {
+        toast({ title: "Levels Moved", description: `${movedCount} verified level(s) moved to main list` });
+      } else {
+        toast({ title: "No Verified Levels", description: "No future levels have been verified yet" });
+      }
+    } catch (error: any) {
+      toast({ title: "Check Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleClaimRequest = async (requestId: string, action: "approved" | "rejected") => {
     setProcessingClaim(requestId);
     
@@ -933,7 +984,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-                  Admin Panel {isHeadAdmin && <span className="text-accent text-lg">(Head Admin)</span>}
+                  Admin Panel
                 </h1>
                 <p className="text-sm text-muted-foreground hidden md:block">Manage levels, players, and settings</p>
               </div>
@@ -1048,14 +1099,24 @@ export default function AdminPage() {
 
               {/* Level List */}
               <div className="rounded-lg bg-card border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-secondary/30 flex items-center justify-between">
+                <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <h2 className="font-display text-lg font-bold flex items-center gap-2">
                     <ArrowUpDown className="w-5 h-5 text-primary" />
                     Level Rankings
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                      {levels.length} levels
+                    </span>
                   </h2>
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                    {levels.length} levels
-                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={manualCheckEmptyLevels}
+                    disabled={syncing}
+                    className="gap-1 text-xs"
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    Check Empty Levels
+                  </Button>
                 </div>
 
                 {levels.length === 0 ? (
@@ -1266,11 +1327,21 @@ export default function AdminPage() {
 
               {/* Future Level List */}
               <div className="rounded-lg bg-card border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-secondary/30">
+                <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <h2 className="font-display text-lg font-bold flex items-center gap-2">
                     <Hourglass className="w-5 h-5 text-primary" />
                     Future Levels
                   </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={checkVerifiedFutureLevels}
+                    disabled={syncing}
+                    className="gap-1 text-xs"
+                  >
+                    <Shield className="w-3 h-3" />
+                    Check Verified Levels
+                  </Button>
                 </div>
 
                 {futureLevels.length === 0 ? (
