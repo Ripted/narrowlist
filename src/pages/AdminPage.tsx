@@ -2622,12 +2622,12 @@ export default function AdminPage() {
               
               <div>
                 <Label>Verifier</Label>
-                <Select value={editVerifier} onValueChange={setEditVerifier}>
+                <Select value={editVerifier || "none"} onValueChange={(val) => setEditVerifier(val === "none" ? "" : val)}>
                   <SelectTrigger className="mt-1 bg-secondary border-border">
                     <SelectValue placeholder="Select verifier (optional)" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">No verifier set</SelectItem>
+                  <SelectContent className="max-h-[300px]">
+                    <SelectItem value="none">No verifier set</SelectItem>
                     {allProfiles.map(profile => (
                       <SelectItem key={profile.id} value={profile.id}>
                         {profile.display_name || profile.username}

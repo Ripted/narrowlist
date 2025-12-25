@@ -7,6 +7,7 @@ export interface LevelWithRank extends LevelDetails {
   points: number;
   thumbnailUrl?: string;
   dbId?: string;
+  verifierUsername?: string;
 }
 
 export interface PlayerStats {
@@ -25,9 +26,11 @@ interface DbLevel {
   rank_position: number;
   points: number;
   thumbnail_url: string | null;
+  verifier_profile_id: string | null;
 }
 
 interface DbProfile {
+  id: string;
   username: string;
   display_name: string | null;
   avatar_url: string | null;
@@ -41,7 +44,7 @@ async function getProfileCache(): Promise<Map<string, DbProfile>> {
   
   const { data } = await supabase
     .from("profiles")
-    .select("username, display_name, avatar_url");
+    .select("id, username, display_name, avatar_url");
   
   profileCache = new Map();
   if (data) {
@@ -50,6 +53,25 @@ async function getProfileCache(): Promise<Map<string, DbProfile>> {
     }
   }
   return profileCache;
+}
+
+// Map profile IDs to profile data
+let profileIdCache: Map<string, DbProfile> | null = null;
+
+async function getProfileIdCache(): Promise<Map<string, DbProfile>> {
+  if (profileIdCache) return profileIdCache;
+  
+  const { data } = await supabase
+    .from("profiles")
+    .select("id, username, display_name, avatar_url");
+  
+  profileIdCache = new Map();
+  if (data) {
+    for (const p of data) {
+      profileIdCache.set(p.id, p);
+    }
+  }
+  return profileIdCache;
 }
 
 export function getPlayerProfile(username: string): DbProfile | undefined {
@@ -67,22 +89,25 @@ export function useLevels() {
       setError(null);
       
       try {
-        // Fetch levels from database
-        const { data: dbLevels, error: dbError } = await supabase
-          .from("levels")
-          .select("*")
-          .order("rank_position", { ascending: true });
+        // Fetch levels from database and profile ID cache in parallel
+        const [dbResult, profileIdCacheResult] = await Promise.all([
+          supabase
+            .from("levels")
+            .select("*")
+            .order("rank_position", { ascending: true }),
+          getProfileIdCache(),
+        ]);
 
-        if (dbError) throw dbError;
+        if (dbResult.error) throw dbResult.error;
 
-        if (!dbLevels || dbLevels.length === 0) {
+        if (!dbResult.data || dbResult.data.length === 0) {
           setLevels([]);
           setLoading(false);
           return;
         }
 
         // Fetch details from API for each level
-        const levelPromises = dbLevels.map((dbLevel: DbLevel) =>
+        const levelPromises = dbResult.data.map((dbLevel: DbLevel) =>
           fetchLevelDetails(dbLevel.level_id).then((details) => ({
             details,
             dbLevel,
@@ -93,19 +118,27 @@ export function useLevels() {
         
         const validLevels: LevelWithRank[] = results
           .filter((r) => r.details !== null)
-          .map((r) => ({
-            ...r.details!,
-            // Override with DB values if available
-            levelInfo: {
-              ...r.details!.levelInfo,
-              name: r.dbLevel.name || r.details!.levelInfo.name,
-              author: r.dbLevel.author || r.details!.levelInfo.author,
-            },
-            rank: r.dbLevel.rank_position,
-            points: r.dbLevel.points,
-            thumbnailUrl: r.dbLevel.thumbnail_url || undefined,
-            dbId: r.dbLevel.id,
-          }));
+          .map((r) => {
+            // Get verifier username from profile ID
+            const verifierProfile = r.dbLevel.verifier_profile_id 
+              ? profileIdCacheResult.get(r.dbLevel.verifier_profile_id)
+              : null;
+            
+            return {
+              ...r.details!,
+              // Override with DB values if available
+              levelInfo: {
+                ...r.details!.levelInfo,
+                name: r.dbLevel.name || r.details!.levelInfo.name,
+                author: r.dbLevel.author || r.details!.levelInfo.author,
+              },
+              rank: r.dbLevel.rank_position,
+              points: r.dbLevel.points,
+              thumbnailUrl: r.dbLevel.thumbnail_url || undefined,
+              dbId: r.dbLevel.id,
+              verifierUsername: verifierProfile?.display_name || verifierProfile?.username,
+            };
+          });
 
         setLevels(validLevels);
       } catch (err) {

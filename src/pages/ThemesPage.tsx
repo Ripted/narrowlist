@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/Navbar";
 import { useTheme, themes, ThemeName } from "@/hooks/useTheme";
-import { Check, Palette, Sparkles, Star } from "lucide-react";
+import { Check, Palette, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 export default function ThemesPage() {
@@ -8,10 +8,6 @@ export default function ThemesPage() {
   const [hoveredTheme, setHoveredTheme] = useState<ThemeName | null>(null);
   
   const themeKeys = Object.keys(themes) as ThemeName[];
-  
-  // Group themes by category
-  const brandThemes: ThemeName[] = ["spotify", "discord", "youtube", "twitch", "github"];
-  const regularThemes = themeKeys.filter(t => !brandThemes.includes(t));
   
   const getThemeColor = (themeName: ThemeName) => {
     return `hsl(${themes[themeName].colors.primary})`;
@@ -28,7 +24,6 @@ export default function ThemesPage() {
   const ThemeCard = ({ themeName }: { themeName: ThemeName }) => {
     const isSelected = theme === themeName;
     const isHovered = hoveredTheme === themeName;
-    const isBrand = brandThemes.includes(themeName);
     
     return (
       <button
@@ -62,9 +57,8 @@ export default function ThemesPage() {
         </div>
         
         {/* Theme Name */}
-        <div className="font-display font-semibold text-sm text-foreground truncate flex items-center gap-1">
+        <div className="font-display font-semibold text-sm text-foreground truncate">
           {themes[themeName].name}
-          {isBrand && <Star className="w-3 h-3 text-primary fill-primary" />}
         </div>
         
         {/* Selected Indicator */}
@@ -148,19 +142,6 @@ export default function ThemesPage() {
           </div>
         </div>
 
-        {/* Popular Brand Themes */}
-        <div className="mb-8">
-          <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-            <Star className="w-5 h-5 text-primary" />
-            Popular Brand Themes
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4">
-            {brandThemes.map((themeName) => (
-              <ThemeCard key={themeName} themeName={themeName} />
-            ))}
-          </div>
-        </div>
-
         {/* All Themes */}
         <div>
           <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
@@ -168,7 +149,7 @@ export default function ThemesPage() {
             All Themes
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
-            {regularThemes.map((themeName) => (
+            {themeKeys.map((themeName) => (
               <ThemeCard key={themeName} themeName={themeName} />
             ))}
           </div>

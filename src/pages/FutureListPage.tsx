@@ -127,7 +127,7 @@ export default function FutureListPage() {
                         {level.name || "Unnamed Level"}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        By: {level.author || "Unknown"} • {level.points} pts
+                        By: {level.author || "Unknown"}
                       </div>
                     </div>
                     

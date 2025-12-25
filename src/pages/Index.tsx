@@ -97,6 +97,7 @@ const Index = () => {
                     level={level}
                     rank={level.rank}
                     thumbnailUrl={level.thumbnailUrl}
+                    verifierUsername={level.verifierUsername}
                   />
                 </div>
               ))}

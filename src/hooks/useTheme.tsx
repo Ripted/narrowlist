@@ -20,7 +20,7 @@ interface ThemeColors {
 export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = {
   // Original themes
   arrow: {
-    name: "Arrow",
+    name: "Default",
     colors: {
       primary: "235 80% 65%",
       secondary: "255 75% 60%",
