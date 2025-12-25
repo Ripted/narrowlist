@@ -15,7 +15,8 @@
     --popover: 220 25% 9%;
     --popover-foreground: 210 20% 92%;
 
-    --primary: 260 70% 60%;
+    /* Arrow theme - matches the blue/purple logo */
+    --primary: 235 80% 65%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 25% 14%;
@@ -24,7 +25,7 @@
     --muted: 220 20% 18%;
     --muted-foreground: 220 15% 55%;
 
-    --accent: 330 80% 55%;
+    --accent: 255 75% 60%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 70% 50%;
@@ -32,34 +33,34 @@
 
     --border: 220 20% 18%;
     --input: 220 20% 18%;
-    --ring: 260 70% 60%;
+    --ring: 235 80% 65%;
 
     --radius: 0.5rem;
 
-    /* Custom tokens - cyberpunk purple/pink theme */
-    --glow-primary: 260 70% 60%;
-    --glow-accent: 330 80% 55%;
+    /* Custom tokens - arrow blue/purple theme */
+    --glow-primary: 235 80% 65%;
+    --glow-accent: 255 75% 60%;
     --glow-gold: 45 90% 55%;
     --glow-silver: 220 10% 70%;
     --glow-bronze: 25 70% 50%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(260 70% 60%), hsl(280 60% 50%));
-    --gradient-accent: linear-gradient(135deg, hsl(330 80% 55%), hsl(350 70% 50%));
+    --gradient-primary: linear-gradient(135deg, hsl(235 80% 65%), hsl(255 75% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(255 75% 60%), hsl(280 70% 55%));
     --gradient-gold: linear-gradient(135deg, hsl(45 90% 55%), hsl(35 80% 45%));
     --gradient-dark: linear-gradient(180deg, hsl(220 25% 10%), hsl(220 25% 6%));
     --gradient-card: linear-gradient(145deg, hsl(220 25% 12%), hsl(220 25% 8%));
 
-    --shadow-subtle: 0 2px 10px hsl(260 70% 10% / 0.4);
-    --shadow-card: 0 4px 20px hsl(260 70% 10% / 0.5);
+    --shadow-subtle: 0 2px 10px hsl(235 80% 10% / 0.4);
+    --shadow-card: 0 4px 20px hsl(235 80% 10% / 0.5);
 
     --sidebar-background: 220 25% 8%;
     --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 260 70% 60%;
+    --sidebar-primary: 235 80% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 25% 15%;
     --sidebar-accent-foreground: 210 20% 92%;
     --sidebar-border: 220 20% 18%;
-    --sidebar-ring: 260 70% 60%;
+    --sidebar-ring: 235 80% 65%;
   }
 
   .dark {
@@ -69,27 +70,27 @@
     --card-foreground: 210 20% 92%;
     --popover: 220 25% 9%;
     --popover-foreground: 210 20% 92%;
-    --primary: 260 70% 60%;
+    --primary: 235 80% 65%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 25% 14%;
     --secondary-foreground: 210 20% 92%;
     --muted: 220 20% 18%;
     --muted-foreground: 220 15% 55%;
-    --accent: 330 80% 55%;
+    --accent: 255 75% 60%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 20% 18%;
     --input: 220 20% 18%;
-    --ring: 260 70% 60%;
+    --ring: 235 80% 65%;
     --sidebar-background: 220 25% 8%;
     --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 260 70% 60%;
+    --sidebar-primary: 235 80% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 25% 15%;
     --sidebar-accent-foreground: 210 20% 92%;
     --sidebar-border: 220 20% 18%;
-    --sidebar-ring: 260 70% 60%;
+    --sidebar-ring: 235 80% 65%;
   }
 }
 
