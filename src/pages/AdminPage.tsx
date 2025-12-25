@@ -11,7 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
-  ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History
+  ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
+  ListCollapse, List, Play
 } from "lucide-react";
 import {
   AlertDialog,
@@ -29,6 +30,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Level {
   id: string;
@@ -77,6 +85,29 @@ interface ChangelogEntry {
   created_at: string;
 }
 
+interface ManualRun {
+  id: string;
+  level_id: string;
+  profile_id: string;
+  completion_time: number;
+  arrow_name: string;
+  is_verifier: boolean;
+  completed_at: string;
+  note: string | null;
+  added_by_admin_email: string;
+  created_at: string;
+  level_name?: string;
+  profile_username?: string;
+}
+
+interface Profile {
+  id: string;
+  username: string;
+  display_name: string | null;
+}
+
+const ITEMS_PER_PAGE = 20;
+
 export default function AdminPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -86,9 +117,15 @@ export default function AdminPage() {
   const [futureLevels, setFutureLevels] = useState<FutureLevel[]>([]);
   const [approvedPlayers, setApprovedPlayers] = useState<ApprovedPlayer[]>([]);
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
+  const [manualRuns, setManualRuns] = useState<ManualRun[]>([]);
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAll, setShowAll] = useState(false);
   
   // New level form with rank
   const [newLevelId, setNewLevelId] = useState("");
@@ -115,6 +152,7 @@ export default function AdminPage() {
   // Delete confirmation
   const [deleteConfirmLevel, setDeleteConfirmLevel] = useState<Level | null>(null);
   const [deleteConfirmFutureLevel, setDeleteConfirmFutureLevel] = useState<FutureLevel | null>(null);
+  const [deleteConfirmManualRun, setDeleteConfirmManualRun] = useState<ManualRun | null>(null);
   
   // Quick rank change
   const [rankInputId, setRankInputId] = useState<string | null>(null);
@@ -134,9 +172,17 @@ export default function AdminPage() {
   const [claimRequests, setClaimRequests] = useState<ClaimRequest[]>([]);
   const [processingClaim, setProcessingClaim] = useState<string | null>(null);
   
-  // Player email edit
-  const [editingPlayerEmail, setEditingPlayerEmail] = useState<string | null>(null);
-  const [playerEmailValue, setPlayerEmailValue] = useState("");
+  // Manual run form
+  const [addManualRunOpen, setAddManualRunOpen] = useState(false);
+  const [editingManualRun, setEditingManualRun] = useState<ManualRun | null>(null);
+  const [manualRunLevel, setManualRunLevel] = useState("");
+  const [manualRunProfile, setManualRunProfile] = useState("");
+  const [manualRunTime, setManualRunTime] = useState("");
+  const [manualRunArrow, setManualRunArrow] = useState("Energy Arrow");
+  const [manualRunVerifier, setManualRunVerifier] = useState(false);
+  const [manualRunDate, setManualRunDate] = useState("");
+  const [manualRunNote, setManualRunNote] = useState("");
+  const [addingManualRun, setAddingManualRun] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -152,6 +198,8 @@ export default function AdminPage() {
       fetchClaimRequests();
       fetchApprovedPlayers();
       fetchChangelog();
+      fetchManualRuns();
+      fetchAllProfiles();
     }
   }, [isAdmin]);
 
@@ -173,6 +221,47 @@ export default function AdminPage() {
       .limit(50);
     
     if (data) setChangelog(data);
+  };
+
+  const fetchManualRuns = async () => {
+    const { data } = await supabase
+      .from("manual_runs")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data) {
+      // Get level names and profile usernames
+      const enrichedRuns = await Promise.all(data.map(async (run) => {
+        const { data: level } = await supabase
+          .from("levels")
+          .select("name")
+          .eq("id", run.level_id)
+          .maybeSingle();
+        
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", run.profile_id)
+          .maybeSingle();
+        
+        return {
+          ...run,
+          level_name: level?.name || "Unknown Level",
+          profile_username: profile?.username || "Unknown Player",
+        };
+      }));
+      
+      setManualRuns(enrichedRuns);
+    }
+  };
+
+  const fetchAllProfiles = async () => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, username, display_name")
+      .order("username");
+    
+    if (data) setAllProfiles(data);
   };
 
   const fetchLevels = async () => {
@@ -322,6 +411,12 @@ export default function AdminPage() {
     if (rank >= 26 && rank <= 50) return 2;
     return 1;
   };
+
+  // Pagination
+  const totalPages = Math.ceil(levels.length / ITEMS_PER_PAGE);
+  const paginatedLevels = showAll 
+    ? levels 
+    : levels.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const addLevel = async () => {
     if (!newLevelId.trim()) return;
@@ -867,10 +962,10 @@ export default function AdminPage() {
         const leaderboard = await fetchLeaderboard(futureLevel.level_id);
         if (leaderboard.length === 0) continue;
         
-        // Check if any run has a verifier (the person who verified the level)
+        // Check if any run has verified=true (the person who verified the level)
         for (const entry of leaderboard) {
           const runDetails = await fetchRunDetails(entry.run_id);
-          if (runDetails?.verifier === true) {
+          if (runDetails?.verified === true) {
             // Level has been verified, move to main list
             await moveFutureLevelToMain(futureLevel);
             movedCount++;
@@ -952,6 +1047,109 @@ export default function AdminPage() {
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
+  };
+
+  // Manual Runs
+  const openAddManualRun = () => {
+    setEditingManualRun(null);
+    setManualRunLevel("");
+    setManualRunProfile("");
+    setManualRunTime("");
+    setManualRunArrow("Energy Arrow");
+    setManualRunVerifier(false);
+    setManualRunDate(new Date().toISOString().split("T")[0]);
+    setManualRunNote("");
+    setAddManualRunOpen(true);
+  };
+
+  const openEditManualRun = (run: ManualRun) => {
+    setEditingManualRun(run);
+    setManualRunLevel(run.level_id);
+    setManualRunProfile(run.profile_id);
+    setManualRunTime(String(run.completion_time));
+    setManualRunArrow(run.arrow_name);
+    setManualRunVerifier(run.is_verifier);
+    setManualRunDate(run.completed_at.split("T")[0]);
+    setManualRunNote(run.note || "");
+    setAddManualRunOpen(true);
+  };
+
+  const saveManualRun = async () => {
+    if (!manualRunLevel || !manualRunProfile || !manualRunTime || !manualRunDate) {
+      toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
+      return;
+    }
+
+    setAddingManualRun(true);
+
+    try {
+      const completionTime = parseFloat(manualRunTime);
+      if (isNaN(completionTime) || completionTime <= 0) {
+        throw new Error("Invalid completion time");
+      }
+
+      if (editingManualRun) {
+        // Update existing
+        const { error } = await supabase
+          .from("manual_runs")
+          .update({
+            level_id: manualRunLevel,
+            profile_id: manualRunProfile,
+            completion_time: completionTime,
+            arrow_name: manualRunArrow,
+            is_verifier: manualRunVerifier,
+            completed_at: new Date(manualRunDate).toISOString(),
+            note: manualRunNote || null,
+          })
+          .eq("id", editingManualRun.id);
+
+        if (error) throw error;
+        await logAction("Updated manual run", `${manualRunTime}s for profile ${manualRunProfile}`);
+        toast({ title: "Success", description: "Manual run updated" });
+      } else {
+        // Create new
+        const { error } = await supabase.from("manual_runs").insert({
+          level_id: manualRunLevel,
+          profile_id: manualRunProfile,
+          completion_time: completionTime,
+          arrow_name: manualRunArrow,
+          is_verifier: manualRunVerifier,
+          completed_at: new Date(manualRunDate).toISOString(),
+          note: manualRunNote || null,
+          added_by_admin_id: user!.id,
+          added_by_admin_email: user!.email || "unknown",
+        });
+
+        if (error) throw error;
+        await logAction("Added manual run", `${manualRunTime}s for profile ${manualRunProfile}`);
+        toast({ title: "Success", description: "Manual run added" });
+      }
+
+      setAddManualRunOpen(false);
+      fetchManualRuns();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setAddingManualRun(false);
+    }
+  };
+
+  const deleteManualRun = async () => {
+    if (!deleteConfirmManualRun) return;
+
+    const { error } = await supabase.from("manual_runs").delete().eq("id", deleteConfirmManualRun.id);
+
+    if (error) {
+      toast({ title: "Error", description: "Failed to delete manual run", variant: "destructive" });
+    } else {
+      await logAction("Deleted manual run", `${deleteConfirmManualRun.completion_time}s for ${deleteConfirmManualRun.profile_username}`);
+      toast({ title: "Success", description: "Manual run deleted" });
+      fetchManualRuns();
+      fetchChangelog();
+    }
+
+    setDeleteConfirmManualRun(null);
   };
 
   if (authLoading || loading) {
@@ -1064,6 +1262,7 @@ export default function AdminPage() {
             <TabsList className="w-full justify-start overflow-x-auto flex-wrap">
               <TabsTrigger value="levels" className="text-xs sm:text-sm">Main List ({levels.length})</TabsTrigger>
               <TabsTrigger value="future" className="text-xs sm:text-sm">Future List ({futureLevels.length})</TabsTrigger>
+              <TabsTrigger value="manual-runs" className="text-xs sm:text-sm">Manual Runs ({manualRuns.length})</TabsTrigger>
               <TabsTrigger value="players" className="text-xs sm:text-sm">Players ({approvedPlayers.length})</TabsTrigger>
               <TabsTrigger value="changelog" className="text-xs sm:text-sm">Changelog</TabsTrigger>
             </TabsList>
@@ -1107,16 +1306,27 @@ export default function AdminPage() {
                       {levels.length} levels
                     </span>
                   </h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={manualCheckEmptyLevels}
-                    disabled={syncing}
-                    className="gap-1 text-xs"
-                  >
-                    <AlertTriangle className="w-3 h-3" />
-                    Check Empty Levels
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAll(!showAll)}
+                      className="gap-1 text-xs"
+                    >
+                      {showAll ? <ListCollapse className="w-3 h-3" /> : <List className="w-3 h-3" />}
+                      {showAll ? "Paginate" : "Show All"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={manualCheckEmptyLevels}
+                      disabled={syncing}
+                      className="gap-1 text-xs"
+                    >
+                      <AlertTriangle className="w-3 h-3" />
+                      Check Empty
+                    </Button>
+                  </div>
                 </div>
 
                 {levels.length === 0 ? (
@@ -1124,172 +1334,202 @@ export default function AdminPage() {
                     No levels added yet.
                   </div>
                 ) : (
-                  <div className="divide-y divide-border">
-                    {levels.map((level, index) => (
-                      <div
-                        key={level.id}
-                        draggable
-                        onDragStart={() => handleDragStart(index)}
-                        onDragOver={(e) => handleDragOver(e, index)}
-                        onDrop={() => handleDrop(index)}
-                        onDragEnd={handleDragEnd}
-                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
-                          ${draggedIndex === index ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
-                          ${dragOverIndex === index && draggedIndex !== index ? "border-t-2 border-primary" : ""}
-                        `}
-                      >
-                        <div className="flex-shrink-0 text-muted-foreground hidden sm:block">
-                          <GripVertical className="w-5 h-5" />
-                        </div>
+                  <>
+                    <div className="divide-y divide-border">
+                      {paginatedLevels.map((level, index) => {
+                        const realIndex = showAll ? index : (currentPage - 1) * ITEMS_PER_PAGE + index;
+                        return (
+                          <div
+                            key={level.id}
+                            draggable
+                            onDragStart={() => handleDragStart(realIndex)}
+                            onDragOver={(e) => handleDragOver(e, realIndex)}
+                            onDrop={() => handleDrop(realIndex)}
+                            onDragEnd={handleDragEnd}
+                            className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
+                              ${draggedIndex === realIndex ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
+                              ${dragOverIndex === realIndex && draggedIndex !== realIndex ? "border-t-2 border-primary" : ""}
+                            `}
+                          >
+                            <div className="flex-shrink-0 text-muted-foreground hidden sm:block">
+                              <GripVertical className="w-5 h-5" />
+                            </div>
 
-                        <div className="w-12 md:w-16 flex-shrink-0">
-                          {rankInputId === level.id ? (
-                            <div className="flex items-center gap-1">
-                              <Input
-                                type="number"
-                                min={1}
-                                max={levels.length}
-                                value={rankInputValue}
-                                onChange={(e) => setRankInputValue(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && confirmRankChange()}
-                                className="w-12 h-8 text-center p-1 bg-secondary"
-                                autoFocus
-                              />
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmRankChange}>
-                                <Check className="w-3 h-3 text-green-500" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRankInputId(null)}>
-                                <X className="w-3 h-3 text-destructive" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => startRankEdit(level)}
-                              className="font-display font-bold text-lg text-foreground hover:text-primary transition-colors"
-                              title="Click to change rank"
-                            >
-                              #{index + 1}
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="w-16 md:w-20 h-10 md:h-12 rounded bg-secondary overflow-hidden flex-shrink-0 relative group">
-                          {uploadingThumbnail === level.id ? (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                            </div>
-                          ) : thumbnailEditId === level.id ? (
-                            <div className="absolute inset-0 bg-card p-1 flex items-center gap-1 z-10">
-                              <Input
-                                type="text"
-                                placeholder="URL..."
-                                value={thumbnailInputValue}
-                                onChange={(e) => setThumbnailInputValue(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && confirmThumbnailChange()}
-                                className="h-full text-xs p-1 bg-secondary flex-1"
-                                autoFocus
-                              />
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmThumbnailChange}>
-                                <Check className="w-3 h-3 text-green-500" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setThumbnailEditId(null)}>
-                                <X className="w-3 h-3 text-destructive" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                id={`thumb-upload-${level.id}`}
-                                onChange={(e) => handleQuickThumbnailUpload(e, level.id)}
-                              />
-                              <div className="w-full h-full relative">
-                                {level.thumbnail_url ? (
-                                  <img
-                                    src={level.thumbnail_url}
-                                    alt={level.name || "Level"}
-                                    className="w-full h-full object-cover"
+                            <div className="w-12 md:w-16 flex-shrink-0">
+                              {rankInputId === level.id ? (
+                                <div className="flex items-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min={1}
+                                    max={levels.length}
+                                    value={rankInputValue}
+                                    onChange={(e) => setRankInputValue(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && confirmRankChange()}
+                                    className="w-12 h-8 text-center p-1 bg-secondary"
+                                    autoFocus
                                   />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Image className="w-4 h-4 text-muted-foreground" />
-                                  </div>
-                                )}
-                                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
-                                  <button
-                                    onClick={() => document.getElementById(`thumb-upload-${level.id}`)?.click()}
-                                    className="p-1 rounded bg-primary/80 hover:bg-primary"
-                                    title="Upload image"
-                                  >
-                                    <ImagePlus className="w-3 h-3 text-primary-foreground" />
-                                  </button>
-                                  <button
-                                    onClick={() => startThumbnailEdit(level)}
-                                    className="p-1 rounded bg-secondary/80 hover:bg-secondary"
-                                    title="Enter URL"
-                                  >
-                                    <Edit2 className="w-3 h-3 text-foreground" />
-                                  </button>
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmRankChange}>
+                                    <Check className="w-3 h-3 text-green-500" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRankInputId(null)}>
+                                    <X className="w-3 h-3 text-destructive" />
+                                  </Button>
                                 </div>
+                              ) : (
+                                <button
+                                  onClick={() => startRankEdit(level)}
+                                  className="font-display font-bold text-lg text-foreground hover:text-primary transition-colors"
+                                  title="Click to change rank"
+                                >
+                                  #{level.rank_position}
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="w-16 md:w-20 h-10 md:h-12 rounded bg-secondary overflow-hidden flex-shrink-0 relative group">
+                              {uploadingThumbnail === level.id ? (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                </div>
+                              ) : thumbnailEditId === level.id ? (
+                                <div className="absolute inset-0 bg-card p-1 flex items-center gap-1 z-10">
+                                  <Input
+                                    type="text"
+                                    placeholder="URL..."
+                                    value={thumbnailInputValue}
+                                    onChange={(e) => setThumbnailInputValue(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && confirmThumbnailChange()}
+                                    className="h-full text-xs p-1 bg-secondary flex-1"
+                                    autoFocus
+                                  />
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmThumbnailChange}>
+                                    <Check className="w-3 h-3 text-green-500" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setThumbnailEditId(null)}>
+                                    <X className="w-3 h-3 text-destructive" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    id={`thumb-upload-${level.id}`}
+                                    onChange={(e) => handleQuickThumbnailUpload(e, level.id)}
+                                  />
+                                  <div className="w-full h-full relative">
+                                    {level.thumbnail_url ? (
+                                      <img
+                                        src={level.thumbnail_url}
+                                        alt={level.name || "Level"}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                        <Image className="w-4 h-4 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                    <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                                      <button
+                                        onClick={() => document.getElementById(`thumb-upload-${level.id}`)?.click()}
+                                        className="p-1 rounded bg-primary/80 hover:bg-primary"
+                                        title="Upload image"
+                                      >
+                                        <ImagePlus className="w-3 h-3 text-primary-foreground" />
+                                      </button>
+                                      <button
+                                        onClick={() => startThumbnailEdit(level)}
+                                        className="p-1 rounded bg-secondary/80 hover:bg-secondary"
+                                        title="Enter URL"
+                                      >
+                                        <Edit2 className="w-3 h-3 text-foreground" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-foreground truncate text-sm md:text-base">
+                                {level.name || "Unnamed Level"}
                               </div>
-                            </>
-                          )}
-                        </div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                {level.author || "Unknown"} • {level.points} pts
+                              </div>
+                            </div>
 
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-foreground truncate text-sm md:text-base">
-                            {level.name || "Unnamed Level"}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => moveLevel(realIndex, "up")}
+                                disabled={realIndex === 0 || saving}
+                                className="h-8 w-8 hidden sm:flex"
+                                title="Move up"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => moveLevel(realIndex, "down")}
+                                disabled={realIndex === levels.length - 1 || saving}
+                                className="h-8 w-8 hidden sm:flex"
+                                title="Move down"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditModal(level)}
+                                className="h-8 w-8"
+                                title="Edit details"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDeleteConfirmLevel(level)}
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                title="Remove level"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {level.author || "Unknown"} • {level.points} pts
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => moveLevel(index, "up")}
-                            disabled={index === 0 || saving}
-                            className="h-8 w-8 hidden sm:flex"
-                            title="Move up"
-                          >
-                            <ChevronUp className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => moveLevel(index, "down")}
-                            disabled={index === levels.length - 1 || saving}
-                            className="h-8 w-8 hidden sm:flex"
-                            title="Move down"
-                          >
-                            <ChevronDown className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditModal(level)}
-                            className="h-8 w-8"
-                            title="Edit details"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteConfirmLevel(level)}
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            title="Remove level"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Pagination */}
+                    {!showAll && totalPages > 1 && (
+                      <div className="p-4 border-t border-border flex items-center justify-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                        </Button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             </TabsContent>
@@ -1378,6 +1618,81 @@ export default function AdminPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => setDeleteConfirmFutureLevel(level)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="manual-runs" className="space-y-6">
+              {/* Add Manual Run */}
+              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <Play className="w-5 h-5 text-primary" />
+                    Manual Runs
+                  </h2>
+                  <Button onClick={openAddManualRun} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Run
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Add runs that are not tracked in the API (e.g., old records, removed runs). These will show in leaderboards with a special note.
+                </p>
+              </div>
+
+              {/* Manual Runs List */}
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <History className="w-5 h-5 text-primary" />
+                    Added Runs ({manualRuns.length})
+                  </h2>
+                </div>
+
+                {manualRuns.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No manual runs added yet.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {manualRuns.map((run) => (
+                      <div key={run.id} className="flex items-center gap-4 p-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground flex items-center gap-2">
+                            {run.profile_username}
+                            {run.is_verifier && (
+                              <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">Verifier</span>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {run.level_name} • {run.completion_time}s • {run.arrow_name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Completed: {new Date(run.completed_at).toLocaleDateString()} • Added by: {run.added_by_admin_email}
+                            {run.note && <span className="ml-2 italic">• {run.note}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditManualRun(run)}
+                            className="h-8 w-8"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteConfirmManualRun(run)}
                             className="h-8 w-8 text-destructive hover:text-destructive"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1531,6 +1846,120 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Add/Edit Manual Run Modal */}
+      {addManualRunOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-lg space-y-4">
+            <h2 className="font-display text-xl font-bold flex items-center gap-2">
+              <Play className="w-5 h-5 text-primary" />
+              {editingManualRun ? "Edit Manual Run" : "Add Manual Run"}
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <Label>Level *</Label>
+                <Select value={manualRunLevel} onValueChange={setManualRunLevel}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border">
+                    <SelectValue placeholder="Select a level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {levels.map(level => (
+                      <SelectItem key={level.id} value={level.id}>
+                        #{level.rank_position} - {level.name || level.level_id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Player *</Label>
+                <Select value={manualRunProfile} onValueChange={setManualRunProfile}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border">
+                    <SelectValue placeholder="Select a player" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allProfiles.map(profile => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.display_name || profile.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Time (seconds) *</Label>
+                  <Input
+                    type="number"
+                    step="0.001"
+                    min="0"
+                    value={manualRunTime}
+                    onChange={(e) => setManualRunTime(e.target.value)}
+                    placeholder="123.456"
+                    className="mt-1 bg-secondary border-border"
+                  />
+                </div>
+                <div>
+                  <Label>Date *</Label>
+                  <Input
+                    type="date"
+                    value={manualRunDate}
+                    onChange={(e) => setManualRunDate(e.target.value)}
+                    className="mt-1 bg-secondary border-border"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label>Arrow</Label>
+                <Select value={manualRunArrow} onValueChange={setManualRunArrow}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Energy Arrow">Energy Arrow</SelectItem>
+                    <SelectItem value="Speedy Arrow">Speedy Arrow</SelectItem>
+                    <SelectItem value="Narrow Arrow">Narrow Arrow</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="manualRunVerifier"
+                  checked={manualRunVerifier}
+                  onChange={(e) => setManualRunVerifier(e.target.checked)}
+                  className="rounded"
+                />
+                <Label htmlFor="manualRunVerifier">This is the verifier run</Label>
+              </div>
+
+              <div>
+                <Label>Note (shown in leaderboard)</Label>
+                <Input
+                  value={manualRunNote}
+                  onChange={(e) => setManualRunNote(e.target.value)}
+                  placeholder="e.g., 'Time no longer visible on official leaderboards'"
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-4">
+              <Button variant="outline" onClick={() => setAddManualRunOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={saveManualRun} disabled={addingManualRun}>
+                {addingManualRun ? "Saving..." : editingManualRun ? "Update Run" : "Add Run"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Modal */}
       {editingLevel && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1652,6 +2081,30 @@ export default function AdminPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={deleteFutureLevel}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Manual Run Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmManualRun} onOpenChange={() => setDeleteConfirmManualRun(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Delete Manual Run?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this manual run from <strong>{deleteConfirmManualRun?.profile_username}</strong>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={deleteManualRun}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

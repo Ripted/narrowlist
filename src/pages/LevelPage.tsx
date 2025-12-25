@@ -6,27 +6,40 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info } from "lucide-react";
 
 interface DbProfile {
+  id: string;
   username: string;
   display_name: string | null;
   avatar_url: string | null;
 }
 
+interface ManualRunEntry {
+  isManual: true;
+  run_id: number;
+  completion_time: number;
+  username: string;
+  arrow_name: string;
+  is_verifier: boolean;
+  completed_at: string;
+  note: string | null;
+}
+
 export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
-  const { level, leaderboard, rank, points, thumbnailUrl, loading } = useLevel(levelId || "");
+  const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId } = useLevel(levelId || "");
   const [runDetails, setRunDetails] = useState<Map<number, RunDetails>>(new Map());
   const [loadingRuns, setLoadingRuns] = useState(false);
   const [profiles, setProfiles] = useState<Map<string, DbProfile>>(new Map());
+  const [manualRuns, setManualRuns] = useState<ManualRunEntry[]>([]);
 
   // Fetch profiles from DB
   useEffect(() => {
     async function loadProfiles() {
       const { data } = await supabase
         .from("profiles")
-        .select("username, display_name, avatar_url");
+        .select("id, username, display_name, avatar_url");
       
       if (data) {
         const map = new Map<string, DbProfile>();
@@ -38,6 +51,33 @@ export default function LevelPage() {
     }
     loadProfiles();
   }, []);
+
+  // Fetch manual runs for this level
+  useEffect(() => {
+    async function loadManualRuns() {
+      if (!levelDbId) return;
+      
+      const { data } = await supabase
+        .from("manual_runs")
+        .select("*, profiles(username)")
+        .eq("level_id", levelDbId);
+      
+      if (data) {
+        const runs: ManualRunEntry[] = data.map((run, idx) => ({
+          isManual: true,
+          run_id: -1000 - idx, // Negative ID to differentiate
+          completion_time: Number(run.completion_time),
+          username: (run.profiles as any)?.username || "Unknown",
+          arrow_name: run.arrow_name,
+          is_verifier: run.is_verifier,
+          completed_at: run.completed_at,
+          note: run.note,
+        }));
+        setManualRuns(runs);
+      }
+    }
+    loadManualRuns();
+  }, [levelDbId]);
 
   useEffect(() => {
     if (leaderboard.length > 0) {
@@ -60,13 +100,13 @@ export default function LevelPage() {
     }
   }, [leaderboard]);
 
-  // Find verifier - check for verifier boolean field (not verified which means run was validated)
+  // Find verifier - check for verified boolean field on each run
+  // The run with verified=true indicates this person verified the level
   const verifierEntry = useMemo(() => {
     for (const entry of leaderboard) {
       const details = runDetails.get(entry.run_id);
-      // Use verifier field to identify the verifier (the person who verified the level)
-      // verified field just means the run was validated
-      if (details?.verifier === true) {
+      // Use verified field - if true, this person is the verifier
+      if (details?.verified === true) {
         return { ...entry, details };
       }
     }
@@ -239,7 +279,7 @@ export default function LevelPage() {
                 {leaderboard.map((entry, index) => {
                   const profile = getProfile(entry.username);
                   const details = runDetails.get(entry.run_id);
-                  const isVerifier = details?.verifier === true;
+                  const isVerifier = details?.verified === true;
                   
                   return (
                     <Link
