@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers } from "lucide-react";
 
 interface DbProfile {
   id: string;
@@ -29,7 +29,7 @@ interface ManualRunEntry {
 
 export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
-  const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId, verifierProfileId } = useLevel(levelId || "");
+  const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId, verifierProfileId, alternativeIds } = useLevel(levelId || "");
   const { toast } = useToast();
   const [runDetails, setRunDetails] = useState<Map<number, RunDetails>>(new Map());
   const [loadingRuns, setLoadingRuns] = useState(false);
@@ -313,6 +313,29 @@ export default function LevelPage() {
               </div>
             </div>
           </div>
+
+          {/* Alternative Level IDs Section */}
+          {alternativeIds.length > 0 && (
+            <div className="rounded-lg bg-card border border-border p-4 mb-8">
+              <h3 className="font-display text-sm font-bold flex items-center gap-2 mb-3 text-muted-foreground">
+                <Layers className="w-4 h-4" />
+                Alternative Level IDs
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {alternativeIds.map((altId) => (
+                  <span
+                    key={altId}
+                    className="font-mono text-xs bg-secondary px-2 py-1 rounded text-foreground"
+                  >
+                    {altId}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Completions from these alternative versions also count for this level.
+              </p>
+            </div>
+          )}
 
           <div className="rounded-lg bg-card border border-border overflow-hidden">
             <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

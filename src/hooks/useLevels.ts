@@ -172,6 +172,7 @@ export function useLevel(levelId: string) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [levelDbId, setLevelDbId] = useState<string | null>(null);
   const [verifierProfileId, setVerifierProfileId] = useState<string | null>(null);
+  const [alternativeIds, setAlternativeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -184,10 +185,36 @@ export function useLevel(levelId: string) {
         fetchLeaderboard(levelId),
         supabase
           .from("levels")
-          .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id")
+          .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id, alternative_ids")
           .eq("level_id", levelId)
           .maybeSingle(),
       ]);
+
+      const altIds = dbResult.data?.alternative_ids || [];
+      setAlternativeIds(altIds);
+
+      // Fetch leaderboards for alternative IDs if any
+      let combinedLeaderboard = [...lb];
+      
+      if (altIds.length > 0) {
+        const altLeaderboards = await Promise.all(
+          altIds.map(altId => fetchLeaderboard(altId))
+        );
+        
+        // Merge alternative leaderboards, avoiding duplicates by username
+        const seenUsernames = new Set(lb.map(e => e.username.toLowerCase()));
+        for (const altLb of altLeaderboards) {
+          for (const entry of altLb) {
+            if (!seenUsernames.has(entry.username.toLowerCase())) {
+              seenUsernames.add(entry.username.toLowerCase());
+              combinedLeaderboard.push(entry);
+            }
+          }
+        }
+        
+        // Sort by completion time
+        combinedLeaderboard.sort((a, b) => a.completion_time - b.completion_time);
+      }
 
       if (details && dbResult.data) {
         setLevel({
@@ -207,14 +234,14 @@ export function useLevel(levelId: string) {
         setLevel(details);
       }
       
-      setLeaderboard(lb);
+      setLeaderboard(combinedLeaderboard);
       setLoading(false);
     }
 
     load();
   }, [levelId]);
 
-  return { level, leaderboard, rank, points, thumbnailUrl, levelDbId, verifierProfileId, loading };
+  return { level, leaderboard, rank, points, thumbnailUrl, levelDbId, verifierProfileId, alternativeIds, loading };
 }
 
 export function usePlayerLeaderboard() {
