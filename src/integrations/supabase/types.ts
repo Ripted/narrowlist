@@ -372,6 +372,57 @@ export type Database = {
         }
         Relationships: []
       }
+      run_submissions: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          id: string
+          is_verifier: boolean
+          level_id: string
+          level_name: string | null
+          proof_url: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submitted_by: string | null
+          submitted_by_email: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          is_verifier?: boolean
+          level_id: string
+          level_name?: string | null
+          proof_url: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_by_email: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          id?: string
+          is_verifier?: boolean
+          level_id?: string
+          level_name?: string | null
+          proof_url?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submitted_by?: string | null
+          submitted_by_email?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       submission_banned_users: {
         Row: {
           banned_by: string
