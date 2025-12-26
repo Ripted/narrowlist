@@ -48,7 +48,7 @@ export default function PlayerPage() {
   const [verifiedCount, setVerifiedCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [userHasProfile, setUserHasProfile] = useState(false);
-  const [sortMode, setSortMode] = useState<"time" | "date">("time");
+  const [sortMode, setSortMode] = useState<"rank" | "date">("rank");
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -195,7 +195,7 @@ export default function PlayerPage() {
       completions = completions.filter((c) => c.levelName.toLowerCase().includes(q));
     }
     
-    // Apply sorting
+    // Apply sorting - default to rank (by level difficulty), or by date/time
     if (sortMode === "date") {
       completions = [...completions].sort((a, b) => {
         if (!a.completedAt && !b.completedAt) return 0;
@@ -203,10 +203,17 @@ export default function PlayerPage() {
         if (!b.completedAt) return -1;
         return Date.parse(a.completedAt) - Date.parse(b.completedAt);
       });
+    } else {
+      // Sort by level rank (hardest first)
+      completions = [...completions].sort((a, b) => {
+        const rankA = levelRankMap.get(a.levelId)?.rank || 999;
+        const rankB = levelRankMap.get(b.levelId)?.rank || 999;
+        return rankA - rankB;
+      });
     }
     
     return completions;
-  }, [player, searchQuery, sortMode]);
+  }, [player, searchQuery, sortMode, levelRankMap]);
 
   const totalPages = Math.ceil(filteredCompletions.length / ITEMS_PER_PAGE);
   const paginatedCompletions = useMemo(() => {
@@ -514,13 +521,13 @@ export default function PlayerPage() {
                   <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-sm bg-secondary border-border" />
                 </div>
                 <Button
-                  variant={sortMode === "time" ? "secondary" : "outline"}
+                  variant={sortMode === "rank" ? "secondary" : "outline"}
                   size="sm"
-                  onClick={() => setSortMode(sortMode === "time" ? "date" : "time")}
+                  onClick={() => setSortMode(sortMode === "rank" ? "date" : "rank")}
                   className="gap-2 flex-shrink-0"
                 >
                   <ArrowUpDown className="w-4 h-4" />
-                  <span className="hidden sm:inline">{sortMode === "time" ? "Fastest" : "Oldest"}</span>
+                  <span className="hidden sm:inline">{sortMode === "rank" ? "By Rank" : "By Date"}</span>
                 </Button>
               </div>
             </div>

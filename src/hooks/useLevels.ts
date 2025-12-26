@@ -216,8 +216,8 @@ export function usePlayerLeaderboard() {
     async function loadPlayerStats() {
       setLoading(true);
       
-      // Fetch profiles, levels, and completions in parallel
-      const [profileCacheResult, levelsResult, completionsResult] = await Promise.all([
+      // Fetch profiles, levels, completions, and manual runs in parallel
+      const [profileCacheResult, levelsResult, completionsResult, manualRunsResult] = await Promise.all([
         getProfileCache(),
         supabase
           .from("levels")
@@ -226,10 +226,14 @@ export function usePlayerLeaderboard() {
         supabase
           .from("completions")
           .select("profile_id, level_id, completed_at, completion_time"),
+        supabase
+          .from("manual_runs")
+          .select("profile_id, level_id, completed_at, completion_time"),
       ]);
 
       const dbLevels = levelsResult.data;
       const completions = completionsResult.data;
+      const manualRuns = manualRunsResult.data;
       
       if (!dbLevels || dbLevels.length === 0) {
         setPlayers([]);
@@ -239,11 +243,11 @@ export function usePlayerLeaderboard() {
 
       // Create maps: levelMapById maps UUID id to info (for completion lookups)
       // levelMapByLevelId maps string level_id to info
-      const levelMapById = new Map<string, { level_id: string; name: string; points: number }>();
-      const levelMapByLevelId = new Map<string, { id: string; name: string; points: number }>();
+      const levelMapById = new Map<string, { level_id: string; name: string; points: number; rank: number }>();
+      const levelMapByLevelId = new Map<string, { id: string; name: string; points: number; rank: number }>();
       for (const level of dbLevels) {
-        levelMapById.set(level.id, { level_id: level.level_id, name: level.name || "Unknown Level", points: level.points });
-        levelMapByLevelId.set(level.level_id, { id: level.id, name: level.name || "Unknown Level", points: level.points });
+        levelMapById.set(level.id, { level_id: level.level_id, name: level.name || "Unknown Level", points: level.points, rank: level.rank_position });
+        levelMapByLevelId.set(level.level_id, { id: level.id, name: level.name || "Unknown Level", points: level.points, rank: level.rank_position });
       }
 
       // Fetch all profiles to map profile_id to username
@@ -257,7 +261,7 @@ export function usePlayerLeaderboard() {
 
       const playerMap = new Map<string, PlayerStats>();
 
-      // Use DB completions if available
+      // Process DB completions
       if (completions && completions.length > 0) {
         for (const completion of completions) {
           const profileInfo = profileIdMap.get(completion.profile_id);
@@ -292,8 +296,47 @@ export function usePlayerLeaderboard() {
             });
           }
         }
-      } else {
-        // Fallback to API leaderboards if no DB completions
+      }
+      
+      // Process manual runs (they also give points!)
+      if (manualRuns && manualRuns.length > 0) {
+        for (const run of manualRuns) {
+          const profileInfo = profileIdMap.get(run.profile_id);
+          if (!profileInfo) continue;
+          
+          const username = profileInfo.username;
+          // manual_runs.level_id is the UUID (levels.id), so use levelMapById
+          const levelInfo = levelMapById.get(run.level_id);
+          if (!levelInfo) continue;
+          
+          if (!playerMap.has(username)) {
+            playerMap.set(username, {
+              username,
+              displayName: profileInfo.display_name || undefined,
+              avatarUrl: profileInfo.avatar_url || undefined,
+              totalPoints: 0,
+              completions: [],
+            });
+          }
+
+          const player = playerMap.get(username)!;
+          
+          // Only count each level once - use string level_id for dedup
+          if (!player.completions.find((c) => c.levelId === levelInfo.level_id)) {
+            player.totalPoints += levelInfo.points;
+            player.completions.push({
+              levelId: levelInfo.level_id,
+              levelName: levelInfo.name,
+              points: levelInfo.points,
+              time: run.completion_time,
+              completedAt: run.completed_at,
+            });
+          }
+        }
+      }
+
+      // Fallback to API leaderboards if no DB completions AND no manual runs
+      if ((!completions || completions.length === 0) && (!manualRuns || manualRuns.length === 0)) {
         const leaderboardPromises = dbLevels.map((level) =>
           fetchLeaderboard(level.level_id).then((lb) => ({
             levelId: level.level_id,

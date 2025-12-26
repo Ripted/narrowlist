@@ -106,6 +106,7 @@ interface ManualRun {
   is_verifier: boolean;
   completed_at: string;
   note: string | null;
+  proof_url: string | null;
   added_by_admin_email: string;
   created_at: string;
   level_name?: string;
@@ -245,7 +246,10 @@ export default function AdminPage() {
   const [manualRunVerifier, setManualRunVerifier] = useState(false);
   const [manualRunDate, setManualRunDate] = useState("");
   const [manualRunNote, setManualRunNote] = useState("");
+  const [manualRunProofUrl, setManualRunProofUrl] = useState("");
+  const [uploadingProof, setUploadingProof] = useState(false);
   const [addingManualRun, setAddingManualRun] = useState(false);
+  const manualRunProofInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -1353,6 +1357,7 @@ export default function AdminPage() {
     setManualRunVerifier(false);
     setManualRunDate(new Date().toISOString().split("T")[0]);
     setManualRunNote("");
+    setManualRunProofUrl("");
     setAddManualRunOpen(true);
   };
 
@@ -1365,7 +1370,33 @@ export default function AdminPage() {
     setManualRunVerifier(run.is_verifier);
     setManualRunDate(run.completed_at.split("T")[0]);
     setManualRunNote(run.note || "");
+    setManualRunProofUrl(run.proof_url || "");
     setAddManualRunOpen(true);
+  };
+
+  const uploadProofScreenshot = async (file: File) => {
+    setUploadingProof(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `proof-${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('level-thumbnails')
+        .upload(fileName, file, { upsert: true });
+      
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('level-thumbnails')
+        .getPublicUrl(data.path);
+      
+      setManualRunProofUrl(publicUrl);
+      toast({ title: "Success", description: "Proof screenshot uploaded" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingProof(false);
+    }
   };
 
   const saveManualRun = async () => {
@@ -1382,6 +1413,24 @@ export default function AdminPage() {
         throw new Error("Invalid completion time");
       }
 
+      // If marking as verifier, update the level's verifier_profile_id and clear old verifier
+      if (manualRunVerifier) {
+        // Update the level to set this profile as verifier
+        const { error: verifierError } = await supabase
+          .from("levels")
+          .update({ verifier_profile_id: manualRunProfile })
+          .eq("id", manualRunLevel);
+        
+        if (verifierError) throw verifierError;
+        
+        // Also remove is_verifier flag from other manual runs for this level
+        await supabase
+          .from("manual_runs")
+          .update({ is_verifier: false })
+          .eq("level_id", manualRunLevel)
+          .neq("id", editingManualRun?.id || "");
+      }
+
       if (editingManualRun) {
         // Update existing
         const { error } = await supabase
@@ -1394,6 +1443,7 @@ export default function AdminPage() {
             is_verifier: manualRunVerifier,
             completed_at: new Date(manualRunDate).toISOString(),
             note: manualRunNote || null,
+            proof_url: manualRunProofUrl || null,
           })
           .eq("id", editingManualRun.id);
 
@@ -1410,6 +1460,7 @@ export default function AdminPage() {
           is_verifier: manualRunVerifier,
           completed_at: new Date(manualRunDate).toISOString(),
           note: manualRunNote || null,
+          proof_url: manualRunProofUrl || null,
           added_by_admin_id: user!.id,
           added_by_admin_email: user!.email || "unknown",
         });
@@ -1418,6 +1469,9 @@ export default function AdminPage() {
         await logAction("Added manual run", `${manualRunTime}s for profile ${manualRunProfile}`);
         toast({ title: "Success", description: "Manual run added" });
       }
+
+      // Refresh levels to get updated verifier
+      fetchLevels();
 
       setAddManualRunOpen(false);
       fetchManualRuns();
@@ -2554,6 +2608,54 @@ export default function AdminPage() {
                   placeholder="e.g., 'Time no longer visible on official leaderboards'"
                   className="mt-1 bg-secondary border-border"
                 />
+              </div>
+
+              <div>
+                <Label>Proof Screenshot</Label>
+                <div className="mt-1 space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    ref={manualRunProofInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadProofScreenshot(file);
+                      e.target.value = '';
+                    }}
+                  />
+                  {manualRunProofUrl ? (
+                    <div className="relative">
+                      <img src={manualRunProofUrl} alt="Proof" className="w-full h-32 object-cover rounded-lg border border-border" />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={() => setManualRunProofUrl("")}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => manualRunProofInputRef.current?.click()}
+                      disabled={uploadingProof}
+                      className="w-full gap-2"
+                    >
+                      {uploadingProof ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                      {uploadingProof ? "Uploading..." : "Upload Proof Screenshot"}
+                    </Button>
+                  )}
+                  <Input
+                    value={manualRunProofUrl}
+                    onChange={(e) => setManualRunProofUrl(e.target.value)}
+                    placeholder="Or paste image URL..."
+                    className="bg-secondary border-border"
+                  />
+                </div>
               </div>
             </div>
 
