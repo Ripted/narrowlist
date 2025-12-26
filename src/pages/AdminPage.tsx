@@ -12,7 +12,7 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare
+  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo
 } from "lucide-react";
 import {
   AlertDialog,
@@ -143,6 +143,21 @@ interface BannedUser {
   created_at: string;
 }
 
+interface RunSubmission {
+  id: string;
+  level_id: string;
+  level_name: string | null;
+  username: string;
+  is_verifier: boolean;
+  proof_url: string;
+  status: string;
+  admin_note: string | null;
+  submitted_by_email: string;
+  submitted_by: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export default function AdminPage() {
@@ -157,6 +172,7 @@ export default function AdminPage() {
   const [manualRuns, setManualRuns] = useState<ManualRun[]>([]);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [levelSubmissions, setLevelSubmissions] = useState<LevelSubmission[]>([]);
+  const [runSubmissions, setRunSubmissions] = useState<RunSubmission[]>([]);
   const [bannedUsers, setBannedUsers] = useState<BannedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -170,6 +186,15 @@ export default function AdminPage() {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editNoteValue, setEditNoteValue] = useState("");
   
+  // Run submission review
+  const [reviewingRunSubmission, setReviewingRunSubmission] = useState<RunSubmission | null>(null);
+  const [runSubmissionNote, setRunSubmissionNote] = useState("");
+  const [runSubmissionTime, setRunSubmissionTime] = useState("");
+  const [runSubmissionArrow, setRunSubmissionArrow] = useState("Energy Arrow");
+  const [runSubmissionDate, setRunSubmissionDate] = useState("");
+  const [processingRunSubmission, setProcessingRunSubmission] = useState<string | null>(null);
+  const [editingRunNoteId, setEditingRunNoteId] = useState<string | null>(null);
+  const [editRunNoteValue, setEditRunNoteValue] = useState("");
   // Ban form
   const [banEmail, setBanEmail] = useState("");
   const [banReason, setBanReason] = useState("");
@@ -269,6 +294,7 @@ export default function AdminPage() {
       fetchManualRuns();
       fetchAllProfiles();
       fetchLevelSubmissions();
+      fetchRunSubmissions();
       fetchBannedUsers();
     }
   }, [isAdmin]);
@@ -350,6 +376,131 @@ export default function AdminPage() {
       .order("created_at", { ascending: false });
     
     if (data) setBannedUsers(data);
+  };
+
+  const fetchRunSubmissions = async () => {
+    const { data } = await supabase
+      .from("run_submissions")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (data) setRunSubmissions(data);
+  };
+
+  const updateRunSubmissionNote = async (submissionId: string, note: string) => {
+    try {
+      const { error } = await supabase
+        .from("run_submissions")
+        .update({ admin_note: note || null })
+        .eq("id", submissionId);
+      
+      if (error) throw error;
+      
+      toast({ title: "Note Updated" });
+      setEditingRunNoteId(null);
+      setEditRunNoteValue("");
+      fetchRunSubmissions();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleRunSubmissionReview = async (submissionId: string, action: "approved" | "rejected") => {
+    const submission = runSubmissions.find(s => s.id === submissionId);
+    if (!submission || !user) return;
+
+    setProcessingRunSubmission(submissionId);
+
+    try {
+      if (action === "approved") {
+        // Find profile by username
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("username", submission.username.trim())
+          .maybeSingle();
+        
+        if (!profile) {
+          throw new Error(`Player "${submission.username}" not found. Please create the profile first.`);
+        }
+        
+        // Find level by level_id
+        const { data: level } = await supabase
+          .from("levels")
+          .select("id, name")
+          .eq("level_id", submission.level_id)
+          .maybeSingle();
+        
+        if (!level) {
+          throw new Error(`Level "${submission.level_id}" not found in the main list.`);
+        }
+
+        // Create manual run
+        const completionTime = parseFloat(runSubmissionTime) || 0;
+        const completedDate = runSubmissionDate || new Date().toISOString().split('T')[0];
+
+        const { error: insertError } = await supabase.from("manual_runs").insert({
+          level_id: level.id,
+          profile_id: profile.id,
+          completion_time: completionTime,
+          arrow_name: runSubmissionArrow,
+          is_verifier: submission.is_verifier,
+          completed_at: new Date(completedDate).toISOString(),
+          note: runSubmissionNote || `Submitted via run submission`,
+          proof_url: submission.proof_url,
+          added_by_admin_id: user.id,
+          added_by_admin_email: user.email || "unknown",
+        });
+
+        if (insertError) throw insertError;
+
+        await logAction("Approved run submission", `${submission.username} on ${level.name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
+        toast({ title: "Run Approved", description: `Added as manual run for ${submission.username}` });
+        fetchManualRuns();
+      } else {
+        await logAction("Rejected run submission", `${submission.username} on ${submission.level_name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
+        toast({ title: "Run Rejected" });
+      }
+
+      // Update submission status
+      await supabase
+        .from("run_submissions")
+        .update({ 
+          status: action,
+          admin_note: runSubmissionNote || null,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user.id,
+        })
+        .eq("id", submissionId);
+
+      setReviewingRunSubmission(null);
+      setRunSubmissionNote("");
+      setRunSubmissionTime("");
+      setRunSubmissionArrow("Energy Arrow");
+      setRunSubmissionDate("");
+      fetchRunSubmissions();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setProcessingRunSubmission(null);
+    }
+  };
+
+  const updateRunSubmission = async (submissionId: string, updates: Partial<RunSubmission>) => {
+    try {
+      const { error } = await supabase
+        .from("run_submissions")
+        .update(updates)
+        .eq("id", submissionId);
+      
+      if (error) throw error;
+      
+      toast({ title: "Submission Updated" });
+      fetchRunSubmissions();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   };
 
   const banUserFromSubmissions = async () => {
@@ -1831,6 +1982,195 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+
+              {/* Run Submissions Section */}
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <Play className="w-5 h-5 text-primary" />
+                    Run Submissions
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                      {runSubmissions.filter(s => s.status === 'pending').length} pending
+                    </span>
+                  </h2>
+                </div>
+
+                {runSubmissions.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No run submissions yet.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {runSubmissions.map(submission => (
+                      <div key={submission.id} className="p-4">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                          <div className="flex items-start gap-4">
+                            {submission.proof_url && (
+                              <a 
+                                href={submission.proof_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="w-20 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0 hidden sm:flex items-center justify-center hover:opacity-80 transition-opacity"
+                              >
+                                <FileVideo className="w-6 h-6 text-muted-foreground" />
+                              </a>
+                            )}
+                            <div className="min-w-0">
+                              <div className="font-medium text-foreground flex items-center gap-2 flex-wrap">
+                                <span className="truncate">{submission.username}</span>
+                                {submission.is_verifier && (
+                                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">Verifier</span>
+                                )}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                Level: {submission.level_name || submission.level_id}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                                <span>Submitted by {submission.submitted_by_email}</span>
+                                <span>•</span>
+                                <span>{new Date(submission.created_at).toLocaleDateString()}</span>
+                                <a 
+                                  href={submission.proof_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline flex items-center gap-1"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Proof
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {submission.status === 'pending' ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1"
+                                  onClick={() => {
+                                    setReviewingRunSubmission(submission);
+                                    setRunSubmissionNote("");
+                                    setRunSubmissionTime("");
+                                    setRunSubmissionArrow("Energy Arrow");
+                                    setRunSubmissionDate(new Date().toISOString().split('T')[0]);
+                                  }}
+                                >
+                                  <MessageSquare className="w-4 h-4" />
+                                  Review
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 text-destructive border-destructive/50 hover:bg-destructive/10"
+                                  onClick={() => handleRunSubmissionReview(submission.id, "rejected")}
+                                  disabled={processingRunSubmission === submission.id}
+                                >
+                                  <X className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Reject</span>
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Select
+                                  value={submission.status}
+                                  onValueChange={async (newStatus) => {
+                                    try {
+                                      await supabase
+                                        .from("run_submissions")
+                                        .update({ status: newStatus })
+                                        .eq("id", submission.id);
+                                      await logAction("Changed run submission status", `${submission.username} on ${submission.level_name || submission.level_id}: ${submission.status} → ${newStatus}`);
+                                      toast({ title: "Status Updated", description: `Changed to ${newStatus}` });
+                                      fetchRunSubmissions();
+                                      fetchChangelog();
+                                    } catch (error: any) {
+                                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className={`w-32 h-8 text-sm ${
+                                    submission.status === 'approved' 
+                                      ? 'bg-green-500/10 text-green-500 border-green-500/30' 
+                                      : submission.status === 'rejected'
+                                        ? 'bg-destructive/10 text-destructive border-destructive/30'
+                                        : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'
+                                  }`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="approved">Approved</SelectItem>
+                                    <SelectItem value="rejected">Rejected</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={async () => {
+                                    if (confirm(`Delete run submission for "${submission.username}"?`)) {
+                                      try {
+                                        await supabase
+                                          .from("run_submissions")
+                                          .delete()
+                                          .eq("id", submission.id);
+                                        await logAction("Deleted run submission", `${submission.username} on ${submission.level_name || submission.level_id}`);
+                                        toast({ title: "Run Submission Deleted" });
+                                        fetchRunSubmissions();
+                                        fetchChangelog();
+                                      } catch (error: any) {
+                                        toast({ title: "Error", description: error.message, variant: "destructive" });
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {/* Note section with edit capability */}
+                        <div className="mt-2">
+                          {editingRunNoteId === submission.id ? (
+                            <div className="flex gap-2 items-center">
+                              <Input
+                                value={editRunNoteValue}
+                                onChange={(e) => setEditRunNoteValue(e.target.value)}
+                                placeholder="Admin note..."
+                                className="flex-1 h-8 text-sm bg-secondary border-border"
+                              />
+                              <Button size="sm" variant="ghost" onClick={() => updateRunSubmissionNote(submission.id, editRunNoteValue)}>
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => { setEditingRunNoteId(null); setEditRunNoteValue(""); }}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="text-sm text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+                              onClick={() => {
+                                setEditingRunNoteId(submission.id);
+                                setEditRunNoteValue(submission.admin_note || "");
+                              }}
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              {submission.admin_note ? (
+                                <span className="text-accent">Note: {submission.admin_note}</span>
+                              ) : (
+                                <span className="italic">Add note...</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="levels" className="space-y-6">
@@ -3017,6 +3357,161 @@ export default function AdminPage() {
                 disabled={processingSubmission === reviewingSubmission.id || !submissionRank}
               >
                 {processingSubmission === reviewingSubmission.id ? "Processing..." : `Approve at #${submissionRank}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Run Submission Review Modal */}
+      {reviewingRunSubmission && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg p-4 md:p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="font-display text-lg font-bold flex items-center gap-2">
+              <Play className="w-5 h-5 text-primary" />
+              Review Run Submission
+            </h2>
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-secondary/50 rounded-lg">
+                <div className="font-medium text-foreground flex items-center gap-2">
+                  {reviewingRunSubmission.username}
+                  {reviewingRunSubmission.is_verifier && (
+                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">Verifier</span>
+                  )}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Level: {reviewingRunSubmission.level_name || reviewingRunSubmission.level_id}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Submitted by {reviewingRunSubmission.submitted_by_email}
+                </div>
+                <a 
+                  href={reviewingRunSubmission.proof_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline flex items-center gap-1 text-sm mt-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  View Proof
+                </a>
+              </div>
+
+              <div>
+                <Label htmlFor="runSubmissionTime">Time (seconds) *</Label>
+                <Input
+                  id="runSubmissionTime"
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  value={runSubmissionTime}
+                  onChange={(e) => setRunSubmissionTime(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                  placeholder="e.g., 123.456"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="runSubmissionDate">Completion Date *</Label>
+                <Input
+                  id="runSubmissionDate"
+                  type="date"
+                  value={runSubmissionDate}
+                  onChange={(e) => setRunSubmissionDate(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+
+              <div>
+                <Label>Arrow</Label>
+                <Select value={runSubmissionArrow} onValueChange={setRunSubmissionArrow}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Energy Arrow">Energy Arrow</SelectItem>
+                    <SelectItem value="Speedy Arrow">Speedy Arrow</SelectItem>
+                    <SelectItem value="Narrow Arrow">Narrow Arrow</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="runSubmissionNote">Admin Note (optional)</Label>
+                <Input
+                  id="runSubmissionNote"
+                  value={runSubmissionNote}
+                  onChange={(e) => setRunSubmissionNote(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                  placeholder="Reason for approval/rejection..."
+                />
+              </div>
+
+              {/* Edit submission data section */}
+              <div className="border-t border-border pt-4">
+                <Label className="text-sm font-medium text-muted-foreground">Edit Submission Data</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <Label className="text-xs">Username</Label>
+                    <Input
+                      value={reviewingRunSubmission.username}
+                      onChange={(e) => {
+                        setReviewingRunSubmission({...reviewingRunSubmission, username: e.target.value});
+                        updateRunSubmission(reviewingRunSubmission.id, { username: e.target.value });
+                      }}
+                      className="mt-1 bg-secondary border-border h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Level ID</Label>
+                    <Input
+                      value={reviewingRunSubmission.level_id}
+                      onChange={(e) => {
+                        setReviewingRunSubmission({...reviewingRunSubmission, level_id: e.target.value});
+                        updateRunSubmission(reviewingRunSubmission.id, { level_id: e.target.value });
+                      }}
+                      className="mt-1 bg-secondary border-border h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  <input
+                    type="checkbox"
+                    id="editIsVerifier"
+                    checked={reviewingRunSubmission.is_verifier}
+                    onChange={(e) => {
+                      setReviewingRunSubmission({...reviewingRunSubmission, is_verifier: e.target.checked});
+                      updateRunSubmission(reviewingRunSubmission.id, { is_verifier: e.target.checked });
+                    }}
+                    className="rounded"
+                  />
+                  <Label htmlFor="editIsVerifier" className="text-sm">Verifier run</Label>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setReviewingRunSubmission(null)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={() => handleRunSubmissionReview(reviewingRunSubmission.id, "rejected")}
+                variant="outline"
+                className="flex-1 text-destructive border-destructive/50 hover:bg-destructive/10"
+                disabled={processingRunSubmission === reviewingRunSubmission.id}
+              >
+                Reject
+              </Button>
+              <Button 
+                onClick={() => handleRunSubmissionReview(reviewingRunSubmission.id, "approved")}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                disabled={processingRunSubmission === reviewingRunSubmission.id || !runSubmissionTime || !runSubmissionDate}
+              >
+                {processingRunSubmission === reviewingRunSubmission.id ? "Processing..." : "Approve & Add Run"}
               </Button>
             </div>
           </div>
