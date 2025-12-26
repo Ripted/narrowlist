@@ -14,6 +14,15 @@ interface LeaderboardEntry {
   arrow_name: string;
 }
 
+interface DbLevel {
+  id: string;
+  level_id: string;
+  points: number;
+  rank_position: number;
+  verifier_profile_id: string | null;
+  alternative_ids: string[] | null;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -30,7 +39,7 @@ Deno.serve(async (req) => {
     // Get all levels from database
     const { data: levels, error: levelsError } = await supabase
       .from("levels")
-      .select("id, level_id, points, rank_position, verifier_profile_id")
+      .select("id, level_id, points, rank_position, verifier_profile_id, alternative_ids")
       .order("rank_position", { ascending: true });
 
     if (levelsError) {
@@ -51,143 +60,174 @@ Deno.serve(async (req) => {
     let totalNewCompletions = 0;
 
     // Process each level
-    for (const level of levels) {
+    for (const level of levels as DbLevel[]) {
       console.log(`Processing level: ${level.level_id}`);
 
-      try {
-        // Fetch leaderboard from external API
-        const response = await fetch(`${API_BASE}/leaderboard?levelId=${level.level_id}`);
-        
-        if (!response.ok) {
-          console.error(`Failed to fetch leaderboard for ${level.level_id}: ${response.status}`);
-          continue;
-        }
+      // Collect all level IDs to fetch (main + alternatives)
+      const levelIdsToFetch = [level.level_id, ...(level.alternative_ids || [])];
+      
+      // Track oldest completion for this level (across main and alternatives)
+      let oldestCompletion: { profile_id: string; completed_at: string } | null = null;
 
-        const leaderboard: LeaderboardEntry[] = await response.json();
-        console.log(`Found ${leaderboard.length} entries for level ${level.level_id}`);
-
-        // Track oldest completion for this level
-        let oldestCompletion: { profile_id: string; completed_at: string } | null = null;
-
-        // Process each completion
-        for (const entry of leaderboard) {
-          // Get or create profile
-          let { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("id")
-            .eq("username", entry.username)
-            .maybeSingle();
-
-          if (profileError) {
-            console.error(`Error fetching profile for ${entry.username}:`, profileError);
+      for (const currentLevelId of levelIdsToFetch) {
+        try {
+          // Fetch leaderboard from external API
+          const response = await fetch(`${API_BASE}/leaderboard?levelId=${currentLevelId}`);
+          
+          if (!response.ok) {
+            console.error(`Failed to fetch leaderboard for ${currentLevelId}: ${response.status}`);
             continue;
           }
 
-          // Create profile if it doesn't exist
-          if (!profile) {
-            const { data: newProfile, error: createError } = await supabase
-              .from("profiles")
-              .insert({ username: entry.username })
-              .select("id")
-              .single();
-
-            if (createError) {
-              console.error(`Error creating profile for ${entry.username}:`, createError);
-              continue;
-            }
-            profile = newProfile;
-            console.log(`Created new profile for ${entry.username}`);
-          }
-
-          // Check if completion already exists
-          const { data: existingCompletion } = await supabase
-            .from("completions")
-            .select("id, completed_at")
-            .eq("run_id", entry.run_id)
-            .maybeSingle();
-
-          let completedAt = existingCompletion?.completed_at;
-
-          if (!existingCompletion) {
-            // Fetch run details to get the actual completion date
-            completedAt = new Date().toISOString();
-            try {
-              const runResponse = await fetch(`${API_BASE}/runs/${entry.run_id}`);
-              if (runResponse.ok) {
-                const runDetails = await runResponse.json();
-                if (runDetails.finishedAt) {
-                  completedAt = runDetails.finishedAt;
-                }
-              }
-            } catch (runError) {
-              console.error(`Error fetching run details for ${entry.run_id}:`, runError);
-            }
-
-            // Insert new completion with actual date
-            const { error: insertError } = await supabase
-              .from("completions")
-              .insert({
-                profile_id: profile.id,
-                level_id: level.id,
-                run_id: entry.run_id,
-                completion_time: entry.completion_time,
-                arrow_name: entry.arrow_name,
-                completed_at: completedAt,
-              });
-
-            if (insertError) {
-              console.error(`Error inserting completion:`, insertError);
-              continue;
-            }
-
-            totalNewCompletions++;
-            console.log(`Added completion: ${entry.username} on ${level.level_id}`);
-          }
-
-          // Track oldest completion for this level
-          if (completedAt) {
-            if (!oldestCompletion || new Date(completedAt) < new Date(oldestCompletion.completed_at)) {
-              oldestCompletion = { profile_id: profile.id, completed_at: completedAt };
-            }
-          }
-        }
-
-        // Check if there's a manual run marked as verifier for this level
-        const { data: manualVerifier } = await supabase
-          .from("manual_runs")
-          .select("profile_id, completed_at")
-          .eq("level_id", level.id)
-          .eq("is_verifier", true)
-          .limit(1)
-          .maybeSingle();
-
-        // Determine verifier: manual run verifier takes priority, otherwise oldest completion
-        let verifierProfileId: string | null = null;
-        
-        if (manualVerifier) {
-          verifierProfileId = manualVerifier.profile_id;
-          console.log(`Level ${level.level_id}: Using manual verifier ${manualVerifier.profile_id}`);
-        } else if (oldestCompletion) {
-          verifierProfileId = oldestCompletion.profile_id;
-          console.log(`Level ${level.level_id}: Using oldest completion as verifier ${oldestCompletion.profile_id}`);
-        }
-
-        // Update level's verifier_profile_id if different
-        if (verifierProfileId && verifierProfileId !== level.verifier_profile_id) {
-          const { error: updateError } = await supabase
-            .from("levels")
-            .update({ verifier_profile_id: verifierProfileId })
-            .eq("id", level.id);
+          const leaderboard: LeaderboardEntry[] = await response.json();
           
-          if (updateError) {
-            console.error(`Error updating verifier for ${level.level_id}:`, updateError);
+          if (currentLevelId === level.level_id) {
+            console.log(`Found ${leaderboard.length} entries for main level ${level.level_id}`);
           } else {
-            console.log(`Updated verifier for ${level.level_id} to ${verifierProfileId}`);
+            console.log(`Found ${leaderboard.length} entries for alternative ${currentLevelId} -> main ${level.level_id}`);
           }
+
+          // Process each completion
+          for (const entry of leaderboard) {
+            // Get or create profile
+            let { data: profile, error: profileError } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("username", entry.username)
+              .maybeSingle();
+
+            if (profileError) {
+              console.error(`Error fetching profile for ${entry.username}:`, profileError);
+              continue;
+            }
+
+            // Create profile if it doesn't exist
+            if (!profile) {
+              const { data: newProfile, error: createError } = await supabase
+                .from("profiles")
+                .insert({ username: entry.username })
+                .select("id")
+                .single();
+
+              if (createError) {
+                console.error(`Error creating profile for ${entry.username}:`, createError);
+                continue;
+              }
+              profile = newProfile;
+              console.log(`Created new profile for ${entry.username}`);
+            }
+
+            // Check if completion already exists for this run
+            const { data: existingCompletion } = await supabase
+              .from("completions")
+              .select("id, completed_at")
+              .eq("run_id", entry.run_id)
+              .maybeSingle();
+
+            let completedAt = existingCompletion?.completed_at;
+
+            if (!existingCompletion) {
+              // Also check if this profile already has a completion for this level (from main or any alternative)
+              const { data: existingLevelCompletion } = await supabase
+                .from("completions")
+                .select("id")
+                .eq("profile_id", profile.id)
+                .eq("level_id", level.id)
+                .maybeSingle();
+
+              if (existingLevelCompletion) {
+                // Profile already has a completion for this level, skip
+                continue;
+              }
+
+              // Fetch run details to get the actual completion date
+              completedAt = new Date().toISOString();
+              try {
+                const runResponse = await fetch(`${API_BASE}/runs/${entry.run_id}`);
+                if (runResponse.ok) {
+                  const runDetails = await runResponse.json();
+                  if (runDetails.finishedAt) {
+                    completedAt = runDetails.finishedAt;
+                  }
+                }
+              } catch (runError) {
+                console.error(`Error fetching run details for ${entry.run_id}:`, runError);
+              }
+
+              // Insert new completion - always link to main level ID
+              const { error: insertError } = await supabase
+                .from("completions")
+                .insert({
+                  profile_id: profile.id,
+                  level_id: level.id, // Always use main level's DB ID
+                  run_id: entry.run_id,
+                  completion_time: entry.completion_time,
+                  arrow_name: entry.arrow_name,
+                  completed_at: completedAt,
+                });
+
+              if (insertError) {
+                if (insertError.code === '23505') {
+                  // Duplicate, skip
+                  continue;
+                }
+                console.error(`Error inserting completion:`, insertError);
+                continue;
+              }
+
+              totalNewCompletions++;
+              if (currentLevelId === level.level_id) {
+                console.log(`Added completion: ${entry.username} on ${level.level_id}`);
+              } else {
+                console.log(`Added completion: ${entry.username} on alt ${currentLevelId} -> main ${level.level_id}`);
+              }
+            }
+
+            // Track oldest completion for this level (for verifier)
+            if (completedAt) {
+              if (!oldestCompletion || new Date(completedAt) < new Date(oldestCompletion.completed_at)) {
+                oldestCompletion = { profile_id: profile.id, completed_at: completedAt };
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error processing level ID ${currentLevelId}:`, error);
+          continue;
         }
-      } catch (error) {
-        console.error(`Error processing level ${level.level_id}:`, error);
-        continue;
+      }
+
+      // Check if there's a manual run marked as verifier for this level
+      const { data: manualVerifier } = await supabase
+        .from("manual_runs")
+        .select("profile_id, completed_at")
+        .eq("level_id", level.id)
+        .eq("is_verifier", true)
+        .limit(1)
+        .maybeSingle();
+
+      // Determine verifier: manual run verifier takes priority, otherwise oldest completion
+      let verifierProfileId: string | null = null;
+      
+      if (manualVerifier) {
+        verifierProfileId = manualVerifier.profile_id;
+        console.log(`Level ${level.level_id}: Using manual verifier ${manualVerifier.profile_id}`);
+      } else if (oldestCompletion) {
+        verifierProfileId = oldestCompletion.profile_id;
+        console.log(`Level ${level.level_id}: Using oldest completion as verifier ${oldestCompletion.profile_id}`);
+      }
+
+      // Update level's verifier_profile_id if different
+      if (verifierProfileId && verifierProfileId !== level.verifier_profile_id) {
+        const { error: updateError } = await supabase
+          .from("levels")
+          .update({ verifier_profile_id: verifierProfileId })
+          .eq("id", level.id);
+        
+        if (updateError) {
+          console.error(`Error updating verifier for ${level.level_id}:`, updateError);
+        } else {
+          console.log(`Updated verifier for ${level.level_id} to ${verifierProfileId}`);
+        }
       }
     }
 
