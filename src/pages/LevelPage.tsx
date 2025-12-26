@@ -133,24 +133,54 @@ export default function LevelPage() {
     return entry?.run_id ?? null;
   }, [verifierUsername, leaderboard]);
 
-  // Sort leaderboard based on mode
-  const sortedLeaderboard = useMemo(() => {
-    if (sortMode === "time") {
-      // Already sorted by fastest time from API
-      return leaderboard;
-    }
-    // Sort by oldest completion date
-    return [...leaderboard].sort((a, b) => {
-      const aDetails = runDetails.get(a.run_id);
-      const bDetails = runDetails.get(b.run_id);
-      const aDate = a.created_at || a.finishedAt || a.finished_at || aDetails?.finishedAt;
-      const bDate = b.created_at || b.finishedAt || b.finished_at || bDetails?.finishedAt;
-      if (!aDate && !bDate) return 0;
-      if (!aDate) return 1;
-      if (!bDate) return -1;
-      return Date.parse(aDate) - Date.parse(bDate);
+  // Combined and sorted list of all runs (manual + API) for proper ranking
+  const combinedSortedRuns = useMemo(() => {
+    // Convert manual runs to a common format
+    const manualEntries = manualRuns.map(run => ({
+      type: 'manual' as const,
+      run_id: run.run_id,
+      username: run.username,
+      completion_time: run.completion_time,
+      arrow_name: run.arrow_name,
+      is_verifier: run.is_verifier,
+      completed_at: run.completed_at,
+      note: run.note,
+    }));
+
+    // Convert leaderboard entries to a common format
+    const apiEntries = leaderboard.map(entry => {
+      const details = runDetails.get(entry.run_id);
+      return {
+        type: 'api' as const,
+        run_id: entry.run_id,
+        username: entry.username,
+        completion_time: entry.completion_time,
+        arrow_name: entry.arrow_name,
+        is_verifier: false,
+        completed_at: entry.created_at || entry.finishedAt || entry.finished_at || details?.finishedAt || null,
+        note: null,
+        details,
+        originalEntry: entry,
+      };
     });
-  }, [leaderboard, runDetails, sortMode]);
+
+    // Combine and sort
+    const combined = [...manualEntries, ...apiEntries];
+    
+    if (sortMode === "time") {
+      combined.sort((a, b) => a.completion_time - b.completion_time);
+    } else {
+      // Sort by oldest completion date
+      combined.sort((a, b) => {
+        if (!a.completed_at && !b.completed_at) return 0;
+        if (!a.completed_at) return 1;
+        if (!b.completed_at) return -1;
+        return Date.parse(a.completed_at) - Date.parse(b.completed_at);
+      });
+    }
+    
+    return combined;
+  }, [manualRuns, leaderboard, runDetails, sortMode]);
 
   const handleCopyId = () => {
     if (levelId) {
@@ -373,26 +403,34 @@ export default function LevelPage() {
               </div>
             </div>
 
-            {leaderboard.length === 0 && manualRuns.length === 0 ? (
+            {combinedSortedRuns.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
                 No completions yet. Be the first!
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {/* Manual runs first with special indicator */}
-                {manualRuns.map((run, index) => {
+                {combinedSortedRuns.map((run, index) => {
                   const profile = getProfile(run.username);
+                  const isManualRun = run.type === 'manual';
+                  const isVerifier = isManualRun 
+                    ? run.is_verifier 
+                    : (verifierRunId !== null && run.run_id === verifierRunId);
+                  const details = isManualRun ? null : (run as any).details;
                   
                   return (
                     <Link
-                      key={`manual-${run.run_id}`}
+                      key={`${run.type}-${run.run_id}`}
                       to={`/player/${run.username}`}
-                      className={`flex items-center gap-4 p-4 hover:bg-secondary/20 transition-colors bg-accent/5 border-l-2 border-accent ${
-                        run.is_verifier ? "bg-primary/5 border-l-2 border-primary" : ""
-                      }`}
+                      className={`flex items-center gap-4 p-4 hover:bg-secondary/20 transition-colors ${
+                        isVerifier ? "bg-primary/5 border-l-2 border-primary" : ""
+                      } ${isManualRun && !isVerifier ? "bg-accent/5 border-l-2 border-accent" : ""}`}
                     >
                       <div className="w-8 text-center flex-shrink-0">
-                        <span className="font-mono text-muted-foreground">-</span>
+                        {index < 3 ? (
+                          <Medal className={`w-5 h-5 mx-auto ${getMedalColor(index)}`} />
+                        ) : (
+                          <span className="font-mono text-muted-foreground">{index + 1}</span>
+                        )}
                       </div>
 
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0">
@@ -410,22 +448,28 @@ export default function LevelPage() {
                           <span className="font-medium text-foreground truncate">
                             {profile?.display_name || run.username}
                           </span>
-                          {run.is_verifier && (
+                          {isVerifier && (
                             <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                               <CheckCircle className="w-3 h-3" />
                               Verifier
                             </span>
                           )}
-                          <span className="flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
-                            <Info className="w-3 h-3" />
-                            Not on API
-                          </span>
+                          {isManualRun && (
+                            <span className="flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                              <Info className="w-3 h-3" />
+                              Not on API
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
                           <ArrowIcon arrowName={run.arrow_name} className="w-4 h-4" />
-                          <span>•</span>
-                          <span>{formatDate(run.completed_at)}</span>
-                          {run.note && (
+                          {run.completed_at && (
+                            <>
+                              <span>•</span>
+                              <span>{formatDate(run.completed_at)}</span>
+                            </>
+                          )}
+                          {isManualRun && run.note && (
                             <>
                               <span>•</span>
                               <span className="italic">{run.note}</span>
@@ -434,77 +478,15 @@ export default function LevelPage() {
                         </div>
                       </div>
 
-                      <div className="font-mono text-primary font-medium">
-                        {formatTime(run.completion_time)}
-                      </div>
-                    </Link>
-                  );
-                })}
-
-                {/* Regular leaderboard entries */}
-                {sortedLeaderboard.map((entry, index) => {
-                  const profile = getProfile(entry.username);
-                  const details = runDetails.get(entry.run_id);
-                  const isVerifier = verifierRunId !== null && entry.run_id === verifierRunId;
-                  
-                  return (
-                    <Link
-                      key={entry.run_id}
-                      to={`/player/${entry.username}`}
-                      className={`flex items-center gap-4 p-4 hover:bg-secondary/20 transition-colors ${
-                        isVerifier ? "bg-primary/5 border-l-2 border-primary" : ""
-                      }`}
-                    >
-                      <div className="w-8 text-center flex-shrink-0">
-                        {index < 3 ? (
-                          <Medal className={`w-5 h-5 mx-auto ${getMedalColor(index)}`} />
-                        ) : (
-                          <span className="font-mono text-muted-foreground">{index + 1}</span>
-                        )}
-                      </div>
-
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0">
-                        {profile?.avatar_url ? (
-                          <img src={profile.avatar_url} alt={entry.username} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-foreground font-bold">
-                            {entry.username.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground truncate">
-                            {profile?.display_name || entry.username}
-                          </span>
-                          {isVerifier && (
-                            <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                              <CheckCircle className="w-3 h-3" />
-                              Verifier
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2">
-                          <ArrowIcon arrowName={entry.arrow_name} className="w-4 h-4" />
-                          {details?.finishedAt && (
-                            <>
-                              <span>•</span>
-                              <span>{formatDate(details.finishedAt)}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
                       <div className="flex items-center gap-4">
-                        {details?.input_count !== undefined && (
+                        {!isManualRun && details?.input_count !== undefined && (
                           <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
                             <Hash className="w-3 h-3" />
                             <span>{details.input_count} inputs</span>
                           </div>
                         )}
                         <div className="font-mono text-primary font-medium">
-                          {formatTime(entry.completion_time)}
+                          {formatTime(run.completion_time)}
                         </div>
                       </div>
                     </Link>
