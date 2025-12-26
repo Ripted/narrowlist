@@ -12,9 +12,8 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare, BarChart3
+  ListCollapse, List, Play, Send, MessageSquare
 } from "lucide-react";
-import { AdminStatistics } from "@/components/AdminStatistics";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1631,23 +1630,8 @@ export default function AdminPage() {
               <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
               <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
               <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
-              <TabsTrigger value="stats" className="text-xs sm:text-sm flex-shrink-0 gap-1">
-                <BarChart3 className="w-3 h-3 hidden sm:inline" />
-                Stats
-              </TabsTrigger>
               <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
             </TabsList>
-
-            {/* Statistics Tab */}
-            <TabsContent value="stats">
-              <AdminStatistics 
-                totalLevels={levels.length}
-                totalFutureLevels={futureLevels.length}
-                totalPlayers={approvedPlayers.length}
-                totalManualRuns={manualRuns.length}
-                changelogCount={changelog.length}
-              />
-            </TabsContent>
 
             {/* Level Submissions Tab */}
             <TabsContent value="submissions" className="space-y-6">
