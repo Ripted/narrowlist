@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     // Get all levels from database
     const { data: levels, error: levelsError } = await supabase
       .from("levels")
-      .select("id, level_id, points, rank_position")
+      .select("id, level_id, points, rank_position, verifier_profile_id")
       .order("rank_position", { ascending: true });
 
     if (levelsError) {
@@ -66,6 +66,9 @@ Deno.serve(async (req) => {
         const leaderboard: LeaderboardEntry[] = await response.json();
         console.log(`Found ${leaderboard.length} entries for level ${level.level_id}`);
 
+        // Track oldest completion for this level
+        let oldestCompletion: { profile_id: string; completed_at: string } | null = null;
+
         // Process each completion
         for (const entry of leaderboard) {
           // Get or create profile
@@ -99,47 +102,88 @@ Deno.serve(async (req) => {
           // Check if completion already exists
           const { data: existingCompletion } = await supabase
             .from("completions")
-            .select("id")
+            .select("id, completed_at")
             .eq("run_id", entry.run_id)
             .maybeSingle();
 
-          if (existingCompletion) {
-            continue; // Skip if already exists
-          }
+          let completedAt = existingCompletion?.completed_at;
 
-          // Fetch run details to get the actual completion date
-          let completedAt = new Date().toISOString();
-          try {
-            const runResponse = await fetch(`${API_BASE}/runs/${entry.run_id}`);
-            if (runResponse.ok) {
-              const runDetails = await runResponse.json();
-              if (runDetails.finishedAt) {
-                completedAt = runDetails.finishedAt;
+          if (!existingCompletion) {
+            // Fetch run details to get the actual completion date
+            completedAt = new Date().toISOString();
+            try {
+              const runResponse = await fetch(`${API_BASE}/runs/${entry.run_id}`);
+              if (runResponse.ok) {
+                const runDetails = await runResponse.json();
+                if (runDetails.finishedAt) {
+                  completedAt = runDetails.finishedAt;
+                }
               }
+            } catch (runError) {
+              console.error(`Error fetching run details for ${entry.run_id}:`, runError);
             }
-          } catch (runError) {
-            console.error(`Error fetching run details for ${entry.run_id}:`, runError);
+
+            // Insert new completion with actual date
+            const { error: insertError } = await supabase
+              .from("completions")
+              .insert({
+                profile_id: profile.id,
+                level_id: level.id,
+                run_id: entry.run_id,
+                completion_time: entry.completion_time,
+                arrow_name: entry.arrow_name,
+                completed_at: completedAt,
+              });
+
+            if (insertError) {
+              console.error(`Error inserting completion:`, insertError);
+              continue;
+            }
+
+            totalNewCompletions++;
+            console.log(`Added completion: ${entry.username} on ${level.level_id}`);
           }
 
-          // Insert new completion with actual date
-          const { error: insertError } = await supabase
-            .from("completions")
-            .insert({
-              profile_id: profile.id,
-              level_id: level.id,
-              run_id: entry.run_id,
-              completion_time: entry.completion_time,
-              arrow_name: entry.arrow_name,
-              completed_at: completedAt,
-            });
-
-          if (insertError) {
-            console.error(`Error inserting completion:`, insertError);
-            continue;
+          // Track oldest completion for this level
+          if (completedAt) {
+            if (!oldestCompletion || new Date(completedAt) < new Date(oldestCompletion.completed_at)) {
+              oldestCompletion = { profile_id: profile.id, completed_at: completedAt };
+            }
           }
+        }
 
-          totalNewCompletions++;
-          console.log(`Added completion: ${entry.username} on ${level.level_id}`);
+        // Check if there's a manual run marked as verifier for this level
+        const { data: manualVerifier } = await supabase
+          .from("manual_runs")
+          .select("profile_id, completed_at")
+          .eq("level_id", level.id)
+          .eq("is_verifier", true)
+          .limit(1)
+          .maybeSingle();
+
+        // Determine verifier: manual run verifier takes priority, otherwise oldest completion
+        let verifierProfileId: string | null = null;
+        
+        if (manualVerifier) {
+          verifierProfileId = manualVerifier.profile_id;
+          console.log(`Level ${level.level_id}: Using manual verifier ${manualVerifier.profile_id}`);
+        } else if (oldestCompletion) {
+          verifierProfileId = oldestCompletion.profile_id;
+          console.log(`Level ${level.level_id}: Using oldest completion as verifier ${oldestCompletion.profile_id}`);
+        }
+
+        // Update level's verifier_profile_id if different
+        if (verifierProfileId && verifierProfileId !== level.verifier_profile_id) {
+          const { error: updateError } = await supabase
+            .from("levels")
+            .update({ verifier_profile_id: verifierProfileId })
+            .eq("id", level.id);
+          
+          if (updateError) {
+            console.error(`Error updating verifier for ${level.level_id}:`, updateError);
+          } else {
+            console.log(`Updated verifier for ${level.level_id} to ${verifierProfileId}`);
+          }
         }
       } catch (error) {
         console.error(`Error processing level ${level.level_id}:`, error);
@@ -156,21 +200,26 @@ Deno.serve(async (req) => {
 
     if (profiles) {
       for (const profile of profiles) {
-        // Get all unique level completions for this profile
+        // Get all unique level completions for this profile from both completions and manual_runs
         const { data: completions } = await supabase
           .from("completions")
           .select("level_id, levels(points)")
           .eq("profile_id", profile.id);
 
+        const { data: manualRuns } = await supabase
+          .from("manual_runs")
+          .select("level_id, levels(points)")
+          .eq("profile_id", profile.id);
+
+        // Sum up points from unique levels
+        const uniqueLevels = new Set<string>();
+        let totalPoints = 0;
+        
+        // Process regular completions
         if (completions) {
-          // Sum up points from unique levels
-          const uniqueLevels = new Set<string>();
-          let totalPoints = 0;
-          
           for (const completion of completions) {
             if (!uniqueLevels.has(completion.level_id)) {
               uniqueLevels.add(completion.level_id);
-              // Handle joined data which can be array or object
               const levelsData = completion.levels;
               if (levelsData && typeof levelsData === "object") {
                 const points = Array.isArray(levelsData) 
@@ -182,12 +231,30 @@ Deno.serve(async (req) => {
               }
             }
           }
-
-          await supabase
-            .from("profiles")
-            .update({ total_points: totalPoints })
-            .eq("id", profile.id);
         }
+
+        // Process manual runs
+        if (manualRuns) {
+          for (const run of manualRuns) {
+            if (!uniqueLevels.has(run.level_id)) {
+              uniqueLevels.add(run.level_id);
+              const levelsData = run.levels;
+              if (levelsData && typeof levelsData === "object") {
+                const points = Array.isArray(levelsData) 
+                  ? (levelsData[0] as { points?: number })?.points 
+                  : (levelsData as { points?: number }).points;
+                if (typeof points === "number") {
+                  totalPoints += points;
+                }
+              }
+            }
+          }
+        }
+
+        await supabase
+          .from("profiles")
+          .update({ total_points: totalPoints })
+          .eq("id", profile.id);
       }
     }
 

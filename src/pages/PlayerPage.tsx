@@ -555,6 +555,11 @@ export default function PlayerPage() {
                                 Hardest
                               </span>
                             )}
+                            {completion.isManualRun && (
+                              <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                Not in API
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-4 text-sm">
