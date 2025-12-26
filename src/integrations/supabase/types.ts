@@ -178,6 +178,7 @@ export type Database = {
       }
       levels: {
         Row: {
+          alternative_ids: string[] | null
           author: string | null
           created_at: string
           id: string
@@ -190,6 +191,7 @@ export type Database = {
           verifier_profile_id: string | null
         }
         Insert: {
+          alternative_ids?: string[] | null
           author?: string | null
           created_at?: string
           id?: string
@@ -202,6 +204,7 @@ export type Database = {
           verifier_profile_id?: string | null
         }
         Update: {
+          alternative_ids?: string[] | null
           author?: string | null
           created_at?: string
           id?: string

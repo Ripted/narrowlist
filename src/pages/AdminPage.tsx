@@ -48,6 +48,7 @@ interface Level {
   points: number;
   thumbnail_url: string | null;
   verifier_profile_id: string | null;
+  alternative_ids: string[] | null;
 }
 
 interface FutureLevel {
@@ -201,6 +202,7 @@ export default function AdminPage() {
   const [editAuthor, setEditAuthor] = useState("");
   const [editThumbnail, setEditThumbnail] = useState("");
   const [editVerifier, setEditVerifier] = useState<string>("");
+  const [editAlternativeIds, setEditAlternativeIds] = useState("");
   
   // Delete confirmation
   const [deleteConfirmLevel, setDeleteConfirmLevel] = useState<Level | null>(null);
@@ -1184,25 +1186,34 @@ export default function AdminPage() {
     setEditAuthor(level.author || "");
     setEditThumbnail(level.thumbnail_url || "");
     setEditVerifier(level.verifier_profile_id || "");
+    setEditAlternativeIds((level.alternative_ids || []).join(", "));
   };
 
   const saveEditedLevel = async () => {
     if (!editingLevel) return;
     
     setSaving(true);
+    
+    // Parse alternative IDs
+    const alternativeIds = editAlternativeIds
+      .split(/[,\n]+/)
+      .map(id => id.trim())
+      .filter(id => id.length > 0);
+    
     const { error } = await supabase
       .from("levels")
       .update({
         name: editName || null,
         author: editAuthor || null,
         thumbnail_url: editThumbnail || null,
+        alternative_ids: alternativeIds.length > 0 ? alternativeIds : [],
       })
       .eq("id", editingLevel.id);
     
     if (error) {
       toast({ title: "Error", description: "Failed to update level", variant: "destructive" });
     } else {
-      await logAction("Edited level", `${editName || editingLevel.level_id}`);
+      await logAction("Edited level", `${editName || editingLevel.level_id}${alternativeIds.length > 0 ? ` (alt IDs: ${alternativeIds.join(", ")})` : ""}`);
       toast({ title: "Success", description: "Level updated" });
       setEditingLevel(null);
       fetchLevels();
@@ -2734,6 +2745,20 @@ export default function AdminPage() {
                   onChange={(e) => setEditAuthor(e.target.value)}
                   className="mt-1 bg-secondary border-border"
                 />
+              </div>
+              
+              <div>
+                <Label htmlFor="editAlternativeIds">Alternative Level IDs</Label>
+                <Textarea
+                  id="editAlternativeIds"
+                  value={editAlternativeIds}
+                  onChange={(e) => setEditAlternativeIds(e.target.value)}
+                  placeholder="Enter alternative level IDs (comma or newline separated)&#10;e.g., low-detail mode versions"
+                  className="mt-1 bg-secondary border-border min-h-[80px] font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Completions on these levels will count as completions for the main level
+                </p>
               </div>
             </div>
             
