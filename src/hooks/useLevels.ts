@@ -10,12 +10,21 @@ export interface LevelWithRank extends LevelDetails {
   verifierUsername?: string;
 }
 
+export interface PlayerCompletion {
+  levelId: string;
+  levelName: string;
+  points: number;
+  time: number;
+  completedAt?: string;
+  isManualRun?: boolean;
+}
+
 export interface PlayerStats {
   username: string;
   displayName?: string;
   avatarUrl?: string;
   totalPoints: number;
-  completions: { levelId: string; levelName: string; points: number; time: number; completedAt?: string }[];
+  completions: PlayerCompletion[];
 }
 
 interface DbLevel {
@@ -330,6 +339,7 @@ export function usePlayerLeaderboard() {
               points: levelInfo.points,
               time: run.completion_time,
               completedAt: run.completed_at,
+              isManualRun: true,
             });
           }
         }
