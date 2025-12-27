@@ -86,6 +86,48 @@ export type Database = {
           },
         ]
       }
+      discord_notifications: {
+        Row: {
+          completion_id: string
+          completion_type: string
+          id: string
+          level_id: string
+          notified_at: string
+          profile_id: string
+        }
+        Insert: {
+          completion_id: string
+          completion_type: string
+          id?: string
+          level_id: string
+          notified_at?: string
+          profile_id: string
+        }
+        Update: {
+          completion_id?: string
+          completion_type?: string
+          id?: string
+          level_id?: string
+          notified_at?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discord_notifications_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discord_notifications_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       future_levels: {
         Row: {
           author: string | null

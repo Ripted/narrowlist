@@ -2,3 +2,6 @@ project_id = "ernuscqjcluitrtyilnc"
 
 [functions.sync-completions]
 verify_jwt = false
+
+[functions.discord-notify]
+verify_jwt = false

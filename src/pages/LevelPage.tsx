@@ -257,30 +257,30 @@ export default function LevelPage() {
             </Button>
           </Link>
 
-          <div className="grid lg:grid-cols-3 gap-8 mb-8">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="flex items-start gap-4">
+          <div className="grid lg:grid-cols-3 gap-4 sm:gap-8 mb-8">
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+              <div className="flex items-start gap-3 sm:gap-4">
                 {rank && (
                   <div className="flex-shrink-0">
-                    <div className={`font-display text-5xl font-bold ${getRankStyle(rank)}`}>
+                    <div className={`font-display text-3xl sm:text-5xl font-bold ${getRankStyle(rank)}`}>
                       #{rank}
                     </div>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground">
+                <div className="space-y-1 sm:space-y-2 min-w-0">
+                  <h1 className="font-display text-xl sm:text-3xl md:text-4xl font-bold text-foreground break-words">
                     {levelInfo.name}
                   </h1>
-                  <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <User className="w-4 h-4" />
+                      <User className="w-3 h-3 sm:w-4 sm:h-4" />
                       {levelInfo.author}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Heart className="w-4 h-4 text-destructive" />
-                      {levelInfo.like_count} likes
+                      <Heart className="w-3 h-3 sm:w-4 sm:h-4 text-destructive" />
+                      {levelInfo.like_count}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="hidden sm:flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
                       {formatDate(levelInfo.created_at)}
                     </span>
@@ -288,34 +288,34 @@ export default function LevelPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="rounded-lg bg-card border border-border p-4 text-center">
-                  <Trophy className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <div className="font-display text-2xl font-bold text-primary">{points}</div>
-                  <div className="text-xs text-muted-foreground">Points</div>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4">
+                <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center">
+                  <Trophy className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-primary" />
+                  <div className="font-display text-lg sm:text-2xl font-bold text-primary">{points}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Points</div>
                 </div>
-                <div className="rounded-lg bg-card border border-border p-4 text-center">
-                  <Clock className="w-6 h-6 mx-auto mb-2 text-accent" />
-                  <div className="font-mono text-lg font-bold text-foreground">
+                <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center">
+                  <Clock className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-accent" />
+                  <div className="font-mono text-sm sm:text-lg font-bold text-foreground">
                     {worldRecord ? formatTime(worldRecord.completion_time) : "N/A"}
                   </div>
-                  <div className="text-xs text-muted-foreground">World Record</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">WR</div>
                 </div>
-                <div className="rounded-lg bg-card border border-border p-4 text-center">
-                  <User className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-                  <div className="font-display text-2xl font-bold text-foreground">
+                <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center">
+                  <User className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-muted-foreground" />
+                  <div className="font-display text-lg sm:text-2xl font-bold text-foreground">
                     {leaderboard.length}
                   </div>
-                  <div className="text-xs text-muted-foreground">Completions</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Clears</div>
                 </div>
-                <div className="rounded-lg bg-card border border-border p-4 text-center">
+                <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center hidden sm:block">
                   <Medal className="w-6 h-6 mx-auto mb-2 text-glow-gold" />
                   <div className="font-display text-lg font-bold text-foreground truncate">
                     {worldRecord?.username || "N/A"}
                   </div>
                   <div className="text-xs text-muted-foreground">WR Holder</div>
                 </div>
-                <div className="rounded-lg bg-card border border-border p-4 text-center">
+                <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center hidden sm:block">
                   <Shield className="w-6 h-6 mx-auto mb-2 text-primary" />
                   <div className="font-display text-lg font-bold text-foreground truncate">
                     {verifierUsername || "N/A"}
@@ -368,37 +368,38 @@ export default function LevelPage() {
           )}
 
           <div className="rounded-lg bg-card border border-border overflow-hidden">
-            <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <h2 className="font-display text-xl font-bold flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-primary" />
+            <div className="p-3 sm:p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <h2 className="font-display text-lg sm:text-xl font-bold flex items-center gap-2">
+                <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 Completions
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleCopyId}
-                  className="gap-2"
+                  className="gap-2 text-xs sm:text-sm"
                 >
-                  <Copy className="w-4 h-4" />
-                  Copy ID
+                  <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Copy ID</span>
+                  <span className="sm:hidden">ID</span>
                 </Button>
                 <Button
                   size="sm"
                   onClick={handlePlay}
-                  className="gap-2"
+                  className="gap-2 text-xs sm:text-sm"
                 >
-                  <Play className="w-4 h-4" />
+                  <Play className="w-3 h-3 sm:w-4 sm:h-4" />
                   Play
                 </Button>
                 <Button
                   variant={sortMode === "time" ? "secondary" : "outline"}
                   size="sm"
                   onClick={() => setSortMode(sortMode === "time" ? "date" : "time")}
-                  className="gap-2"
+                  className="gap-2 text-xs sm:text-sm"
                 >
-                  <ArrowUpDown className="w-4 h-4" />
-                  {sortMode === "time" ? "Fastest" : "Oldest"}
+                  <ArrowUpDown className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">{sortMode === "time" ? "Fastest" : "Oldest"}</span>
                 </Button>
               </div>
             </div>
@@ -421,71 +422,53 @@ export default function LevelPage() {
                     <Link
                       key={`${run.type}-${run.run_id}`}
                       to={`/player/${run.username}`}
-                      className={`flex items-center gap-4 p-4 hover:bg-secondary/20 transition-colors ${
+                      className={`flex items-center gap-2 sm:gap-4 p-3 sm:p-4 hover:bg-secondary/20 transition-colors ${
                         isVerifier ? "bg-primary/5 border-l-2 border-primary" : ""
                       } ${isManualRun && !isVerifier ? "bg-accent/5 border-l-2 border-accent" : ""}`}
                     >
-                      <div className="w-8 text-center flex-shrink-0">
+                      <div className="w-6 sm:w-8 text-center flex-shrink-0">
                         {index < 3 ? (
-                          <Medal className={`w-5 h-5 mx-auto ${getMedalColor(index)}`} />
+                          <Medal className={`w-4 h-4 sm:w-5 sm:h-5 mx-auto ${getMedalColor(index)}`} />
                         ) : (
-                          <span className="font-mono text-muted-foreground">{index + 1}</span>
+                          <span className="font-mono text-xs sm:text-sm text-muted-foreground">{index + 1}</span>
                         )}
                       </div>
 
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-secondary flex-shrink-0">
                         {profile?.avatar_url ? (
                           <img src={profile.avatar_url} alt={run.username} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-foreground font-bold">
+                          <div className="w-full h-full flex items-center justify-center text-foreground text-xs sm:text-sm font-bold">
                             {run.username.charAt(0).toUpperCase()}
                           </div>
                         )}
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-foreground truncate">
+                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                          <span className="font-medium text-sm sm:text-base text-foreground truncate">
                             {profile?.display_name || run.username}
                           </span>
                           {isVerifier && (
-                            <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                            <span className="hidden sm:flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                               <CheckCircle className="w-3 h-3" />
                               Verifier
                             </span>
                           )}
-                          {isManualRun && (
-                            <span className="flex items-center gap-1 text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
-                              <Info className="w-3 h-3" />
-                              Not on API
-                            </span>
-                          )}
                         </div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2">
-                          <ArrowIcon arrowName={run.arrow_name} className="w-4 h-4" />
+                        <div className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1 sm:gap-2">
+                          <ArrowIcon arrowName={run.arrow_name} className="w-3 h-3 sm:w-4 sm:h-4" />
                           {run.completed_at && (
                             <>
-                              <span>•</span>
-                              <span>{formatDate(run.completed_at)}</span>
-                            </>
-                          )}
-                          {isManualRun && run.note && (
-                            <>
-                              <span>•</span>
-                              <span className="italic">{run.note}</span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className="hidden sm:inline">{formatDate(run.completed_at)}</span>
                             </>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4">
-                        {!isManualRun && details?.input_count !== undefined && (
-                          <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
-                            <Hash className="w-3 h-3" />
-                            <span>{details.input_count} inputs</span>
-                          </div>
-                        )}
-                        <div className="font-mono text-primary font-medium">
+                      <div className="flex items-center gap-2 sm:gap-4">
+                        <div className="font-mono text-xs sm:text-sm text-primary font-medium">
                           {formatTime(run.completion_time)}
                         </div>
                       </div>

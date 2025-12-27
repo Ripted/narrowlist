@@ -28,6 +28,7 @@ interface ProfileData {
 }
 
 const ITEMS_PER_PAGE = 10;
+const SHOW_ALL_ITEMS = 999999;
 
 export default function PlayerPage() {
   const { username } = useParams<{ username: string }>();
@@ -49,6 +50,7 @@ export default function PlayerPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [userHasProfile, setUserHasProfile] = useState(false);
   const [sortMode, setSortMode] = useState<"rank" | "date">("rank");
+  const [showAll, setShowAll] = useState(false);
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -196,13 +198,14 @@ export default function PlayerPage() {
       completions = completions.filter((c) => c.levelName.toLowerCase().includes(q));
     }
     
-    // Apply sorting - default to rank (by level difficulty), or by date/time
+    // Apply sorting - default to rank (by level difficulty), or by date (most recent first)
     if (sortMode === "date") {
       completions = [...completions].sort((a, b) => {
         if (!a.completedAt && !b.completedAt) return 0;
         if (!a.completedAt) return 1;
         if (!b.completedAt) return -1;
-        return Date.parse(a.completedAt) - Date.parse(b.completedAt);
+        // Sort descending (most recent first)
+        return Date.parse(b.completedAt) - Date.parse(a.completedAt);
       });
     } else {
       // Sort by level rank (hardest first)
@@ -216,11 +219,13 @@ export default function PlayerPage() {
     return completions;
   }, [player, searchQuery, sortMode, levelRankMap]);
 
-  const totalPages = Math.ceil(filteredCompletions.length / ITEMS_PER_PAGE);
+  const itemsPerPage = showAll ? SHOW_ALL_ITEMS : ITEMS_PER_PAGE;
+  const totalPages = Math.ceil(filteredCompletions.length / itemsPerPage);
   const paginatedCompletions = useMemo(() => {
+    if (showAll) return filteredCompletions;
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredCompletions.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredCompletions, currentPage]);
+  }, [filteredCompletions, currentPage, showAll]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -356,7 +361,7 @@ export default function PlayerPage() {
             </Button>
           </Link>
 
-          <div className="relative h-32 md:h-48 rounded-xl bg-gradient-to-r from-primary/20 to-accent/20 mb-8 overflow-hidden group">
+          <div className="relative h-24 sm:h-32 md:h-48 rounded-xl bg-gradient-to-r from-primary/20 to-accent/20 mb-8 overflow-hidden group">
             {displayBannerUrl && <img src={displayBannerUrl} alt="Banner" className="w-full h-full object-cover" />}
             {canEdit && (
               <>
@@ -368,9 +373,9 @@ export default function PlayerPage() {
             )}
           </div>
 
-          <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-12 -mt-20 md:-mt-16 relative z-10">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-4 sm:gap-8 mb-8 sm:mb-12 -mt-16 sm:-mt-20 md:-mt-16 relative z-10">
             <div className="relative group">
-              <div className={`w-32 h-32 rounded-full overflow-hidden border-4 bg-background ${rank && rank <= 3 ? "border-primary glow-primary" : "border-border"}`}>
+              <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 bg-background ${rank && rank <= 3 ? "border-primary glow-primary" : "border-border"}`}>
                 {displayAvatarUrl ? (
                   <img src={displayAvatarUrl} alt={player.displayName || player.username} className="w-full h-full object-cover" />
                 ) : (
@@ -395,9 +400,9 @@ export default function PlayerPage() {
             </div>
 
             <div className="text-center md:text-left space-y-4 pt-4 flex-1">
-              <div>
-                <div className="flex items-center gap-2 justify-center md:justify-start flex-wrap">
-                  <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground">{profileData?.display_name || player.displayName || player.username}</h1>
+                <div>
+                  <div className="flex items-center gap-2 justify-center md:justify-start flex-wrap">
+                    <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">{profileData?.display_name || player.displayName || player.username}</h1>
                   {currentCountry && (
                     <span className="text-2xl" title={currentCountry.name}>{currentCountry.flag}</span>
                   )}
@@ -464,26 +469,26 @@ export default function PlayerPage() {
                 </Button>
               )}
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                <div className="text-center p-3 rounded-lg bg-card border border-border">
-                  <div className={`font-display text-2xl font-bold ${rank ? getRankStyle(rank) : ""}`}>#{rank}</div>
-                  <div className="text-xs text-muted-foreground">Global Rank</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
+                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                  <div className={`font-display text-xl sm:text-2xl font-bold ${rank ? getRankStyle(rank) : ""}`}>#{rank}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Global Rank</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-card border border-border">
-                  <div className="flex items-center justify-center gap-1"><Trophy className="w-4 h-4 text-primary" /><span className="font-display text-2xl font-bold text-primary">{player.totalPoints}</span></div>
-                  <div className="text-xs text-muted-foreground">Total Points</div>
+                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                  <div className="flex items-center justify-center gap-1"><Trophy className="w-3 h-3 sm:w-4 sm:h-4 text-primary" /><span className="font-display text-xl sm:text-2xl font-bold text-primary">{player.totalPoints}</span></div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Total Points</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-card border border-border">
-                  <div className="font-display text-2xl font-bold text-foreground">{player.completions.length}</div>
-                  <div className="text-xs text-muted-foreground">Completions</div>
+                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                  <div className="font-display text-xl sm:text-2xl font-bold text-foreground">{player.completions.length}</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Completions</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-card border border-border col-span-2 md:col-span-1">
-                  <div className="flex items-center justify-center gap-1"><Crown className="w-4 h-4 text-glow-gold" /><span className="font-display text-lg font-bold text-foreground">#{hardestLevel?.rank || "-"}</span></div>
-                  <div className="text-xs text-muted-foreground truncate" title={hardestLevel?.name}>{hardestLevel?.name ? hardestLevel.name.slice(0, 15) + (hardestLevel.name.length > 15 ? "..." : "") : "Hardest"}</div>
+                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                  <div className="flex items-center justify-center gap-1"><Crown className="w-3 h-3 sm:w-4 sm:h-4 text-glow-gold" /><span className="font-display text-base sm:text-lg font-bold text-foreground">#{hardestLevel?.rank || "-"}</span></div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground truncate" title={hardestLevel?.name}>{hardestLevel?.name ? hardestLevel.name.slice(0, 12) + (hardestLevel.name.length > 12 ? "..." : "") : "Hardest"}</div>
                 </div>
-                <div className="text-center p-3 rounded-lg bg-card border border-border">
-                  <div className="flex items-center justify-center gap-1"><CheckCircle className="w-4 h-4 text-primary" /><span className="font-display text-2xl font-bold text-foreground">{verifiedCount}</span></div>
-                  <div className="text-xs text-muted-foreground">Verified</div>
+                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border col-span-2 sm:col-span-1">
+                  <div className="flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-primary" /><span className="font-display text-xl sm:text-2xl font-bold text-foreground">{verifiedCount}</span></div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Verified</div>
                 </div>
               </div>
             </div>
@@ -526,7 +531,7 @@ export default function PlayerPage() {
           <div className="rounded-xl bg-card border border-border overflow-hidden">
             <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <h2 className="font-display text-xl font-bold flex items-center gap-2"><Target className="w-5 h-5 text-primary" />Completed Levels<span className="text-sm font-normal text-muted-foreground">({filteredCompletions.length})</span></h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="relative w-full sm:w-48">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-sm bg-secondary border-border" />
@@ -539,6 +544,14 @@ export default function PlayerPage() {
                 >
                   <ArrowUpDown className="w-4 h-4" />
                   <span className="hidden sm:inline">{sortMode === "rank" ? "By Rank" : "By Date"}</span>
+                </Button>
+                <Button
+                  variant={showAll ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => { setShowAll(!showAll); setCurrentPage(1); }}
+                  className="flex-shrink-0"
+                >
+                  {showAll ? "Paginate" : "Show All"}
                 </Button>
               </div>
             </div>
@@ -587,7 +600,7 @@ export default function PlayerPage() {
                     );
                   })}
                 </div>
-                {totalPages > 1 && (
+                {!showAll && totalPages > 1 && (
                   <div className="p-4 border-t border-border flex items-center justify-center gap-2">
                     <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="w-4 h-4" /></Button>
                     <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>

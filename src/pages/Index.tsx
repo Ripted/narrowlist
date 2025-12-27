@@ -4,22 +4,37 @@ import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
-import { Target, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Target, Search, Filter } from "lucide-react";
 
 const Index = () => {
   const { levels, loading, error } = useLevels();
   const { completedLevelIds, isLoggedIn } = useUserCompletions();
   const [searchQuery, setSearchQuery] = useState("");
+  const [showOnlyUncompleted, setShowOnlyUncompleted] = useState(false);
 
   const filteredLevels = useMemo(() => {
-    if (!searchQuery.trim()) return levels;
-    const query = searchQuery.toLowerCase();
-    return levels.filter(
-      (level) =>
-        level.levelInfo.name.toLowerCase().includes(query) ||
-        level.levelInfo.author.toLowerCase().includes(query)
-    );
-  }, [levels, searchQuery]);
+    let result = levels;
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (level) =>
+          level.levelInfo.name.toLowerCase().includes(query) ||
+          level.levelInfo.author.toLowerCase().includes(query)
+      );
+    }
+    
+    // Filter by uncompleted only
+    if (showOnlyUncompleted && isLoggedIn) {
+      result = result.filter(
+        (level) => !completedLevelIds.has(level.levelInfo.level_id)
+      );
+    }
+    
+    return result;
+  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds]);
 
   const maxPoints = useMemo(() => {
     return levels.reduce((sum, level) => sum + (level.points || 0), 0);
@@ -49,14 +64,27 @@ const Index = () => {
               </div>
             </div>
             
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search levels..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-secondary border-border"
-              />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {isLoggedIn && (
+                <Button
+                  variant={showOnlyUncompleted ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowOnlyUncompleted(!showOnlyUncompleted)}
+                  className="gap-2 flex-shrink-0"
+                >
+                  <Filter className="w-4 h-4" />
+                  <span className="hidden sm:inline">Uncompleted</span>
+                </Button>
+              )}
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search levels..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 bg-secondary border-border"
+                />
+              </div>
             </div>
           </div>
 
