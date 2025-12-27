@@ -25,22 +25,28 @@ export default function GuidePage() {
     sqm: null,
     ripted: null,
   });
+  const [admins, setAdmins] = useState<{ champy: FounderProfile | null }>({
+    champy: null,
+  });
 
   useEffect(() => {
-    async function loadFounders() {
+    async function loadProfiles() {
       const { data } = await supabase
         .from("profiles")
         .select("username, display_name, avatar_url")
-        .in("username", ["sqm", "Ripted"]);
+        .in("username", ["sqm", "Ripted", "Ch4mpY"]);
       
       if (data) {
         setFounders({
           sqm: data.find(p => p.username.toLowerCase() === "sqm") || null,
           ripted: data.find(p => p.username.toLowerCase() === "ripted") || null,
         });
+        setAdmins({
+          champy: data.find(p => p.username.toLowerCase() === "ch4mpy") || null,
+        });
       }
     }
-    loadFounders();
+    loadProfiles();
   }, []);
 
   return (
@@ -271,6 +277,23 @@ export default function GuidePage() {
               <div>
                 <div className="font-display font-semibold text-foreground">{founders.ripted?.display_name || "Ripted"}</div>
                 <div className="text-xs text-muted-foreground">Founder</div>
+              </div>
+            </Link>
+          </div>
+
+          <h3 className="font-display text-lg font-semibold mb-3 mt-6 text-foreground">Admins</h3>
+          <div className="flex flex-wrap gap-4 mb-6">
+            <Link to="/player/Ch4mpY" className="flex items-center gap-3 px-4 py-3 bg-card/80 rounded-lg border border-border hover:border-primary/50 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center overflow-hidden">
+                {admins.champy?.avatar_url ? (
+                  <img src={admins.champy.avatar_url} alt="Ch4mpY" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-display font-bold text-primary-foreground">C</span>
+                )}
+              </div>
+              <div>
+                <div className="font-display font-semibold text-foreground">{admins.champy?.display_name || "Ch4mpY"}</div>
+                <div className="text-xs text-muted-foreground">Admin</div>
               </div>
             </Link>
           </div>
