@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { LevelDetails, formatTime } from "@/lib/api";
 import { getPointsForRank } from "@/config/levels";
-import { Trophy, User, Clock, Heart, Copy, Play, Shield } from "lucide-react";
+import { Trophy, User, Clock, Heart, Copy, Play, Shield, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -10,9 +10,11 @@ interface LevelCardProps {
   rank: number;
   thumbnailUrl?: string;
   verifierUsername?: string;
+  isCompleted?: boolean;
+  showCompletionStatus?: boolean;
 }
 
-export function LevelCard({ level, rank, thumbnailUrl, verifierUsername }: LevelCardProps) {
+export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompleted, showCompletionStatus }: LevelCardProps) {
   const { toast } = useToast();
   const points = getPointsForRank(rank);
   const { levelInfo, worldRecord } = level;
@@ -47,7 +49,9 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername }: Level
   return (
     <Link to={`/level/${levelInfo.level_id}`}>
       <div
-        className={`group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${getRankBorder(rank)}`}
+        className={`group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${getRankBorder(rank)} ${
+          showCompletionStatus && isCompleted ? "ring-2 ring-primary/30" : ""
+        }`}
         style={{ animationDelay: `${rank * 50}ms` }}
       >
         {/* Thumbnail - taller for better visibility */}
@@ -78,7 +82,12 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername }: Level
           </div>
 
           {/* Points badge */}
-          <div className="absolute top-3 right-3">
+          <div className="absolute top-3 right-3 flex items-center gap-2">
+            {showCompletionStatus && isCompleted && (
+              <div className="flex items-center gap-1 rounded-full bg-primary/90 backdrop-blur-sm px-2 py-1" title="Completed">
+                <Check className="w-3 h-3 text-primary-foreground" />
+              </div>
+            )}
             <div className="flex items-center gap-1 rounded-full bg-primary/90 backdrop-blur-sm px-3 py-1">
               <Trophy className="w-3 h-3 text-primary-foreground" />
               <span className="font-mono font-bold text-sm text-primary-foreground">

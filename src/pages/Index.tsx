@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useLevels } from "@/hooks/useLevels";
+import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { Target, Search } from "lucide-react";
 
 const Index = () => {
   const { levels, loading, error } = useLevels();
+  const { completedLevelIds, isLoggedIn } = useUserCompletions();
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredLevels = useMemo(() => {
@@ -98,6 +100,8 @@ const Index = () => {
                     rank={level.rank}
                     thumbnailUrl={level.thumbnailUrl}
                     verifierUsername={level.verifierUsername}
+                    isCompleted={completedLevelIds.has(level.levelInfo.level_id)}
+                    showCompletionStatus={isLoggedIn}
                   />
                 </div>
               ))}

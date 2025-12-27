@@ -69,7 +69,7 @@ export function Navbar() {
     const items = [
       { path: "/recent", label: "Recent Runs", icon: Activity },
       { path: "/compare", label: "Compare Players", icon: GitCompare },
-      { path: "/submit", label: "Submit Level", icon: Send },
+      { path: "/submit", label: "Submit", icon: Send },
       { path: "/guide", label: "Guide", icon: BookOpen },
       { path: "/themes", label: "Themes", icon: Palette },
     ];

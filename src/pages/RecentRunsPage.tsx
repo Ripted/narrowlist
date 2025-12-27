@@ -20,7 +20,7 @@ interface RecentRun {
   display_name: string | null;
   avatar_url: string | null;
   level_name: string | null;
-  level_db_id: string;
+  level_string_id: string; // The string level_id used for routing
   level_rank: number;
   is_verifier: boolean;
 }
@@ -73,11 +73,11 @@ export default function RecentRunsPage() {
 
       if (allProfilesData) setAllProfiles(allProfilesData);
 
-      // Fetch levels with verifier_profile_id
+      // Fetch levels with verifier_profile_id and level_id string
       const levelIds = [...new Set(completions.map(c => c.level_id))];
       const { data: levels } = await supabase
         .from("levels")
-        .select("id, name, rank_position, verifier_profile_id")
+        .select("id, level_id, name, rank_position, verifier_profile_id")
         .in("id", levelIds);
 
       // Fetch ALL completions to determine oldest completion per level (for verifier detection)
@@ -120,7 +120,7 @@ export default function RecentRunsPage() {
           display_name: profile?.display_name,
           avatar_url: profile?.avatar_url,
           level_name: level?.name || "Unknown Level",
-          level_db_id: c.level_id,
+          level_string_id: level?.level_id || c.level_id, // Use string level_id for routing
           level_rank: level?.rank_position || 0,
           is_verifier: isVerifier,
         };
@@ -364,7 +364,7 @@ export default function RecentRunsPage() {
                       </div>
                       <div className="text-sm text-muted-foreground">
                         Completed{" "}
-                        <Link to={`/level/${run.level_db_id}`} className="text-primary hover:underline">
+                        <Link to={`/level/${run.level_string_id}`} className="text-primary hover:underline">
                           {run.level_name}
                         </Link>
                         <span className="text-xs ml-1">(#{run.level_rank})</span>
