@@ -179,6 +179,7 @@ export default function PlayerPage() {
       const date = new Date(c.completedAt!);
       return {
         date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+        timestamp: date.getTime(), // Use actual timestamp for accurate positioning
         count: cumulativeCount,
         levelName: c.levelName,
       };
@@ -493,19 +494,29 @@ export default function PlayerPage() {
               <h2 className="font-display text-lg font-bold flex items-center gap-2 mb-4"><TrendingUp className="w-5 h-5 text-primary" />Progression</h2>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={progressionData}>
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fontSize: 10 }} 
+                  <LineChart data={progressionData} margin={{ left: 0, right: 10, top: 10, bottom: 0 }}>
+                    <XAxis
+                      dataKey="timestamp"
+                      type="number"
+                      scale="time"
+                      domain={['dataMin', 'dataMax']}
+                      tick={{ fontSize: 10 }}
                       tickFormatter={(value) => {
-                        const parts = value.split('-');
-                        return `${parts[1]}/${parts[2]}`;
+                        const date = new Date(value);
+                        return `${date.getMonth() + 1}/${date.getDate()}`;
                       }}
-                      interval={Math.max(0, Math.floor(progressionData.length / 6))}
+                      tickCount={6}
                     />
                     <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(220 25% 9%)', border: '1px solid hsl(220 20% 18%)', borderRadius: '8px' }} formatter={(value: number, name: string, props: any) => [`${value} levels`, props.payload.levelName]} />
-                    <Line type="stepAfter" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }} activeDot={{ r: 5 }} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'hsl(220 25% 9%)', border: '1px solid hsl(220 20% 18%)', borderRadius: '8px' }} 
+                      labelFormatter={(value) => {
+                        const date = new Date(value);
+                        return date.toLocaleDateString();
+                      }}
+                      formatter={(value: number, name: string, props: any) => [`${value} levels`, props.payload.levelName]} 
+                    />
+                    <Line type="monotone" dataKey="count" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} connectNulls />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
