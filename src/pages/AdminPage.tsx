@@ -177,6 +177,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [testingDiscord, setTestingDiscord] = useState(false);
   
   // Submission review
   const [reviewingSubmission, setReviewingSubmission] = useState<LevelSubmission | null>(null);
@@ -427,7 +428,7 @@ export default function AdminPage() {
         // Find level by level_id
         const { data: level } = await supabase
           .from("levels")
-          .select("id, name")
+          .select("id, name, rank_position")
           .eq("level_id", submission.level_id)
           .maybeSingle();
         
@@ -439,7 +440,7 @@ export default function AdminPage() {
         const completionTime = parseFloat(runSubmissionTime) || 0;
         const completedDate = runSubmissionDate || new Date().toISOString().split('T')[0];
 
-        const { error: insertError } = await supabase.from("manual_runs").insert({
+        const { data: insertedRun, error: insertError } = await supabase.from("manual_runs").insert({
           level_id: level.id,
           profile_id: profile.id,
           completion_time: completionTime,
@@ -450,9 +451,30 @@ export default function AdminPage() {
           proof_url: submission.proof_url,
           added_by_admin_id: user.id,
           added_by_admin_email: user.email || "unknown",
-        });
+        }).select("id").single();
 
         if (insertError) throw insertError;
+
+        // Send Discord notification
+        try {
+          await supabase.functions.invoke("discord-notify", {
+            body: {
+              completion_type: "manual_run",
+              completion_id: insertedRun?.id || `run-${Date.now()}`,
+              profile_id: profile.id,
+              level_id: level.id,
+              player_name: submission.username,
+              level_name: level.name || submission.level_name || "Unknown Level",
+              level_rank: level.rank_position,
+              completion_time: completionTime,
+              arrow_name: runSubmissionArrow,
+              is_verifier: submission.is_verifier,
+            },
+          });
+        } catch (discordError) {
+          console.error("Discord notification failed:", discordError);
+          // Don't throw - the run was approved, just notification failed
+        }
 
         await logAction("Approved run submission", `${submission.username} on ${level.name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
         toast({ title: "Run Approved", description: `Added as manual run for ${submission.username}` });
@@ -1392,6 +1414,49 @@ export default function AdminPage() {
     }
   };
 
+  const testDiscordNotification = async () => {
+    setTestingDiscord(true);
+    try {
+      // Get a sample level for test
+      const { data: sampleLevel } = await supabase
+        .from("levels")
+        .select("id, name, rank_position")
+        .order("rank_position")
+        .limit(1)
+        .single();
+
+      if (!sampleLevel) {
+        throw new Error("No levels found for test");
+      }
+
+      // Send test notification
+      const response = await supabase.functions.invoke("discord-notify", {
+        body: {
+          completion_type: "test",
+          completion_id: `test-${Date.now()}`,
+          profile_id: user?.id || "test-profile",
+          level_id: sampleLevel.id,
+          player_name: user?.email?.split("@")[0] || "TestAdmin",
+          level_name: sampleLevel.name || "Test Level",
+          level_rank: sampleLevel.rank_position,
+          completion_time: 12345, // 12.345 seconds
+          arrow_name: "Energy Arrow",
+          is_verifier: false,
+        },
+      });
+
+      if (response.error) throw response.error;
+      
+      await logAction("Tested Discord notification", "Sent test message to Discord");
+      toast({ title: "Test Sent", description: "Discord notification sent successfully" });
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Test Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setTestingDiscord(false);
+    }
+  };
+
   // Manual check for empty levels without syncing
   const manualCheckEmptyLevels = async () => {
     setSyncing(true);
@@ -1695,7 +1760,17 @@ export default function AdminPage() {
               </div>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button 
+                onClick={testDiscordNotification}
+                disabled={testingDiscord}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                <MessageSquare className={`w-4 h-4 ${testingDiscord ? "animate-pulse" : ""}`} />
+                <span className="hidden sm:inline">{testingDiscord ? "Sending..." : "Test Discord"}</span>
+              </Button>
               <Button 
                 onClick={() => setBulkImportOpen(true)}
                 variant="outline"
