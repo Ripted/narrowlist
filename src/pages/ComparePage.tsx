@@ -17,6 +17,7 @@ interface Profile {
 
 interface CompletionData {
   level_id: string;
+  level_string_id: string;
   level_name: string | null;
   level_rank: number;
   level_points: number;
@@ -73,7 +74,7 @@ export default function ComparePage() {
     const levelIds = [...new Set(completions?.map(c => c.level_id) || [])];
     const { data: levels } = await supabase
       .from("levels")
-      .select("id, name, rank_position, points")
+      .select("id, level_id, name, rank_position, points")
       .in("id", levelIds);
 
     const levelMap = new Map(levels?.map(l => [l.id, l]) || []);
@@ -82,6 +83,7 @@ export default function ComparePage() {
       ...profile,
       completions: (completions || []).map(c => ({
         level_id: c.level_id,
+        level_string_id: levelMap.get(c.level_id)?.level_id || "",
         level_name: levelMap.get(c.level_id)?.name || "Unknown",
         level_rank: levelMap.get(c.level_id)?.rank_position || 0,
         level_points: levelMap.get(c.level_id)?.points || 0,
@@ -100,11 +102,11 @@ export default function ComparePage() {
   };
 
   const allLevels = useMemo(() => {
-    const levelSet = new Map<string, { id: string; name: string; rank: number }>();
+    const levelSet = new Map<string, { id: string; stringId: string; name: string; rank: number }>();
     selectedPlayers.forEach(player => {
       player.completions.forEach(c => {
         if (!levelSet.has(c.level_id)) {
-          levelSet.set(c.level_id, { id: c.level_id, name: c.level_name || "", rank: c.level_rank });
+          levelSet.set(c.level_id, { id: c.level_id, stringId: c.level_string_id, name: c.level_name || "", rank: c.level_rank });
         }
       });
     });
@@ -179,11 +181,8 @@ export default function ComparePage() {
     });
   }, [selectedPlayers]);
 
-  const formatTime = (ms: number) => {
-    const totalSeconds = ms / 1000;
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = (totalSeconds % 60).toFixed(2);
-    return minutes > 0 ? `${minutes}:${seconds.padStart(5, "0")}` : `${seconds}s`;
+  const formatTime = (seconds: number) => {
+    return `${seconds.toFixed(3)}s`;
   };
 
   return (
@@ -473,7 +472,7 @@ export default function ComparePage() {
                       return (
                         <tr key={level.id} className="border-b border-border hover:bg-secondary/20">
                           <td className="p-4">
-                            <Link to={`/level/${level.id}`} className="hover:text-primary transition-colors">
+                            <Link to={`/level/${level.stringId}`} className="hover:text-primary transition-colors">
                               <div className="font-medium">#{level.rank} {level.name}</div>
                             </Link>
                           </td>
