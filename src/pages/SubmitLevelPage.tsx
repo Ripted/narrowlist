@@ -39,7 +39,7 @@ interface RunSubmission {
   admin_note: string | null;
 }
 
-const RATE_LIMIT_COUNT = 3;
+const RATE_LIMIT_COUNT = 5;
 const RATE_LIMIT_HOURS = 24;
 
 export default function SubmitLevelPage() {
