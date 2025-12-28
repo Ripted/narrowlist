@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { countries, getCountryByCode } from "@/config/countries";
+import { PlayerRankHistoryChart } from "@/components/PlayerRankHistoryChart";
 
 interface ProfileData {
   id: string;
@@ -494,9 +495,20 @@ export default function PlayerPage() {
             </div>
           </div>
 
+          {/* Points History Chart */}
+          {profileData && rank && (
+            <div className="rounded-xl bg-card border border-border p-4 sm:p-6 mb-8">
+              <h2 className="font-display text-lg font-bold flex items-center gap-2 mb-4">
+                <Trophy className="w-5 h-5 text-primary" />
+                Points History
+              </h2>
+              <PlayerRankHistoryChart profileId={profileData.id} currentRank={rank} />
+            </div>
+          )}
+
           {progressionData.length > 1 && (
             <div className="rounded-xl bg-card border border-border p-4 sm:p-6 mb-8">
-              <h2 className="font-display text-lg font-bold flex items-center gap-2 mb-4"><TrendingUp className="w-5 h-5 text-primary" />Progression</h2>
+              <h2 className="font-display text-lg font-bold flex items-center gap-2 mb-4"><TrendingUp className="w-5 h-5 text-primary" />Completion Progression</h2>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={progressionData} margin={{ left: 0, right: 10, top: 10, bottom: 0 }}>
