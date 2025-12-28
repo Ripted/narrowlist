@@ -14,6 +14,7 @@ import {
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
   ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo
 } from "lucide-react";
+import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -177,7 +178,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [testingDiscord, setTestingDiscord] = useState(false);
+  
   
   // Submission review
   const [reviewingSubmission, setReviewingSubmission] = useState<LevelSubmission | null>(null);
@@ -1414,48 +1415,6 @@ export default function AdminPage() {
     }
   };
 
-  const testDiscordNotification = async () => {
-    setTestingDiscord(true);
-    try {
-      // Get a sample level for test
-      const { data: sampleLevel } = await supabase
-        .from("levels")
-        .select("id, name, rank_position")
-        .order("rank_position")
-        .limit(1)
-        .single();
-
-      if (!sampleLevel) {
-        throw new Error("No levels found for test");
-      }
-
-      // Send test notification
-      const response = await supabase.functions.invoke("discord-notify", {
-        body: {
-          completion_type: "test",
-          completion_id: `test-${Date.now()}`,
-          profile_id: user?.id || "test-profile",
-          level_id: sampleLevel.id,
-          player_name: user?.email?.split("@")[0] || "TestAdmin",
-          level_name: sampleLevel.name || "Test Level",
-          level_rank: sampleLevel.rank_position,
-          completion_time: 12345, // 12.345 seconds
-          arrow_name: "Energy Arrow",
-          is_verifier: false,
-        },
-      });
-
-      if (response.error) throw response.error;
-      
-      await logAction("Tested Discord notification", "Sent test message to Discord");
-      toast({ title: "Test Sent", description: "Discord notification sent successfully" });
-      fetchChangelog();
-    } catch (error: any) {
-      toast({ title: "Test Failed", description: error.message, variant: "destructive" });
-    } finally {
-      setTestingDiscord(false);
-    }
-  };
 
   // Manual check for empty levels without syncing
   const manualCheckEmptyLevels = async () => {
@@ -1676,7 +1635,7 @@ export default function AdminPage() {
         toast({ title: "Success", description: "Manual run updated" });
       } else {
         // Create new
-        const { error } = await supabase.from("manual_runs").insert({
+        const { data: insertedRun, error } = await supabase.from("manual_runs").insert({
           level_id: manualRunLevel,
           profile_id: manualRunProfile,
           completion_time: completionTime,
@@ -1687,9 +1646,35 @@ export default function AdminPage() {
           proof_url: manualRunProofUrl || null,
           added_by_admin_id: user!.id,
           added_by_admin_email: user!.email || "unknown",
-        });
+        }).select("id").single();
 
         if (error) throw error;
+        
+        // Get level and profile info for Discord notification
+        const levelInfo = levels.find(l => l.id === manualRunLevel);
+        const profileInfo = allProfiles.find(p => p.id === manualRunProfile);
+        
+        if (levelInfo && profileInfo) {
+          try {
+            await supabase.functions.invoke("discord-notify", {
+              body: {
+                completion_type: "manual_run",
+                completion_id: insertedRun?.id || `manual-${Date.now()}`,
+                profile_id: manualRunProfile,
+                level_id: manualRunLevel,
+                player_name: profileInfo.display_name || profileInfo.username,
+                level_name: levelInfo.name || "Unknown Level",
+                level_rank: levelInfo.rank_position,
+                completion_time: completionTime,
+                arrow_name: manualRunArrow,
+                is_verifier: manualRunVerifier,
+              },
+            });
+          } catch (discordError) {
+            console.error("Discord notification failed:", discordError);
+          }
+        }
+        
         await logAction("Added manual run", `${manualRunTime}s for profile ${manualRunProfile}`);
         toast({ title: "Success", description: "Manual run added" });
       }
@@ -1761,16 +1746,6 @@ export default function AdminPage() {
             </div>
             
             <div className="flex gap-2 flex-wrap">
-              <Button 
-                onClick={testDiscordNotification}
-                disabled={testingDiscord}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <MessageSquare className={`w-4 h-4 ${testingDiscord ? "animate-pulse" : ""}`} />
-                <span className="hidden sm:inline">{testingDiscord ? "Sending..." : "Test Discord"}</span>
-              </Button>
               <Button 
                 onClick={() => setBulkImportOpen(true)}
                 variant="outline"
@@ -1854,6 +1829,7 @@ export default function AdminPage() {
               <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
               <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
               <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
+              <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
               <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
               <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
               <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
@@ -2695,6 +2671,11 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            {/* Feedback Tab */}
+            <TabsContent value="feedback" className="space-y-6">
+              <LevelFeedbackAdmin />
             </TabsContent>
 
             <TabsContent value="players" className="space-y-6">

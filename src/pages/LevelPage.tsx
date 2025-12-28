@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers } from "lucide-react";
+import { LevelFeedbackButton } from "@/components/LevelFeedbackButton";
 
 interface DbProfile {
   id: string;
@@ -401,6 +402,9 @@ export default function LevelPage() {
                   <ArrowUpDown className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">{sortMode === "time" ? "Fastest" : "Oldest"}</span>
                 </Button>
+                {levelDbId && rank && (
+                  <LevelFeedbackButton levelDbId={levelDbId} levelRank={rank} />
+                )}
               </div>
             </div>
 
