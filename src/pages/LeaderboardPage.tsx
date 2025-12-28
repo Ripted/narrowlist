@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { usePlayerLeaderboard } from "@/hooks/useLevels";
 import { PlayerCard } from "@/components/PlayerCard";
 import { Navbar } from "@/components/Navbar";
@@ -243,8 +244,8 @@ export default function LeaderboardPage() {
           {!isLoading && !historicalDate && players.length >= 3 && !searchQuery && (
             <div className="hidden md:flex items-end justify-center gap-4 mb-12">
               {/* Second place */}
-              <div className="text-center animate-fade-in" style={{ animationDelay: "100ms" }}>
-                <div className="w-24 h-24 mx-auto mb-3 rounded-full border-4 border-glow-silver overflow-hidden bg-gradient-to-br from-glow-silver/30 to-glow-silver/60">
+              <Link to={`/player/${players[1].username}`} className="text-center animate-fade-in cursor-pointer group" style={{ animationDelay: "100ms" }}>
+                <div className="w-24 h-24 mx-auto mb-3 rounded-full border-4 border-glow-silver overflow-hidden bg-gradient-to-br from-glow-silver/30 to-glow-silver/60 group-hover:scale-105 transition-transform">
                   {players[1].avatarUrl ? (
                     <img src={players[1].avatarUrl} alt={players[1].displayName || players[1].username} className="w-full h-full object-cover" />
                   ) : (
@@ -254,14 +255,14 @@ export default function LeaderboardPage() {
                   )}
                 </div>
                 <Medal className="w-6 h-6 mx-auto text-glow-silver mb-1" />
-                <div className="font-display font-bold text-foreground">{players[1].displayName || players[1].username}</div>
+                <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{players[1].displayName || players[1].username}</div>
                 <div className="font-mono text-sm text-primary">{players[1].totalPoints} pts</div>
                 <div className="w-24 h-24 bg-gradient-to-t from-glow-silver/60 to-glow-silver/30 rounded-t-lg mt-2" />
-              </div>
+              </Link>
 
               {/* First place */}
-              <div className="text-center animate-fade-in">
-                <div className="w-32 h-32 mx-auto mb-3 rounded-full border-4 border-glow-gold overflow-hidden bg-gradient-to-br from-glow-gold/30 to-glow-gold/60 glow-gold">
+              <Link to={`/player/${players[0].username}`} className="text-center animate-fade-in cursor-pointer group">
+                <div className="w-32 h-32 mx-auto mb-3 rounded-full border-4 border-glow-gold overflow-hidden bg-gradient-to-br from-glow-gold/30 to-glow-gold/60 glow-gold group-hover:scale-105 transition-transform">
                   {players[0].avatarUrl ? (
                     <img src={players[0].avatarUrl} alt={players[0].displayName || players[0].username} className="w-full h-full object-cover" />
                   ) : (
@@ -271,14 +272,14 @@ export default function LeaderboardPage() {
                   )}
                 </div>
                 <Trophy className="w-8 h-8 mx-auto text-glow-gold mb-1" />
-                <div className="font-display font-bold text-lg text-foreground">{players[0].displayName || players[0].username}</div>
+                <div className="font-display font-bold text-lg text-foreground group-hover:text-primary transition-colors">{players[0].displayName || players[0].username}</div>
                 <div className="font-mono text-primary text-lg">{players[0].totalPoints} pts</div>
                 <div className="w-32 h-32 bg-gradient-to-t from-glow-gold/60 to-glow-gold/30 rounded-t-lg mt-2" />
-              </div>
+              </Link>
 
               {/* Third place */}
-              <div className="text-center animate-fade-in" style={{ animationDelay: "200ms" }}>
-                <div className="w-20 h-20 mx-auto mb-3 rounded-full border-4 border-glow-bronze overflow-hidden bg-gradient-to-br from-glow-bronze/30 to-glow-bronze/60">
+              <Link to={`/player/${players[2].username}`} className="text-center animate-fade-in cursor-pointer group" style={{ animationDelay: "200ms" }}>
+                <div className="w-20 h-20 mx-auto mb-3 rounded-full border-4 border-glow-bronze overflow-hidden bg-gradient-to-br from-glow-bronze/30 to-glow-bronze/60 group-hover:scale-105 transition-transform">
                   {players[2].avatarUrl ? (
                     <img src={players[2].avatarUrl} alt={players[2].displayName || players[2].username} className="w-full h-full object-cover" />
                   ) : (
@@ -288,10 +289,10 @@ export default function LeaderboardPage() {
                   )}
                 </div>
                 <Medal className="w-5 h-5 mx-auto text-glow-bronze mb-1" />
-                <div className="font-display font-bold text-foreground">{players[2].displayName || players[2].username}</div>
+                <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{players[2].displayName || players[2].username}</div>
                 <div className="font-mono text-sm text-primary">{players[2].totalPoints} pts</div>
                 <div className="w-20 h-16 bg-gradient-to-t from-glow-bronze/60 to-glow-bronze/30 rounded-t-lg mt-2" />
-              </div>
+              </Link>
             </div>
           )}
 

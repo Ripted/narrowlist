@@ -23,6 +23,7 @@ interface LevelFeedback {
   level_rank_at_feedback: number | null;
   level_name?: string;
   level_rank?: number;
+  level_string_id?: string;
   user_email?: string;
   user_completed?: boolean;
 }
@@ -65,12 +66,12 @@ export function LevelFeedbackAdmin() {
       return;
     }
     
-    // Fetch levels to get names and current ranks
+    // Fetch levels to get names, current ranks, and level_ids
     const { data: levels } = await supabase
       .from("levels")
-      .select("id, name, rank_position");
+      .select("id, name, rank_position, level_id");
     
-    const levelMap = new Map(levels?.map(l => [l.id, { name: l.name, rank: l.rank_position }]) || []);
+    const levelMap = new Map(levels?.map(l => [l.id, { name: l.name, rank: l.rank_position, level_id: l.level_id }]) || []);
     
     // Get user profiles to check completions
     const userIds = [...new Set(feedbackData?.map(f => f.user_id) || [])];
@@ -115,11 +116,15 @@ export function LevelFeedbackAdmin() {
     // Enrich feedback data
     const enrichedFeedback = feedbackData?.map(f => {
       const levelInfo = levelMap.get(f.level_id);
+      const profileId = userToProfile.get(f.user_id);
+      // Check if user completed this specific level (by level_id UUID)
+      const userCompleted = profileId ? completedSet.has(`${f.user_id}-${f.level_id}`) : false;
       return {
         ...f,
         level_name: levelInfo?.name || "Unknown Level",
         level_rank: levelInfo?.rank,
-        user_completed: completedSet.has(`${f.user_id}-${f.level_id}`),
+        level_string_id: levelInfo?.level_id,
+        user_completed: userCompleted,
       };
     }) || [];
     
@@ -270,12 +275,9 @@ export function LevelFeedbackAdmin() {
                     <tr key={level.level_id} className="border-b border-border/50 hover:bg-secondary/20">
                       <td className="py-2 px-2 font-mono">#{level.level_rank}</td>
                       <td className="py-2 px-2">
-                        <Link 
-                          to={`/level/${level.level_id}`}
-                          className="text-primary hover:underline"
-                        >
+                        <span className="text-foreground">
                           {level.level_name}
-                        </Link>
+                        </span>
                       </td>
                       <td className="text-center py-2 px-2">
                         {level.overrated > 0 && (
@@ -359,12 +361,18 @@ export function LevelFeedbackAdmin() {
                       <span className="font-mono text-sm text-muted-foreground">
                         #{f.level_rank}
                       </span>
-                      <Link 
-                        to={`/level/${f.level_id}`}
-                        className="font-medium text-primary hover:underline truncate"
-                      >
-                        {f.level_name}
-                      </Link>
+                      {f.level_string_id ? (
+                        <Link 
+                          to={`/level/${f.level_string_id}`}
+                          className="font-medium text-primary hover:underline truncate"
+                        >
+                          {f.level_name}
+                        </Link>
+                      ) : (
+                        <span className="font-medium text-foreground truncate">
+                          {f.level_name}
+                        </span>
+                      )}
                       <span className={`px-2 py-0.5 rounded text-xs flex items-center gap-1 ${getRatingColor(f.rating)}`}>
                         {getRatingIcon(f.rating)}
                         {getRatingLabel(f.rating)}

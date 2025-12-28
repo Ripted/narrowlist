@@ -12,11 +12,10 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   ArrowLeft, Trophy, Target, Clock, Medal, UserPlus, Camera, Loader2, 
-  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, Star, MapPin
+  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, Star, MapPin, Shield
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { countries, getCountryByCode } from "@/config/countries";
-import { PlayerRankHistoryChart } from "@/components/PlayerRankHistoryChart";
 
 interface ProfileData {
   id: string;
@@ -48,6 +47,7 @@ export default function PlayerPage() {
   const [savingBio, setSavingBio] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [verifiedCount, setVerifiedCount] = useState(0);
+  const [verifiedLevelIds, setVerifiedLevelIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [userHasProfile, setUserHasProfile] = useState(false);
   const [sortMode, setSortMode] = useState<"rank" | "date">("rank");
@@ -83,20 +83,24 @@ export default function PlayerPage() {
             // Count verified levels - check both verifier_profile_id AND oldest completion
             const { data: allLevels } = await supabase
               .from("levels")
-              .select("id, verifier_profile_id");
+              .select("id, level_id, verifier_profile_id");
             
             if (allLevels) {
+              const verifiedIds = new Set<string>();
+              
               // Get levels where this profile is explicitly set as verifier
-              const explicitVerifierCount = allLevels.filter(l => l.verifier_profile_id === data.id).length;
+              const explicitVerifierLevels = allLevels.filter(l => l.verifier_profile_id === data.id);
+              explicitVerifierLevels.forEach(l => verifiedIds.add(l.level_id));
               
               // For levels without explicit verifier, check if this user has oldest completion
-              const levelsWithoutVerifier = allLevels.filter(l => !l.verifier_profile_id).map(l => l.id);
+              const levelsWithoutVerifier = allLevels.filter(l => !l.verifier_profile_id);
+              const levelIdsWithoutVerifier = levelsWithoutVerifier.map(l => l.id);
               
-              if (levelsWithoutVerifier.length > 0) {
+              if (levelIdsWithoutVerifier.length > 0) {
                 const { data: completions } = await supabase
                   .from("completions")
                   .select("level_id, profile_id, completed_at")
-                  .in("level_id", levelsWithoutVerifier)
+                  .in("level_id", levelIdsWithoutVerifier)
                   .order("completed_at", { ascending: true });
                 
                 // Find oldest completion per level
@@ -109,16 +113,16 @@ export default function PlayerPage() {
                   }
                 }
                 
-                // Count how many levels this user is the oldest completer
-                let oldestCompleterCount = 0;
-                for (const [, profileId] of oldestCompleterMap) {
-                  if (profileId === data.id) oldestCompleterCount++;
+                // Add levels where this user is the oldest completer
+                for (const level of levelsWithoutVerifier) {
+                  if (oldestCompleterMap.get(level.id) === data.id) {
+                    verifiedIds.add(level.level_id);
+                  }
                 }
-                
-                setVerifiedCount(explicitVerifierCount + oldestCompleterCount);
-              } else {
-                setVerifiedCount(explicitVerifierCount);
               }
+              
+              setVerifiedLevelIds(verifiedIds);
+              setVerifiedCount(verifiedIds.size);
             }
           }
         });
@@ -495,16 +499,6 @@ export default function PlayerPage() {
             </div>
           </div>
 
-          {/* Points History Chart */}
-          {profileData && rank && (
-            <div className="rounded-xl bg-card border border-border p-4 sm:p-6 mb-8">
-              <h2 className="font-display text-lg font-bold flex items-center gap-2 mb-4">
-                <Trophy className="w-5 h-5 text-primary" />
-                Points History
-              </h2>
-              <PlayerRankHistoryChart profileId={profileData.id} currentRank={rank} />
-            </div>
-          )}
 
           {progressionData.length > 1 && (
             <div className="rounded-xl bg-card border border-border p-4 sm:p-6 mb-8">
@@ -583,8 +577,14 @@ export default function PlayerPage() {
                         </div>
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><Medal className="w-4 h-4 text-primary" /></div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-foreground truncate">{completion.levelName}</span>
+                            {verifiedLevelIds.has(completion.levelId) && (
+                              <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                <Shield className="w-3 h-3" />
+                                Verifier
+                              </span>
+                            )}
                             {isHardest && (
                               <span className="flex items-center gap-1 text-xs text-glow-gold bg-glow-gold/10 px-2 py-0.5 rounded-full flex-shrink-0">
                                 <Star className="w-3 h-3" />
