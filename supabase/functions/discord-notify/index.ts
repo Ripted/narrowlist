@@ -18,12 +18,7 @@ const ARROW_EMOJIS: Record<string, string> = {
 }
 
 function formatTime(seconds: number): string {
-  // The API returns completion_time in seconds (e.g., 101.234 = 101.234 seconds)
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  if (minutes > 0) {
-    return `${minutes}:${remainingSeconds.toFixed(3).padStart(6, '0')}`;
-  }
+  // Always display in seconds format (e.g., 101.234s)
   return `${seconds.toFixed(3)}s`;
 }
 
