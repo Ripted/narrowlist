@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers, TrendingUp } from "lucide-react";
 import { LevelFeedbackButton } from "@/components/LevelFeedbackButton";
 import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
+import { WatchlistButton } from "@/components/WatchlistButton";
 
 interface DbProfile {
   id: string;
@@ -397,6 +398,9 @@ export default function LevelPage() {
                 Completions
               </h2>
               <div className="flex flex-wrap items-center gap-2">
+                {levelDbId && (
+                  <WatchlistButton levelDbId={levelDbId} levelName={levelInfo.name} />
+                )}
                 <Button
                   variant="outline"
                   size="sm"
