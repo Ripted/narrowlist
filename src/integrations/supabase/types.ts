@@ -86,6 +86,54 @@ export type Database = {
           },
         ]
       }
+      deleted_levels: {
+        Row: {
+          alternative_ids: string[] | null
+          author: string | null
+          deleted_at: string
+          deleted_by: string
+          deleted_by_email: string
+          id: string
+          level_id: string
+          name: string | null
+          original_id: string
+          points: number
+          rank_position: number
+          thumbnail_url: string | null
+          verifier_profile_id: string | null
+        }
+        Insert: {
+          alternative_ids?: string[] | null
+          author?: string | null
+          deleted_at?: string
+          deleted_by: string
+          deleted_by_email: string
+          id?: string
+          level_id: string
+          name?: string | null
+          original_id: string
+          points: number
+          rank_position: number
+          thumbnail_url?: string | null
+          verifier_profile_id?: string | null
+        }
+        Update: {
+          alternative_ids?: string[] | null
+          author?: string | null
+          deleted_at?: string
+          deleted_by?: string
+          deleted_by_email?: string
+          id?: string
+          level_id?: string
+          name?: string | null
+          original_id?: string
+          points?: number
+          rank_position?: number
+          thumbnail_url?: string | null
+          verifier_profile_id?: string | null
+        }
+        Relationships: []
+      }
       discord_notifications: {
         Row: {
           completion_id: string
@@ -588,6 +636,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_watchlist: {
+        Row: {
+          created_at: string
+          id: string
+          level_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_watchlist_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

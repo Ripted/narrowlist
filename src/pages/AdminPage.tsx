@@ -12,7 +12,7 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search
+  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import {
@@ -159,6 +159,22 @@ interface RunSubmission {
   reviewed_at: string | null;
 }
 
+interface DeletedLevel {
+  id: string;
+  original_id: string;
+  level_id: string;
+  name: string | null;
+  author: string | null;
+  rank_position: number;
+  points: number;
+  thumbnail_url: string | null;
+  alternative_ids: string[] | null;
+  verifier_profile_id: string | null;
+  deleted_at: string;
+  deleted_by: string;
+  deleted_by_email: string;
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export default function AdminPage() {
@@ -175,9 +191,11 @@ export default function AdminPage() {
   const [levelSubmissions, setLevelSubmissions] = useState<LevelSubmission[]>([]);
   const [runSubmissions, setRunSubmissions] = useState<RunSubmission[]>([]);
   const [bannedUsers, setBannedUsers] = useState<BannedUser[]>([]);
+  const [deletedLevels, setDeletedLevels] = useState<DeletedLevel[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [restoringLevel, setRestoringLevel] = useState<string | null>(null);
   
   
   // Submission review
@@ -305,8 +323,58 @@ export default function AdminPage() {
       fetchLevelSubmissions();
       fetchRunSubmissions();
       fetchBannedUsers();
+      fetchDeletedLevels();
     }
   }, [isAdmin]);
+
+  const fetchDeletedLevels = async () => {
+    const { data } = await supabase
+      .from("deleted_levels")
+      .select("*")
+      .order("deleted_at", { ascending: false });
+    
+    if (data) setDeletedLevels(data as DeletedLevel[]);
+  };
+
+  const restoreDeletedLevel = async (deletedLevel: DeletedLevel) => {
+    setRestoringLevel(deletedLevel.id);
+    try {
+      // Insert back into levels table
+      const { error: insertError } = await supabase
+        .from("levels")
+        .insert({
+          level_id: deletedLevel.level_id,
+          name: deletedLevel.name,
+          author: deletedLevel.author,
+          rank_position: deletedLevel.rank_position,
+          points: deletedLevel.points,
+          thumbnail_url: deletedLevel.thumbnail_url,
+          alternative_ids: deletedLevel.alternative_ids,
+          verifier_profile_id: deletedLevel.verifier_profile_id,
+        });
+      
+      if (insertError) throw insertError;
+      
+      // Remove from deleted_levels
+      const { error: deleteError } = await supabase
+        .from("deleted_levels")
+        .delete()
+        .eq("id", deletedLevel.id);
+      
+      if (deleteError) throw deleteError;
+      
+      await logAction("Restored deleted level", `${deletedLevel.name || deletedLevel.level_id} at rank #${deletedLevel.rank_position}`);
+      toast({ title: "Level Restored", description: `${deletedLevel.name || deletedLevel.level_id} has been restored` });
+      
+      fetchLevels();
+      fetchDeletedLevels();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Restore Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setRestoringLevel(null);
+    }
+  };
 
   const logAction = async (action: string, details?: string) => {
     if (!user) return;
@@ -1899,6 +1967,10 @@ export default function AdminPage() {
               <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
               <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
               <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
+              <TabsTrigger value="deleted" className="text-xs sm:text-sm flex-shrink-0 text-destructive">
+                <RotateCcw className="w-3 h-3 hidden sm:inline" />
+                Deleted ({deletedLevels.length})
+              </TabsTrigger>
               <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
             </TabsList>
 
@@ -2973,6 +3045,57 @@ export default function AdminPage() {
                         >
                           <UserCheck className="w-4 h-4" />
                           Unban
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Deleted Levels Tab */}
+            <TabsContent value="deleted" className="space-y-6">
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-destructive/10">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2 text-destructive">
+                    <RotateCcw className="w-5 h-5" />
+                    Deleted Levels (Restorable for 30 days)
+                  </h2>
+                </div>
+
+                {deletedLevels.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No deleted levels to restore.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {deletedLevels.map((level) => (
+                      <div key={level.id} className="p-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {level.thumbnail_url && (
+                            <img src={level.thumbnail_url} alt="" className="w-12 h-8 rounded object-cover" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="font-medium text-foreground truncate">
+                              #{level.rank_position} - {level.name || level.level_id}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              Deleted by {level.deleted_by_email} on {new Date(level.deleted_at).toLocaleString()}
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => restoreDeletedLevel(level)}
+                          disabled={restoringLevel === level.id}
+                          className="gap-2 flex-shrink-0"
+                        >
+                          {restoringLevel === level.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="w-4 h-4" />
+                          )}
+                          Restore
                         </Button>
                       </div>
                     ))}
