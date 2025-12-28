@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/Navbar";
@@ -12,7 +12,7 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo
+  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import {
@@ -205,6 +205,13 @@ export default function AdminPage() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [showAll, setShowAll] = useState(false);
+  
+  // Search filters
+  const [levelSearchQuery, setLevelSearchQuery] = useState("");
+  const [submissionSearchQuery, setSubmissionSearchQuery] = useState("");
+  const [runSubmissionSearchQuery, setRunSubmissionSearchQuery] = useState("");
+  const [playerSearchQuery, setPlayerSearchQuery] = useState("");
+  const [futureSearchQuery, setFutureSearchQuery] = useState("");
   
   // New level form with rank
   const [newLevelId, setNewLevelId] = useState("");
@@ -817,11 +824,65 @@ export default function AdminPage() {
     return 1;
   };
 
+  // Filtered and paginated data
+  const filteredLevels = useMemo(() => {
+    if (!levelSearchQuery.trim()) return levels;
+    const query = levelSearchQuery.toLowerCase();
+    return levels.filter(l => 
+      l.name?.toLowerCase().includes(query) ||
+      l.author?.toLowerCase().includes(query) ||
+      l.level_id.toLowerCase().includes(query) ||
+      l.rank_position.toString().includes(query)
+    );
+  }, [levels, levelSearchQuery]);
+
+  const filteredFutureLevels = useMemo(() => {
+    if (!futureSearchQuery.trim()) return futureLevels;
+    const query = futureSearchQuery.toLowerCase();
+    return futureLevels.filter(l => 
+      l.name?.toLowerCase().includes(query) ||
+      l.author?.toLowerCase().includes(query) ||
+      l.level_id.toLowerCase().includes(query)
+    );
+  }, [futureLevels, futureSearchQuery]);
+
+  const filteredLevelSubmissions = useMemo(() => {
+    if (!submissionSearchQuery.trim()) return levelSubmissions;
+    const query = submissionSearchQuery.toLowerCase();
+    return levelSubmissions.filter(s => 
+      s.level_name?.toLowerCase().includes(query) ||
+      s.author?.toLowerCase().includes(query) ||
+      s.level_id.toLowerCase().includes(query) ||
+      s.submitted_by_email.toLowerCase().includes(query)
+    );
+  }, [levelSubmissions, submissionSearchQuery]);
+
+  const filteredRunSubmissions = useMemo(() => {
+    if (!runSubmissionSearchQuery.trim()) return runSubmissions;
+    const query = runSubmissionSearchQuery.toLowerCase();
+    return runSubmissions.filter(s => 
+      s.level_name?.toLowerCase().includes(query) ||
+      s.username.toLowerCase().includes(query) ||
+      s.level_id.toLowerCase().includes(query) ||
+      s.submitted_by_email.toLowerCase().includes(query)
+    );
+  }, [runSubmissions, runSubmissionSearchQuery]);
+
+  const filteredPlayers = useMemo(() => {
+    if (!playerSearchQuery.trim()) return approvedPlayers;
+    const query = playerSearchQuery.toLowerCase();
+    return approvedPlayers.filter(p => 
+      p.username.toLowerCase().includes(query) ||
+      p.display_name?.toLowerCase().includes(query) ||
+      p.email?.toLowerCase().includes(query)
+    );
+  }, [approvedPlayers, playerSearchQuery]);
+
   // Pagination
-  const totalPages = Math.ceil(levels.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredLevels.length / ITEMS_PER_PAGE);
   const paginatedLevels = showAll 
-    ? levels 
-    : levels.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    ? filteredLevels 
+    : filteredLevels.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const addLevel = async () => {
     if (!newLevelId.trim()) return;
@@ -1844,7 +1905,7 @@ export default function AdminPage() {
             {/* Level Submissions Tab */}
             <TabsContent value="submissions" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-secondary/30">
+                <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <h2 className="font-display text-lg font-bold flex items-center gap-2">
                     <Send className="w-5 h-5 text-primary" />
                     Level Submissions
@@ -1852,15 +1913,24 @@ export default function AdminPage() {
                       {levelSubmissions.filter(s => s.status === 'pending').length} pending
                     </span>
                   </h2>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search submissions..."
+                      value={submissionSearchQuery}
+                      onChange={(e) => setSubmissionSearchQuery(e.target.value)}
+                      className="pl-9 bg-secondary border-border h-8 text-sm"
+                    />
+                  </div>
                 </div>
 
-                {levelSubmissions.length === 0 ? (
+                {filteredLevelSubmissions.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
-                    No level submissions yet.
+                    {submissionSearchQuery ? "No matching submissions found." : "No level submissions yet."}
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {levelSubmissions.map(submission => (
+                    {filteredLevelSubmissions.map(submission => (
                       <div key={submission.id} className="p-4">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                           <div className="flex items-start gap-4">
@@ -2068,7 +2138,7 @@ export default function AdminPage() {
 
               {/* Run Submissions Section */}
               <div className="rounded-lg bg-card border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-secondary/30">
+                <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <h2 className="font-display text-lg font-bold flex items-center gap-2">
                     <Play className="w-5 h-5 text-primary" />
                     Run Submissions
@@ -2076,15 +2146,24 @@ export default function AdminPage() {
                       {runSubmissions.filter(s => s.status === 'pending').length} pending
                     </span>
                   </h2>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search run submissions..."
+                      value={runSubmissionSearchQuery}
+                      onChange={(e) => setRunSubmissionSearchQuery(e.target.value)}
+                      className="pl-9 bg-secondary border-border h-8 text-sm"
+                    />
+                  </div>
                 </div>
 
-                {runSubmissions.length === 0 ? (
+                {filteredRunSubmissions.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
-                    No run submissions yet.
+                    {runSubmissionSearchQuery ? "No matching run submissions found." : "No run submissions yet."}
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {runSubmissions.map(submission => (
+                    {filteredRunSubmissions.map(submission => (
                       <div key={submission.id} className="p-4">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                           <div className="flex items-start gap-4">
@@ -2313,40 +2392,51 @@ export default function AdminPage() {
 
               {/* Level List */}
               <div className="rounded-lg bg-card border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
-                    <ArrowUpDown className="w-5 h-5 text-primary" />
-                    Level Rankings
-                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
-                      {levels.length} levels
-                    </span>
-                  </h2>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAll(!showAll)}
-                      className="gap-1 text-xs"
-                    >
-                      {showAll ? <ListCollapse className="w-3 h-3" /> : <List className="w-3 h-3" />}
-                      {showAll ? "Paginate" : "Show All"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={manualCheckEmptyLevels}
-                      disabled={syncing}
-                      className="gap-1 text-xs"
-                    >
-                      <AlertTriangle className="w-3 h-3" />
-                      Check Empty
-                    </Button>
+                <div className="p-4 border-b border-border bg-secondary/30 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                      <ArrowUpDown className="w-5 h-5 text-primary" />
+                      Level Rankings
+                      <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                        {filteredLevels.length}{levelSearchQuery ? ` of ${levels.length}` : ""} levels
+                      </span>
+                    </h2>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAll(!showAll)}
+                        className="gap-1 text-xs"
+                      >
+                        {showAll ? <ListCollapse className="w-3 h-3" /> : <List className="w-3 h-3" />}
+                        {showAll ? "Paginate" : "Show All"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={manualCheckEmptyLevels}
+                        disabled={syncing}
+                        className="gap-1 text-xs"
+                      >
+                        <AlertTriangle className="w-3 h-3" />
+                        Check Empty
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search levels by name, author, or ID..."
+                      value={levelSearchQuery}
+                      onChange={(e) => { setLevelSearchQuery(e.target.value); setCurrentPage(1); }}
+                      className="pl-9 bg-secondary border-border h-8 text-sm"
+                    />
                   </div>
                 </div>
 
-                {levels.length === 0 ? (
+                {filteredLevels.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
-                    No levels added yet.
+                    {levelSearchQuery ? "No matching levels found." : "No levels added yet."}
                   </div>
                 ) : (
                   <>
@@ -2582,30 +2672,44 @@ export default function AdminPage() {
 
               {/* Future Level List */}
               <div className="rounded-lg bg-card border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
-                    <Hourglass className="w-5 h-5 text-primary" />
-                    Future Levels
-                  </h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={checkVerifiedFutureLevels}
-                    disabled={syncing}
-                    className="gap-1 text-xs"
-                  >
-                    <Shield className="w-3 h-3" />
-                    Check Verified Levels
-                  </Button>
+                <div className="p-4 border-b border-border bg-secondary/30 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                      <Hourglass className="w-5 h-5 text-primary" />
+                      Future Levels
+                      <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                        {filteredFutureLevels.length}{futureSearchQuery ? ` of ${futureLevels.length}` : ""} levels
+                      </span>
+                    </h2>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={checkVerifiedFutureLevels}
+                      disabled={syncing}
+                      className="gap-1 text-xs"
+                    >
+                      <Shield className="w-3 h-3" />
+                      Check Verified Levels
+                    </Button>
+                  </div>
+                  <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search future levels..."
+                      value={futureSearchQuery}
+                      onChange={(e) => setFutureSearchQuery(e.target.value)}
+                      className="pl-9 bg-secondary border-border h-8 text-sm"
+                    />
+                  </div>
                 </div>
 
-                {futureLevels.length === 0 ? (
+                {filteredFutureLevels.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
-                    No future levels added yet.
+                    {futureSearchQuery ? "No matching future levels found." : "No future levels added yet."}
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {futureLevels.map((level) => (
+                    {filteredFutureLevels.map((level) => (
                       <div key={level.id} className="flex items-center gap-3 p-4">
                         <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-secondary overflow-hidden">
                           {level.thumbnail_url ? (
@@ -2738,20 +2842,32 @@ export default function AdminPage() {
 
             <TabsContent value="players" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-secondary/30">
+                <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <h2 className="font-display text-lg font-bold flex items-center gap-2">
                     <Users className="w-5 h-5 text-primary" />
                     Approved Players
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                      {filteredPlayers.length}{playerSearchQuery ? ` of ${approvedPlayers.length}` : ""} players
+                    </span>
                   </h2>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search players..."
+                      value={playerSearchQuery}
+                      onChange={(e) => setPlayerSearchQuery(e.target.value)}
+                      className="pl-9 bg-secondary border-border h-8 text-sm"
+                    />
+                  </div>
                 </div>
 
-                {approvedPlayers.length === 0 ? (
+                {filteredPlayers.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
-                    No approved players yet.
+                    {playerSearchQuery ? "No matching players found." : "No approved players yet."}
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {approvedPlayers.map((player) => (
+                    {filteredPlayers.map((player) => (
                       <div key={player.id} className="flex items-center gap-4 p-4">
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-foreground">
