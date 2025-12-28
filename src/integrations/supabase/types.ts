@@ -594,6 +594,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_points_for_rank: {
+        Args: { rank_position: number }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

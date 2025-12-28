@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers, TrendingUp } from "lucide-react";
 import { LevelFeedbackButton } from "@/components/LevelFeedbackButton";
+import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
 
 interface DbProfile {
   id: string;
@@ -344,6 +345,17 @@ export default function LevelPage() {
               </div>
             </div>
           </div>
+
+          {/* Rank History Chart */}
+          {levelDbId && (
+            <div className="rounded-lg bg-card border border-border p-4 mb-8">
+              <h3 className="font-display text-sm font-bold flex items-center gap-2 mb-4 text-muted-foreground">
+                <TrendingUp className="w-4 h-4" />
+                Rank History
+              </h3>
+              <LevelRankHistoryChart levelDbId={levelDbId} />
+            </div>
+          )}
 
           {/* Alternative Level IDs Section */}
           {alternativeIds.length > 0 && (
