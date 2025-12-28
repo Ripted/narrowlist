@@ -104,15 +104,23 @@ export default function LevelPage() {
     }
   }, [leaderboard]);
 
-  // Get verifier username from database profile ID, or fallback to oldest completion
-  const verifierUsername = useMemo(() => {
-    // If we have a verifier set in the database, look up their username
+  // Get verifier profile from database profile ID
+  const verifierProfile = useMemo(() => {
     if (verifierProfileId) {
       for (const [username, profile] of profiles) {
         if (profile.id === verifierProfileId) {
-          return profile.display_name || username;
+          return profile;
         }
       }
+    }
+    return null;
+  }, [verifierProfileId, profiles]);
+
+  // Get verifier username from database profile ID, or fallback to oldest completion
+  const verifierUsername = useMemo(() => {
+    // If we have a verifier set in the database, look up their username
+    if (verifierProfile) {
+      return verifierProfile.display_name || verifierProfile.username;
     }
     
     // Fallback: oldest completion (earliest timestamp) based on leaderboard/run timestamps
@@ -126,7 +134,7 @@ export default function LevelPage() {
       if (!best || ts < best.ts) best = { username: entry.username, ts };
     }
     return best?.username ?? null;
-  }, [verifierProfileId, profiles, leaderboard, runDetails]);
+  }, [verifierProfile, leaderboard, runDetails]);
 
   // Find verifier run ID for highlighting in the list
   const verifierRunId = useMemo(() => {
@@ -319,9 +327,15 @@ export default function LevelPage() {
                 </div>
                 <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center hidden sm:block">
                   <Shield className="w-6 h-6 mx-auto mb-2 text-primary" />
-                  <div className="font-display text-lg font-bold text-foreground truncate">
-                    {verifierUsername || "N/A"}
-                  </div>
+                  {verifierProfile ? (
+                    <Link to={`/player/${verifierProfile.username}`} className="font-display text-lg font-bold text-foreground truncate block hover:text-primary transition-colors">
+                      {verifierUsername}
+                    </Link>
+                  ) : (
+                    <div className="font-display text-lg font-bold text-foreground truncate">
+                      {verifierUsername || "N/A"}
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground">Verifier</div>
                 </div>
               </div>
@@ -346,16 +360,6 @@ export default function LevelPage() {
             </div>
           </div>
 
-          {/* Rank History Chart */}
-          {levelDbId && (
-            <div className="rounded-lg bg-card border border-border p-4 mb-8">
-              <h3 className="font-display text-sm font-bold flex items-center gap-2 mb-4 text-muted-foreground">
-                <TrendingUp className="w-4 h-4" />
-                Rank History
-              </h3>
-              <LevelRankHistoryChart levelDbId={levelDbId} />
-            </div>
-          )}
 
           {/* Alternative Level IDs Section */}
           {alternativeIds.length > 0 && (
@@ -466,9 +470,10 @@ export default function LevelPage() {
                             {profile?.display_name || run.username}
                           </span>
                           {isVerifier && (
-                            <span className="hidden sm:flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                              <CheckCircle className="w-3 h-3" />
-                              Verifier
+                            <span className="flex items-center gap-1 text-[10px] sm:text-xs text-primary bg-primary/10 px-1.5 sm:px-2 py-0.5 rounded-full">
+                              <CheckCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                              <span className="hidden sm:inline">Verifier</span>
+                              <span className="sm:hidden">V</span>
                             </span>
                           )}
                         </div>
@@ -494,6 +499,17 @@ export default function LevelPage() {
               </div>
             )}
           </div>
+
+          {/* Rank History Chart - moved below completions */}
+          {levelDbId && (
+            <div className="rounded-lg bg-card border border-border p-4 mt-8">
+              <h3 className="font-display text-sm font-bold flex items-center gap-2 mb-4 text-muted-foreground">
+                <TrendingUp className="w-4 h-4" />
+                Rank History
+              </h3>
+              <LevelRankHistoryChart levelDbId={levelDbId} />
+            </div>
+          )}
         </div>
       </main>
     </div>

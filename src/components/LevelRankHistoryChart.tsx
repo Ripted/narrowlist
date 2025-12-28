@@ -53,12 +53,7 @@ export function LevelRankHistoryChart({ levelDbId }: LevelRankHistoryChartProps)
   }
 
   if (history.length < 2) {
-    return (
-      <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
-        <Minus className="w-4 h-4 mr-2" />
-        Not enough history data yet
-      </div>
-    );
+    return null; // Hide when no data
   }
 
   // Format data for chart
