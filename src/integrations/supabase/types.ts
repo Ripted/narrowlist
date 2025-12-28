@@ -606,6 +606,10 @@ export type Database = {
         Returns: boolean
       }
       is_head_admin: { Args: { _user_id: string }; Returns: boolean }
+      recalculate_player_points: {
+        Args: { player_profile_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
