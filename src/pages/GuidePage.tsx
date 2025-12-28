@@ -127,31 +127,31 @@ export default function GuidePage() {
               <tbody className="divide-y divide-border/50">
                 <tr className="hover:bg-secondary/30 transition-colors">
                   <td className="py-3 px-4 text-foreground font-medium">#1 (Hardest)</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">10 pts</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">30 pts</td>
                 </tr>
                 <tr className="hover:bg-secondary/30 transition-colors">
                   <td className="py-3 px-4 text-foreground font-medium">#2</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">8 pts</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">24 pts</td>
                 </tr>
                 <tr className="hover:bg-secondary/30 transition-colors">
                   <td className="py-3 px-4 text-foreground font-medium">#3</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">7 pts</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">20 pts</td>
                 </tr>
                 <tr className="hover:bg-secondary/30 transition-colors">
                   <td className="py-3 px-4 text-foreground font-medium">#4</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">6 pts</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">16 pts</td>
                 </tr>
                 <tr className="hover:bg-secondary/30 transition-colors">
                   <td className="py-3 px-4 text-foreground font-medium">#5</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">5 pts</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">13 pts</td>
                 </tr>
                 <tr className="hover:bg-secondary/30 transition-colors">
                   <td className="py-3 px-4 text-foreground font-medium">#6 - #10</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">4 pts</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">9 pts</td>
                 </tr>
                 <tr className="hover:bg-secondary/30 transition-colors">
                   <td className="py-3 px-4 text-foreground font-medium">#11 - #25</td>
-                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">3 pts</td>
+                  <td className="py-3 px-4 text-right font-mono font-bold text-primary">6 pts</td>
                 </tr>
                 <tr className="hover:bg-secondary/30 transition-colors">
                   <td className="py-3 px-4 text-foreground font-medium">#26 - #50</td>
@@ -167,8 +167,8 @@ export default function GuidePage() {
 
           <div className="text-sm text-muted-foreground bg-secondary/50 rounded-lg p-4 mt-6">
             <strong className="text-foreground">Tip:</strong> Focus on completing the hardest levels 
-            you can manage to maximize your points. A single #1 completion is worth as much as 10 levels 
-            ranked #51 or below!
+            you can manage to maximize your points. A single #1 completion is worth 30 points - that's 
+            as much as 30 levels ranked #51 or below!
           </div>
         </div>
 

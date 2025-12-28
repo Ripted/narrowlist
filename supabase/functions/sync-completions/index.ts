@@ -20,6 +20,7 @@ const ARROW_EMOJIS: Record<string, string> = {
 };
 
 function formatTime(ms: number): string {
+  // The API returns completion_time in milliseconds (e.g., 154373 = 154.373 seconds)
   const totalSeconds = ms / 1000;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -289,8 +290,24 @@ Deno.serve(async (req) => {
               }
 
               // Track new completion for Discord notification
-              // Check if this is the verifier (first/oldest completion)
-              const isVerifier = !oldestCompletion || (completedAt && new Date(completedAt) < new Date(oldestCompletion.completed_at));
+              // Check if this is the first completion for this level (verifier)
+              // We need to check all existing completions for this level
+              const { data: existingCompletions } = await supabase
+                .from("completions")
+                .select("id")
+                .eq("level_id", level.id)
+                .limit(2);
+              
+              // Also check manual runs for verifier
+              const { data: manualVerifierRun } = await supabase
+                .from("manual_runs")
+                .select("id")
+                .eq("level_id", level.id)
+                .eq("is_verifier", true)
+                .limit(1);
+              
+              // Only mark as verifier if this is the very first completion and no manual verifier exists
+              const isVerifier = !manualVerifierRun?.length && (!existingCompletions || existingCompletions.length === 1);
               
               newCompletions.push({
                 profile_id: profile.id,

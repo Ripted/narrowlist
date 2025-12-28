@@ -18,6 +18,7 @@ const ARROW_EMOJIS: Record<string, string> = {
 }
 
 function formatTime(ms: number): string {
+  // The API returns completion_time in milliseconds (e.g., 154373 = 154.373 seconds)
   const totalSeconds = ms / 1000;
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
