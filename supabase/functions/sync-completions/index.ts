@@ -19,13 +19,12 @@ const ARROW_EMOJIS: Record<string, string> = {
   'energy arrow': '<:energy:1454615450393510050>',
 };
 
-function formatTime(ms: number): string {
-  // The API returns completion_time in milliseconds (e.g., 154373 = 154.373 seconds)
-  const totalSeconds = ms / 1000;
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
+function formatTime(seconds: number): string {
+  // The API returns completion_time in seconds (e.g., 101.234 = 101.234 seconds)
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
   if (minutes > 0) {
-    return `${minutes}:${seconds.toFixed(3).padStart(6, '0')}`;
+    return `${minutes}:${remainingSeconds.toFixed(3).padStart(6, '0')}`;
   }
   return `${seconds.toFixed(3)}s`;
 }

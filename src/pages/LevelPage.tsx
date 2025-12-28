@@ -320,9 +320,15 @@ export default function LevelPage() {
                 </div>
                 <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center hidden sm:block">
                   <Medal className="w-6 h-6 mx-auto mb-2 text-glow-gold" />
-                  <div className="font-display text-lg font-bold text-foreground truncate">
-                    {worldRecord?.username || "N/A"}
-                  </div>
+                  {worldRecord?.username ? (
+                    <Link to={`/player/${worldRecord.username}`} className="font-display text-lg font-bold text-foreground truncate block hover:text-primary transition-colors">
+                      {worldRecord.username}
+                    </Link>
+                  ) : (
+                    <div className="font-display text-lg font-bold text-foreground truncate">
+                      N/A
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground">WR Holder</div>
                 </div>
                 <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center hidden sm:block">

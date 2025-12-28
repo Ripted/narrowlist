@@ -1248,10 +1248,13 @@ export default function AdminPage() {
     if (error) {
       toast({ title: "Error", description: "Failed to update thumbnail", variant: "destructive" });
     } else {
+      const level = levels.find(l => l.id === thumbnailEditId);
+      await logAction("Updated thumbnail URL", level?.name || thumbnailEditId);
       toast({ title: "Success", description: "Thumbnail updated" });
       setLevels(prev => prev.map(l => 
         l.id === thumbnailEditId ? { ...l, thumbnail_url: thumbnailInputValue || null } : l
       ));
+      fetchChangelog();
     }
     
     setThumbnailEditId(null);
@@ -1292,8 +1295,11 @@ export default function AdminPage() {
         .eq("id", levelId);
       
       if (!error) {
+        const level = levels.find(l => l.id === levelId);
+        await logAction("Uploaded thumbnail", level?.name || levelId);
         setLevels(prev => prev.map(l => l.id === levelId ? { ...l, thumbnail_url: url } : l));
         toast({ title: "Success", description: "Thumbnail uploaded" });
+        fetchChangelog();
       }
     }
     
@@ -1915,6 +1921,29 @@ export default function AdminPage() {
                                   <X className="w-4 h-4" />
                                   <span className="hidden sm:inline">Reject</span>
                                 </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 text-muted-foreground"
+                                  onClick={async () => {
+                                    try {
+                                      await supabase
+                                        .from("level_submissions")
+                                        .update({ status: "read" })
+                                        .eq("id", submission.id);
+                                      await logAction("Marked level submission as read", `${submission.level_name || submission.level_id} (${submission.submitted_by_email})`);
+                                      toast({ title: "Marked as Read" });
+                                      fetchLevelSubmissions();
+                                      fetchChangelog();
+                                    } catch (error: any) {
+                                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                                    }
+                                  }}
+                                  disabled={processingSubmission === submission.id}
+                                >
+                                  <Check className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Read</span>
+                                </Button>
                               </>
                             ) : (
                               <>
@@ -1940,12 +1969,15 @@ export default function AdminPage() {
                                       ? 'bg-green-500/10 text-green-500 border-green-500/30' 
                                       : submission.status === 'rejected'
                                         ? 'bg-destructive/10 text-destructive border-destructive/30'
-                                        : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'
+                                        : submission.status === 'read'
+                                          ? 'bg-muted/50 text-muted-foreground border-muted'
+                                          : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'
                                   }`}>
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="read">Read</SelectItem>
                                     <SelectItem value="approved">Approved</SelectItem>
                                     <SelectItem value="rejected">Rejected</SelectItem>
                                   </SelectContent>
@@ -2121,6 +2153,29 @@ export default function AdminPage() {
                                   <X className="w-4 h-4" />
                                   <span className="hidden sm:inline">Reject</span>
                                 </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 text-muted-foreground"
+                                  onClick={async () => {
+                                    try {
+                                      await supabase
+                                        .from("run_submissions")
+                                        .update({ status: "read" })
+                                        .eq("id", submission.id);
+                                      await logAction("Marked run submission as read", `${submission.username} on ${submission.level_name || submission.level_id}`);
+                                      toast({ title: "Marked as Read" });
+                                      fetchRunSubmissions();
+                                      fetchChangelog();
+                                    } catch (error: any) {
+                                      toast({ title: "Error", description: error.message, variant: "destructive" });
+                                    }
+                                  }}
+                                  disabled={processingRunSubmission === submission.id}
+                                >
+                                  <Check className="w-4 h-4" />
+                                  <span className="hidden sm:inline">Read</span>
+                                </Button>
                               </>
                             ) : (
                               <>
@@ -2146,12 +2201,15 @@ export default function AdminPage() {
                                       ? 'bg-green-500/10 text-green-500 border-green-500/30' 
                                       : submission.status === 'rejected'
                                         ? 'bg-destructive/10 text-destructive border-destructive/30'
-                                        : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'
+                                        : submission.status === 'read'
+                                          ? 'bg-muted/50 text-muted-foreground border-muted'
+                                          : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30'
                                   }`}>
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="pending">Pending</SelectItem>
+                                    <SelectItem value="read">Read</SelectItem>
                                     <SelectItem value="approved">Approved</SelectItem>
                                     <SelectItem value="rejected">Rejected</SelectItem>
                                   </SelectContent>
