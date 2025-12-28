@@ -21,12 +21,12 @@ interface FounderProfile {
 }
 
 export default function GuidePage() {
-  const [founders, setFounders] = useState<{ sqm: FounderProfile | null; ripted: FounderProfile | null }>({
+  const [founders, setFounders] = useState<{ sqm: FounderProfile | null }>({
     sqm: null,
-    ripted: null,
   });
-  const [admins, setAdmins] = useState<{ champy: FounderProfile | null }>({
+  const [admins, setAdmins] = useState<{ champy: FounderProfile | null; ripted: FounderProfile | null }>({
     champy: null,
+    ripted: null,
   });
 
   useEffect(() => {
@@ -39,10 +39,10 @@ export default function GuidePage() {
       if (data) {
         setFounders({
           sqm: data.find(p => p.username.toLowerCase() === "sqm") || null,
-          ripted: data.find(p => p.username.toLowerCase() === "ripted") || null,
         });
         setAdmins({
           champy: data.find(p => p.username.toLowerCase() === "ch4mpy") || null,
+          ripted: data.find(p => p.username.toLowerCase() === "ripted") || null,
         });
       }
     }
@@ -266,19 +266,6 @@ export default function GuidePage() {
                 <div className="text-xs text-muted-foreground">Founder</div>
               </div>
             </Link>
-            <Link to="/player/Ripted" className="flex items-center gap-3 px-4 py-3 bg-card/80 rounded-lg border border-border hover:border-primary/50 transition-colors">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center overflow-hidden">
-                {founders.ripted?.avatar_url ? (
-                  <img src={founders.ripted.avatar_url} alt="Ripted" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="font-display font-bold text-accent-foreground">R</span>
-                )}
-              </div>
-              <div>
-                <div className="font-display font-semibold text-foreground">{founders.ripted?.display_name || "Ripted"}</div>
-                <div className="text-xs text-muted-foreground">Founder</div>
-              </div>
-            </Link>
           </div>
 
           <h3 className="font-display text-lg font-semibold mb-3 mt-6 text-foreground">Admins</h3>
@@ -293,6 +280,19 @@ export default function GuidePage() {
               </div>
               <div>
                 <div className="font-display font-semibold text-foreground">{admins.champy?.display_name || "Ch4mpY"}</div>
+                <div className="text-xs text-muted-foreground">Admin</div>
+              </div>
+            </Link>
+            <Link to="/player/Ripted" className="flex items-center gap-3 px-4 py-3 bg-card/80 rounded-lg border border-border hover:border-primary/50 transition-colors">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center overflow-hidden">
+                {admins.ripted?.avatar_url ? (
+                  <img src={admins.ripted.avatar_url} alt="Ripted" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-display font-bold text-accent-foreground">R</span>
+                )}
+              </div>
+              <div>
+                <div className="font-display font-semibold text-foreground">{admins.ripted?.display_name || "Ripted"}</div>
                 <div className="text-xs text-muted-foreground">Admin</div>
               </div>
             </Link>
