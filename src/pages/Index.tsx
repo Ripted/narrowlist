@@ -5,13 +5,31 @@ import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Target, Search, Filter } from "lucide-react";
+import { Target, Search, Filter, History } from "lucide-react";
+import { HistoricalListViewer } from "@/components/HistoricalListViewer";
+
+interface HistoricalLevel {
+  id: string;
+  level_id: string;
+  name: string | null;
+  author: string | null;
+  rank_position: number;
+  points: number;
+  thumbnail_url: string | null;
+}
 
 const Index = () => {
   const { levels, loading, error } = useLevels();
   const { completedLevelIds, isLoggedIn } = useUserCompletions();
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyUncompleted, setShowOnlyUncompleted] = useState(false);
+  const [historicalLevels, setHistoricalLevels] = useState<HistoricalLevel[] | null>(null);
+  const [historicalDate, setHistoricalDate] = useState<string | null>(null);
+
+  const handleHistoricalData = (levels: HistoricalLevel[] | null, date: string | null) => {
+    setHistoricalLevels(levels);
+    setHistoricalDate(date);
+  };
 
   const filteredLevels = useMemo(() => {
     let result = levels;
@@ -56,16 +74,26 @@ const Index = () => {
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-3">
                 <Target className="w-5 h-5 text-primary" />
-                <h1 className="font-display text-2xl font-bold">Main List</h1>
+                <h1 className="font-display text-2xl font-bold">
+                  {historicalDate ? (
+                    <span className="flex items-center gap-2">
+                      <History className="w-5 h-5 text-yellow-500" />
+                      List on {historicalDate}
+                    </span>
+                  ) : "Main List"}
+                </h1>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">{levels.length} Levels</span>
+                <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">
+                  {historicalLevels ? historicalLevels.length : levels.length} Levels
+                </span>
                 <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono">{maxPoints} Max Points</span>
               </div>
             </div>
             
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              {isLoggedIn && (
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              <HistoricalListViewer onHistoricalData={handleHistoricalData} />
+              {isLoggedIn && !historicalLevels && (
                 <Button
                   variant={showOnlyUncompleted ? "default" : "outline"}
                   size="sm"
@@ -88,7 +116,7 @@ const Index = () => {
             </div>
           </div>
 
-          {loading ? (
+          {loading && !historicalLevels ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
                 <div
@@ -97,10 +125,66 @@ const Index = () => {
                 />
               ))}
             </div>
-          ) : error ? (
+          ) : error && !historicalLevels ? (
             <div className="text-center py-12">
               <p className="text-destructive">{error}</p>
             </div>
+          ) : historicalLevels ? (
+            // Historical view
+            historicalLevels.length === 0 ? (
+              <div className="text-center py-12 space-y-4">
+                <div className="w-20 h-20 mx-auto rounded-full bg-muted flex items-center justify-center">
+                  <History className="w-10 h-10 text-muted-foreground" />
+                </div>
+                <h3 className="font-display text-xl font-semibold">No Data Available</h3>
+                <p className="text-muted-foreground">
+                  No historical data found for this date.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {historicalLevels
+                  .filter(level => {
+                    if (!searchQuery.trim()) return true;
+                    const query = searchQuery.toLowerCase();
+                    return (level.name?.toLowerCase().includes(query) || 
+                            level.author?.toLowerCase().includes(query));
+                  })
+                  .map((level, index) => (
+                    <div
+                      key={level.id}
+                      className="animate-fade-in"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      <div className="rounded-xl bg-card border border-border overflow-hidden hover:border-primary/50 transition-all">
+                        <div className="aspect-video bg-secondary relative">
+                          {level.thumbnail_url ? (
+                            <img src={level.thumbnail_url} alt={level.name || ""} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-4xl font-display font-bold text-muted-foreground/20">#{level.rank_position}</span>
+                            </div>
+                          )}
+                          <div className="absolute top-2 left-2 px-2 py-1 rounded bg-background/80 text-primary font-display font-bold text-sm">
+                            #{level.rank_position}
+                          </div>
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-display font-bold truncate">{level.name || "Unknown Level"}</h3>
+                          <p className="text-sm text-muted-foreground">{level.author || "Unknown"}</p>
+                          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{level.points} pts</span>
+                            <span className="text-yellow-500 flex items-center gap-1">
+                              <History className="w-3 h-3" />
+                              Historical
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )
           ) : filteredLevels.length === 0 ? (
             <div className="text-center py-12 space-y-4">
               <div className="w-20 h-20 mx-auto rounded-full bg-muted flex items-center justify-center">

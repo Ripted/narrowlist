@@ -205,6 +205,38 @@ export type Database = {
           },
         ]
       }
+      level_rank_history: {
+        Row: {
+          id: string
+          level_id: string
+          points: number
+          rank_position: number
+          recorded_at: string
+        }
+        Insert: {
+          id?: string
+          level_id: string
+          points: number
+          rank_position: number
+          recorded_at?: string
+        }
+        Update: {
+          id?: string
+          level_id?: string
+          points?: number
+          rank_position?: number
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "level_rank_history_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "levels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       level_submissions: {
         Row: {
           admin_note: string | null
