@@ -241,12 +241,15 @@ export default function SubmitLevelPage() {
   const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith("image/")) {
-        toast({ title: "Invalid File", description: "Please select an image file", variant: "destructive" });
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+      
+      if (!isImage && !isVideo) {
+        toast({ title: "Invalid File", description: "Please select an image or video file", variant: "destructive" });
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: "File Too Large", description: "Max file size is 5MB", variant: "destructive" });
+      if (file.size > 100 * 1024 * 1024) {
+        toast({ title: "File Too Large", description: "Max file size is 100MB", variant: "destructive" });
         return;
       }
       setProofFile(file);

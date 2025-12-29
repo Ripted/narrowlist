@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.discord-notify]
 verify_jwt = false
+
+[functions.admin-notify]
+verify_jwt = false

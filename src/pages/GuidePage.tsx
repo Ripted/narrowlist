@@ -228,6 +228,18 @@ export default function GuidePage() {
 
             <AccordionItem value="item-5">
               <AccordionTrigger className="text-left">
+                How do I submit a manual run?
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                <strong className="text-foreground">Video proof is required</strong> for all manual run submissions 
+                that are not tracked by the API. Go to the "Submit" page and select the "Submit Run" tab. 
+                Upload a video file (MP4, WebM, MOV) showing your completion with clear evidence of the 
+                time and level. Screenshots are no longer accepted - only video verification is valid.
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="item-6">
+              <AccordionTrigger className="text-left">
                 Who decides level rankings?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
