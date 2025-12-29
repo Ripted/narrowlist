@@ -12,7 +12,7 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw
+  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import {
@@ -175,6 +175,20 @@ interface DeletedLevel {
   deleted_by_email: string;
 }
 
+interface WebhookSettings {
+  id: string;
+  webhook_type: string;
+  webhook_url: string;
+  enabled: boolean;
+  include_completions: boolean;
+  include_verifications: boolean;
+  include_rank_changes: boolean;
+  include_future_levels: boolean;
+  include_level_additions: boolean;
+  include_level_deletions: boolean;
+  format_style: string;
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export default function AdminPage() {
@@ -303,6 +317,14 @@ export default function AdminPage() {
   const [uploadingProof, setUploadingProof] = useState(false);
   const [addingManualRun, setAddingManualRun] = useState(false);
   const manualRunProofInputRef = useRef<HTMLInputElement>(null);
+  
+  // Webhook settings
+  const [webhookSettings, setWebhookSettings] = useState<WebhookSettings[]>([]);
+  const [savingWebhook, setSavingWebhook] = useState<string | null>(null);
+  
+  // Rank confirmation dialog
+  const [rankConfirmLevel, setRankConfirmLevel] = useState<Level | null>(null);
+  const [pendingNewRank, setPendingNewRank] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -324,8 +346,50 @@ export default function AdminPage() {
       fetchRunSubmissions();
       fetchBannedUsers();
       fetchDeletedLevels();
+      fetchWebhookSettings();
     }
   }, [isAdmin]);
+
+  const fetchWebhookSettings = async () => {
+    const { data } = await supabase
+      .from("webhook_settings")
+      .select("*")
+      .order("webhook_type");
+    
+    if (data) setWebhookSettings(data as WebhookSettings[]);
+  };
+
+  const updateWebhookSetting = async (id: string, updates: Partial<WebhookSettings>) => {
+    setSavingWebhook(id);
+    const { error } = await supabase
+      .from("webhook_settings")
+      .update(updates)
+      .eq("id", id);
+    
+    if (error) {
+      toast({ title: "Error", description: "Failed to update webhook settings", variant: "destructive" });
+    } else {
+      toast({ title: "Saved", description: "Webhook settings updated" });
+      fetchWebhookSettings();
+    }
+    setSavingWebhook(null);
+  };
+
+  const sendAdminNotification = async (eventType: string, levelName: string, oldRank?: number, newRank?: number) => {
+    try {
+      await supabase.functions.invoke("admin-notify", {
+        body: {
+          event_type: eventType,
+          admin_email: user?.email || "unknown",
+          level_name: levelName,
+          old_rank: oldRank,
+          new_rank: newRank,
+        },
+      });
+    } catch (error) {
+      console.error("Admin notification failed:", error);
+    }
+  };
 
   const fetchDeletedLevels = async () => {
     const { data } = await supabase
@@ -999,6 +1063,10 @@ export default function AdminPage() {
       
       await logAction("Added level", `${data.levelInfo?.name || newLevelId} at rank #${targetRank}`);
       toast({ title: "Success", description: `Level added at rank #${targetRank}` });
+      
+      // Send admin notification
+      await sendAdminNotification("level_addition", data.levelInfo?.name || newLevelId, undefined, targetRank);
+      
       setNewLevelId("");
       setNewLevelRank("");
       fetchLevels();
@@ -1040,6 +1108,10 @@ export default function AdminPage() {
       
       await logAction("Added future level", `${data.levelInfo?.name || newFutureLevelId} at estimated rank #${targetRank}`);
       toast({ title: "Success", description: `Future level added with estimated rank #${targetRank}` });
+      
+      // Send admin notification
+      await sendAdminNotification("future_level", data.levelInfo?.name || newFutureLevelId, undefined, targetRank);
+      
       setNewFutureLevelId("");
       setNewFutureLevelRank("");
       fetchFutureLevels();
@@ -1343,9 +1415,21 @@ export default function AdminPage() {
       return;
     }
 
+    // Show confirmation dialog
+    setRankConfirmLevel(levelToMove);
+    setPendingNewRank(newRank);
+  };
+
+  const executeRankChange = async () => {
+    if (!rankConfirmLevel || pendingNewRank === null) return;
+    
+    const currentIndex = levels.findIndex(l => l.id === rankConfirmLevel.id);
+    const targetIndex = pendingNewRank - 1;
+    const oldRank = currentIndex + 1;
+
     const newLevels = [...levels];
     newLevels.splice(currentIndex, 1);
-    newLevels.splice(targetIndex, 0, levelToMove);
+    newLevels.splice(targetIndex, 0, rankConfirmLevel);
 
     const updatedLevels = newLevels.map((l, i) => ({
       ...l,
@@ -1353,10 +1437,16 @@ export default function AdminPage() {
       points: calculatePoints(i + 1),
     }));
 
-    await logAction("Changed level rank", `${levelToMove.name} from #${currentIndex + 1} to #${newRank}`);
+    await logAction("Changed level rank", `${rankConfirmLevel.name} from #${oldRank} to #${pendingNewRank}`);
     setLevels(updatedLevels);
     setRankInputId(null);
+    setRankConfirmLevel(null);
+    setPendingNewRank(null);
     await updateRanks(updatedLevels);
+    
+    // Send admin notification
+    await sendAdminNotification("rank_change", rankConfirmLevel.name || rankConfirmLevel.level_id, oldRank, pendingNewRank);
+    
     fetchChangelog();
   };
 
@@ -1970,6 +2060,10 @@ export default function AdminPage() {
               <TabsTrigger value="deleted" className="text-xs sm:text-sm flex-shrink-0 text-destructive">
                 <RotateCcw className="w-3 h-3 hidden sm:inline" />
                 Deleted ({deletedLevels.length})
+              </TabsTrigger>
+              <TabsTrigger value="webhooks" className="text-xs sm:text-sm flex-shrink-0">
+                <Bell className="w-3 h-3 hidden sm:inline" />
+                Webhooks
               </TabsTrigger>
               <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
             </TabsList>
@@ -3104,6 +3198,164 @@ export default function AdminPage() {
               </div>
             </TabsContent>
 
+            {/* Webhooks Tab */}
+            <TabsContent value="webhooks" className="space-y-6">
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-primary" />
+                    Discord Webhook Settings
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Configure Discord notifications for completions and admin actions
+                  </p>
+                </div>
+
+                <div className="p-4 space-y-6">
+                  {webhookSettings.map((webhook) => (
+                    <div key={webhook.id} className="p-4 bg-secondary/30 rounded-lg space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${webhook.webhook_type === 'completions' ? 'bg-primary/20' : 'bg-accent/20'}`}>
+                            {webhook.webhook_type === 'completions' ? (
+                              <Play className="w-5 h-5 text-primary" />
+                            ) : (
+                              <Settings className="w-5 h-5 text-accent" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-display font-semibold capitalize">
+                              {webhook.webhook_type === 'completions' ? 'Completions Webhook' : 'Admin Actions Webhook'}
+                            </h3>
+                            <p className="text-xs text-muted-foreground">
+                              {webhook.webhook_type === 'completions' 
+                                ? 'Notifies about new completions and verifications' 
+                                : 'Notifies about rank changes, level additions, and more'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-1 rounded ${webhook.enabled ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}`}>
+                            {webhook.enabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant={webhook.enabled ? "outline" : "default"}
+                            onClick={() => updateWebhookSetting(webhook.id, { enabled: !webhook.enabled })}
+                            disabled={savingWebhook === webhook.id}
+                          >
+                            {webhook.enabled ? 'Disable' : 'Enable'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Webhook URL</Label>
+                          <Input
+                            value={webhook.webhook_url}
+                            onChange={(e) => updateWebhookSetting(webhook.id, { webhook_url: e.target.value })}
+                            className="mt-1 bg-background border-border text-xs font-mono"
+                            placeholder="https://discord.com/api/webhooks/..."
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Message Format</Label>
+                          <Select
+                            value={webhook.format_style}
+                            onValueChange={(value) => updateWebhookSetting(webhook.id, { format_style: value })}
+                          >
+                            <SelectTrigger className="mt-1 bg-background border-border">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="formal">Formal (detailed with formatting)</SelectItem>
+                              <SelectItem value="casual">Casual (one-line messages)</SelectItem>
+                              <SelectItem value="minimal">Minimal (shortest format)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="pt-2">
+                          <Label className="text-xs text-muted-foreground mb-2 block">Event Types</Label>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {webhook.webhook_type === 'completions' ? (
+                              <>
+                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={webhook.include_completions}
+                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_completions: e.target.checked })}
+                                    className="rounded"
+                                  />
+                                  Completions
+                                </label>
+                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={webhook.include_verifications}
+                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_verifications: e.target.checked })}
+                                    className="rounded"
+                                  />
+                                  Verifications
+                                </label>
+                              </>
+                            ) : (
+                              <>
+                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={webhook.include_rank_changes}
+                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_rank_changes: e.target.checked })}
+                                    className="rounded"
+                                  />
+                                  Rank Changes
+                                </label>
+                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={webhook.include_future_levels}
+                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_future_levels: e.target.checked })}
+                                    className="rounded"
+                                  />
+                                  Future Levels
+                                </label>
+                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={webhook.include_level_additions}
+                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_level_additions: e.target.checked })}
+                                    className="rounded"
+                                  />
+                                  Level Additions
+                                </label>
+                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={webhook.include_level_deletions}
+                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_level_deletions: e.target.checked })}
+                                    className="rounded"
+                                  />
+                                  Level Deletions
+                                </label>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {webhookSettings.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No webhook settings found
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+
             <TabsContent value="changelog" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
                 <div className="p-4 border-b border-border bg-secondary/30">
@@ -3870,6 +4122,45 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* Rank Change Confirmation Dialog */}
+      <AlertDialog open={!!rankConfirmLevel} onOpenChange={(open) => !open && setRankConfirmLevel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              Confirm Rank Change
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to change the rank of <strong className="text-foreground">{rankConfirmLevel?.name || rankConfirmLevel?.level_id}</strong>
+              </p>
+              <div className="flex items-center justify-center gap-4 py-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-muted-foreground">#{rankConfirmLevel?.rank_position}</div>
+                  <div className="text-xs text-muted-foreground">Current</div>
+                </div>
+                <ArrowUpDown className="w-6 h-6 text-primary" />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">#{pendingNewRank}</div>
+                  <div className="text-xs text-muted-foreground">New</div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This will update all affected level rankings and point values. This action will be logged and a Discord notification will be sent.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setRankConfirmLevel(null); setPendingNewRank(null); }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={executeRankChange} className="bg-primary hover:bg-primary/90">
+              Confirm Change
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
