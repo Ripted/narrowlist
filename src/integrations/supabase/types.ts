@@ -666,6 +666,54 @@ export type Database = {
           },
         ]
       }
+      webhook_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          format_style: string | null
+          id: string
+          include_completions: boolean | null
+          include_future_levels: boolean | null
+          include_level_additions: boolean | null
+          include_level_deletions: boolean | null
+          include_rank_changes: boolean | null
+          include_verifications: boolean | null
+          updated_at: string
+          webhook_type: string
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          format_style?: string | null
+          id?: string
+          include_completions?: boolean | null
+          include_future_levels?: boolean | null
+          include_level_additions?: boolean | null
+          include_level_deletions?: boolean | null
+          include_rank_changes?: boolean | null
+          include_verifications?: boolean | null
+          updated_at?: string
+          webhook_type: string
+          webhook_url: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          format_style?: string | null
+          id?: string
+          include_completions?: boolean | null
+          include_future_levels?: boolean | null
+          include_level_additions?: boolean | null
+          include_level_deletions?: boolean | null
+          include_rank_changes?: boolean | null
+          include_verifications?: boolean | null
+          updated_at?: string
+          webhook_type?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
