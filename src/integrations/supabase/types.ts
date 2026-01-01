@@ -90,6 +90,7 @@ export type Database = {
         Row: {
           alternative_ids: string[] | null
           author: string | null
+          creators: string[] | null
           deleted_at: string
           deleted_by: string
           deleted_by_email: string
@@ -105,6 +106,7 @@ export type Database = {
         Insert: {
           alternative_ids?: string[] | null
           author?: string | null
+          creators?: string[] | null
           deleted_at?: string
           deleted_by: string
           deleted_by_email: string
@@ -120,6 +122,7 @@ export type Database = {
         Update: {
           alternative_ids?: string[] | null
           author?: string | null
+          creators?: string[] | null
           deleted_at?: string
           deleted_by?: string
           deleted_by_email?: string
@@ -180,6 +183,7 @@ export type Database = {
         Row: {
           author: string | null
           created_at: string
+          creators: string[] | null
           id: string
           level_id: string
           name: string | null
@@ -191,6 +195,7 @@ export type Database = {
         Insert: {
           author?: string | null
           created_at?: string
+          creators?: string[] | null
           id?: string
           level_id: string
           name?: string | null
@@ -202,6 +207,7 @@ export type Database = {
         Update: {
           author?: string | null
           created_at?: string
+          creators?: string[] | null
           id?: string
           level_id?: string
           name?: string | null
@@ -344,6 +350,7 @@ export type Database = {
           alternative_ids: string[] | null
           author: string | null
           created_at: string
+          creators: string[] | null
           id: string
           level_id: string
           name: string | null
@@ -357,6 +364,7 @@ export type Database = {
           alternative_ids?: string[] | null
           author?: string | null
           created_at?: string
+          creators?: string[] | null
           id?: string
           level_id: string
           name?: string | null
@@ -370,6 +378,7 @@ export type Database = {
           alternative_ids?: string[] | null
           author?: string | null
           created_at?: string
+          creators?: string[] | null
           id?: string
           level_id?: string
           name?: string | null

@@ -18,7 +18,6 @@ import ThemesPage from "./pages/ThemesPage";
 import AuthPage from "./pages/AuthPage";
 import AdminPage from "./pages/AdminPage";
 import WatchlistPage from "./pages/WatchlistPage";
-import CreatorLeaderboardPage from "./pages/CreatorLeaderboardPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,7 +34,6 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/level/:levelId" element={<LevelPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/creators" element={<CreatorLeaderboardPage />} />
               <Route path="/future-list" element={<FutureListPage />} />
               <Route path="/recent" element={<RecentRunsPage />} />
               <Route path="/compare" element={<ComparePage />} />

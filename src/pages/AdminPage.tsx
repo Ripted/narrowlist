@@ -265,6 +265,7 @@ export default function AdminPage() {
   const [editingLevel, setEditingLevel] = useState<Level | null>(null);
   const [editName, setEditName] = useState("");
   const [editAuthor, setEditAuthor] = useState("");
+  const [editCreators, setEditCreators] = useState("");
   const [editThumbnail, setEditThumbnail] = useState("");
   const [editVerifier, setEditVerifier] = useState<string>("");
   const [editAlternativeIds, setEditAlternativeIds] = useState("");
@@ -1582,6 +1583,7 @@ export default function AdminPage() {
     setEditingLevel(level);
     setEditName(level.name || "");
     setEditAuthor(level.author || "");
+    setEditCreators(((level as any).creators || []).join(", "));
     setEditThumbnail(level.thumbnail_url || "");
     setEditVerifier(level.verifier_profile_id || "");
     setEditAlternativeIds((level.alternative_ids || []).join(", "));
@@ -1598,11 +1600,18 @@ export default function AdminPage() {
       .map(id => id.trim())
       .filter(id => id.length > 0);
     
+    // Parse creators
+    const creators = editCreators
+      .split(/[,\n]+/)
+      .map(c => c.trim())
+      .filter(c => c.length > 0);
+    
     const { error } = await supabase
       .from("levels")
       .update({
         name: editName || null,
         author: editAuthor || null,
+        creators: creators,
         thumbnail_url: editThumbnail || null,
         alternative_ids: alternativeIds.length > 0 ? alternativeIds : [],
       })
@@ -1611,7 +1620,7 @@ export default function AdminPage() {
     if (error) {
       toast({ title: "Error", description: "Failed to update level", variant: "destructive" });
     } else {
-      await logAction("Edited level", `${editName || editingLevel.level_id}${alternativeIds.length > 0 ? ` (alt IDs: ${alternativeIds.join(", ")})` : ""}`);
+      await logAction("Edited level", `${editName || editingLevel.level_id}${creators.length > 0 ? ` (creators: ${creators.join(", ")})` : ""}${alternativeIds.length > 0 ? ` (alt IDs: ${alternativeIds.join(", ")})` : ""}`);
       toast({ title: "Success", description: "Level updated" });
       setEditingLevel(null);
       fetchLevels();
@@ -3667,13 +3676,28 @@ export default function AdminPage() {
               </div>
               
               <div>
-                <Label htmlFor="editAuthor">Author</Label>
+                <Label htmlFor="editAuthor">Author (legacy - single)</Label>
                 <Input
                   id="editAuthor"
                   value={editAuthor}
                   onChange={(e) => setEditAuthor(e.target.value)}
                   className="mt-1 bg-secondary border-border"
+                  placeholder="Single author (legacy field)"
                 />
+              </div>
+              
+              <div>
+                <Label htmlFor="editCreators">Creators (multiple)</Label>
+                <Textarea
+                  id="editCreators"
+                  value={editCreators}
+                  onChange={(e) => setEditCreators(e.target.value)}
+                  placeholder="Enter creator names (comma or newline separated)&#10;e.g., Creator1, Creator2"
+                  className="mt-1 bg-secondary border-border min-h-[60px]"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  For levels with multiple creators. Leave empty to use single Author field.
+                </p>
               </div>
               
               <div>
