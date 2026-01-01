@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { usePlayerLeaderboard, useLevels } from "@/hooks/useLevels";
 import { useAuth } from "@/hooks/useAuth";
 import { formatTime, formatDate } from "@/lib/api";
@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { 
   ArrowLeft, Trophy, Target, Clock, Medal, UserPlus, Camera, Loader2, 
-  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, Star, MapPin, Shield
+  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, Star, MapPin, Shield, Hammer
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { countries, getCountryByCode } from "@/config/countries";
@@ -32,6 +34,8 @@ const SHOW_ALL_ITEMS = 999999;
 
 export default function PlayerPage() {
   const { username } = useParams<{ username: string }>();
+  const [searchParams] = useSearchParams();
+  const isCreatorView = searchParams.get("view") === "creator";
   const { players, loading } = usePlayerLeaderboard();
   const { levels } = useLevels();
   const { user, isAdmin } = useAuth();
@@ -52,6 +56,34 @@ export default function PlayerPage() {
   const [userHasProfile, setUserHasProfile] = useState(false);
   const [sortMode, setSortMode] = useState<"rank" | "date">("rank");
   const [showAll, setShowAll] = useState(false);
+  const [activeTab, setActiveTab] = useState(isCreatorView ? "created" : "completed");
+  
+  // Fetch levels created by this player
+  const { data: createdLevels = [] } = useQuery({
+    queryKey: ["created-levels", username],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("levels")
+        .select("id, level_id, name, author, creators, rank_position, points, thumbnail_url")
+        .order("rank_position");
+      
+      if (!data) return [];
+      
+      // Filter levels where username matches author or is in creators array
+      return data.filter((level: any) => {
+        const authorMatch = level.author?.toLowerCase() === username?.toLowerCase();
+        const creatorsMatch = (level.creators || []).some(
+          (c: string) => c.toLowerCase() === username?.toLowerCase()
+        );
+        return authorMatch || creatorsMatch;
+      });
+    },
+    enabled: !!username,
+  });
+  
+  const createdLevelsTotalPoints = useMemo(() => {
+    return createdLevels.reduce((sum: number, l: any) => sum + l.points, 0);
+  }, [createdLevels]);
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -534,9 +566,25 @@ export default function PlayerPage() {
             </div>
           )}
 
-          <div className="rounded-xl bg-card border border-border overflow-hidden">
-            <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <h2 className="font-display text-xl font-bold flex items-center gap-2"><Target className="w-5 h-5 text-primary" />Completed Levels<span className="text-sm font-normal text-muted-foreground">({filteredCompletions.length})</span></h2>
+          {/* Tabs for Completed vs Created */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="bg-secondary/50 border border-border">
+              <TabsTrigger value="completed" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Target className="w-4 h-4" />
+                Completed ({filteredCompletions.length})
+              </TabsTrigger>
+              {createdLevels.length > 0 && (
+                <TabsTrigger value="created" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Hammer className="w-4 h-4" />
+                  Created ({createdLevels.length})
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            <TabsContent value="completed" className="mt-0">
+              <div className="rounded-xl bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <h2 className="font-display text-xl font-bold flex items-center gap-2"><Target className="w-5 h-5 text-primary" />Completed Levels</h2>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative w-full sm:w-48">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

@@ -73,49 +73,18 @@ Deno.serve(async (req) => {
     let message = '';
     const formatStyle = settings.format_style || 'formal';
 
+    // All messages are now simple 1-sentence format with bold level name
     if (event_type === 'rank_change') {
       const direction = new_rank < old_rank ? '⬆️' : '⬇️';
-      const change = Math.abs(new_rank - old_rank);
-      
-      if (formatStyle === 'formal') {
-        message = `📊 **Rank Update**\n\n**${level_name}** has been moved from **#${old_rank}** to **#${new_rank}** (${direction} ${change} position${change !== 1 ? 's' : ''})\n\n*Updated by ${admin_email}*`;
-      } else if (formatStyle === 'casual') {
-        message = `${direction} ${level_name} moved from #${old_rank} → #${new_rank} by ${admin_email}`;
-      } else {
-        message = `${level_name}: #${old_rank} → #${new_rank}`;
-      }
+      message = `${direction} **${level_name}** moved from #${old_rank} to #${new_rank}`;
     } else if (event_type === 'future_level') {
-      if (formatStyle === 'formal') {
-        message = `📋 **New Future List Level**\n\n**${level_name}** has been added to the future list at position **#${new_rank}**\n\n*Added by ${admin_email}*`;
-      } else if (formatStyle === 'casual') {
-        message = `📋 New future level: ${level_name} at #${new_rank} by ${admin_email}`;
-      } else {
-        message = `Future: ${level_name} #${new_rank}`;
-      }
+      message = `📋 **${level_name}** added to the future list at #${new_rank}`;
     } else if (event_type === 'level_addition') {
-      if (formatStyle === 'formal') {
-        message = `✨ **New Level Added**\n\n**${level_name}** has been added to the main list at rank **#${new_rank}**\n\n*Added by ${admin_email}*`;
-      } else if (formatStyle === 'casual') {
-        message = `✨ New level: ${level_name} at #${new_rank} by ${admin_email}`;
-      } else {
-        message = `New: ${level_name} #${new_rank}`;
-      }
+      message = `✨ **${level_name}** added to the main list at #${new_rank}`;
     } else if (event_type === 'level_deletion') {
-      if (formatStyle === 'formal') {
-        message = `🗑️ **Level Removed**\n\n**${level_name}** has been removed from the list\n\n*Removed by ${admin_email}*`;
-      } else if (formatStyle === 'casual') {
-        message = `🗑️ Removed: ${level_name} by ${admin_email}`;
-      } else {
-        message = `Removed: ${level_name}`;
-      }
+      message = `🗑️ **${level_name}** removed from the list`;
     } else if (event_type === 'future_to_main') {
-      if (formatStyle === 'formal') {
-        message = `🚀 **Level Promoted to Main List**\n\n**${level_name}** has been moved from the future list to the main list at rank **#${new_rank}**\n\n*Promoted by ${admin_email}*`;
-      } else if (formatStyle === 'casual') {
-        message = `🚀 ${level_name} promoted to main list at #${new_rank} by ${admin_email}`;
-      } else {
-        message = `Promoted: ${level_name} #${new_rank}`;
-      }
+      message = `🚀 **${level_name}** promoted to main list at #${new_rank}`;
     } else {
       message = details || `Admin action: ${event_type}`;
     }

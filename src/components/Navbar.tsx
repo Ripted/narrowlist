@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen, Palette, Bookmark, Hammer } from "lucide-react";
+import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen, Palette, Bookmark } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import logoImg from "@/assets/logo.png";
 
@@ -60,7 +60,6 @@ export function Navbar() {
     { path: "/", label: "Main List", icon: List },
     { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    { path: "/creators", label: "Creators", icon: Hammer },
   ];
 
   // Admin is now a main item (not in more)
