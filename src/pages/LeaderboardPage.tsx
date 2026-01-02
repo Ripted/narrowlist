@@ -23,6 +23,7 @@ interface CreatorStats {
   author: string;
   levelCount: number;
   totalPoints: number;
+  avatarUrl?: string;
   levels: {
     id: string;
     level_id: string;
@@ -52,6 +53,19 @@ export default function LeaderboardPage() {
         .from("levels")
         .select("id, level_id, name, author, creators, rank_position, points, thumbnail_url")
         .order("rank_position");
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Fetch profiles for creator avatar matching
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles-for-creators"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url");
       
       if (error) throw error;
       return data || [];
@@ -191,6 +205,15 @@ export default function LeaderboardPage() {
 
   const finalDisplayPlayers = historicalDate ? filteredHistoricalPlayers : filteredPlayers;
 
+  // Build profile lookup map
+  const profileMap = useMemo(() => {
+    const map = new Map<string, { avatarUrl?: string }>();
+    profiles.forEach((p: any) => {
+      map.set(p.username.toLowerCase(), { avatarUrl: p.avatar_url });
+    });
+    return map;
+  }, [profiles]);
+
   // Creator stats calculation - handles both single author and multiple creators
   const creatorStats = useMemo(() => {
     const statsMap = new Map<string, CreatorStats>();
@@ -219,6 +242,9 @@ export default function LeaderboardPage() {
           thumbnail_url: level.thumbnail_url,
         };
         
+        // Find matching profile for avatar
+        const profileInfo = profileMap.get(creator.toLowerCase());
+        
         if (existing) {
           existing.levelCount++;
           existing.totalPoints += level.points;
@@ -228,6 +254,7 @@ export default function LeaderboardPage() {
             author: creator,
             levelCount: 1,
             totalPoints: level.points,
+            avatarUrl: profileInfo?.avatarUrl,
             levels: [levelData],
           });
         }
@@ -236,7 +263,7 @@ export default function LeaderboardPage() {
     
     return Array.from(statsMap.values())
       .sort((a, b) => b.totalPoints - a.totalPoints);
-  }, [levels]);
+  }, [levels, profileMap]);
 
   const filteredCreators = useMemo(() => {
     if (!searchQuery.trim()) return creatorStats;
@@ -451,7 +478,10 @@ export default function LeaderboardPage() {
               {/* Stats */}
               <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
                 <span className="bg-muted px-2 py-1 rounded font-mono">{creatorStats.length} Creators</span>
-                <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">{levels.length} Levels</span>
+                <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono flex items-center gap-1">
+                  <Hammer className="w-3 h-3" />
+                  {creatorStats.reduce((sum, c) => sum + c.totalPoints, 0)} Creator Points
+                </span>
               </div>
 
               {loadingCreators ? (
@@ -478,14 +508,23 @@ export default function LeaderboardPage() {
                             className="text-center animate-fade-in cursor-pointer group"
                             style={{ animationDelay: `${podiumIndex * 100}ms` }}
                           >
-                            <div className={`${size} mx-auto mb-3 rounded-full border-4 ${rank === 1 ? "border-glow-gold glow-gold" : rank === 2 ? "border-glow-silver" : "border-glow-bronze"} overflow-hidden ${bg} group-hover:scale-105 transition-transform flex items-center justify-center`}>
-                              <Hammer className={`w-1/2 h-1/2 ${color}`} />
+                            <div className={`${size} mx-auto mb-3 rounded-full border-4 ${rank === 1 ? "border-glow-gold glow-gold" : rank === 2 ? "border-glow-silver" : "border-glow-bronze"} overflow-hidden ${bg} group-hover:scale-105 transition-transform`}>
+                              {creator.avatarUrl ? (
+                                <img src={creator.avatarUrl} alt={creator.author} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Hammer className={`w-1/2 h-1/2 ${color}`} />
+                                </div>
+                              )}
                             </div>
                             {rank === 1 && <Crown className="w-8 h-8 mx-auto text-glow-gold mb-1" />}
                             {rank === 2 && <Medal className="w-6 h-6 mx-auto text-glow-silver mb-1" />}
                             {rank === 3 && <Medal className="w-5 h-5 mx-auto text-glow-bronze mb-1" />}
                             <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{creator.author}</div>
-                            <div className="font-mono text-sm text-primary">{creator.totalPoints} pts</div>
+                            <div className="font-mono text-sm text-accent flex items-center justify-center gap-1">
+                              <Hammer className="w-3 h-3" />
+                              {creator.totalPoints}
+                            </div>
                             <div className="text-xs text-muted-foreground">{creator.levelCount} levels</div>
                             <div className={`w-24 ${pedestal} ${rank === 1 ? "bg-gradient-to-t from-glow-gold/60 to-glow-gold/30" : rank === 2 ? "bg-gradient-to-t from-glow-silver/60 to-glow-silver/30" : "bg-gradient-to-t from-glow-bronze/60 to-glow-bronze/30"} rounded-t-lg mt-2`} />
                           </Link>
@@ -494,10 +533,10 @@ export default function LeaderboardPage() {
                     </div>
                   )}
 
-                  {/* Creator list */}
+                  {/* Creator list - show all including top 3 */}
                   <div className="max-w-3xl mx-auto space-y-2 sm:space-y-3">
-                    {filteredCreators.slice(searchQuery ? 0 : 3).map((creator, index) => {
-                      const rank = searchQuery ? index + 1 : index + 4;
+                    {filteredCreators.map((creator, index) => {
+                      const rank = index + 1;
                       const { color, bg } = getRankBadge(rank);
                       
                       return (
@@ -510,8 +549,12 @@ export default function LeaderboardPage() {
                             <span className={`font-display font-bold ${color}`}>#{rank}</span>
                           </div>
                           
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0">
-                            <Hammer className="w-5 h-5 text-primary" />
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {creator.avatarUrl ? (
+                              <img src={creator.avatarUrl} alt={creator.author} className="w-full h-full object-cover" />
+                            ) : (
+                              <Hammer className="w-5 h-5 text-primary" />
+                            )}
                           </div>
                           
                           <div className="flex-1 min-w-0">
@@ -522,8 +565,11 @@ export default function LeaderboardPage() {
                           </div>
                           
                           <div className="text-right">
-                            <div className="font-mono font-bold text-primary">{creator.totalPoints}</div>
-                            <div className="text-xs text-muted-foreground">points</div>
+                            <div className="font-mono font-bold text-accent flex items-center gap-1 justify-end">
+                              <Hammer className="w-4 h-4" />
+                              {creator.totalPoints}
+                            </div>
+                            <div className="text-xs text-muted-foreground">creator pts</div>
                           </div>
                         </Link>
                       );

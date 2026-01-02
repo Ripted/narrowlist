@@ -76,17 +76,6 @@ export function LevelFeedbackAdmin() {
     // Get user profiles to check completions
     const userIds = [...new Set(feedbackData?.map(f => f.user_id) || [])];
     
-    // Get completions for these users
-    const { data: completions } = await supabase
-      .from("completions")
-      .select("profile_id, level_id")
-      .in("profile_id", userIds);
-    
-    const { data: manualRuns } = await supabase
-      .from("manual_runs")
-      .select("profile_id, level_id")
-      .in("profile_id", userIds);
-    
     // Get profiles to map user_id to profile_id
     const { data: profiles } = await supabase
       .from("profiles")
@@ -95,30 +84,33 @@ export function LevelFeedbackAdmin() {
     
     const userToProfile = new Map(profiles?.map(p => [p.user_id, p.id]) || []);
     
-    // Create a set of "userId-levelId" for completed levels
+    // Get all profile IDs that have given feedback
+    const profileIds = [...userToProfile.values()];
+    
+    // Get completions for these profiles
+    const { data: completions } = await supabase
+      .from("completions")
+      .select("profile_id, level_id");
+    
+    const { data: manualRuns } = await supabase
+      .from("manual_runs")
+      .select("profile_id, level_id");
+    
+    // Create a set of "profileId-levelId" for completed levels
     const completedSet = new Set<string>();
     completions?.forEach(c => {
-      // Find user_id from profile_id
-      for (const [userId, profileId] of userToProfile) {
-        if (profileId === c.profile_id) {
-          completedSet.add(`${userId}-${c.level_id}`);
-        }
-      }
+      completedSet.add(`${c.profile_id}-${c.level_id}`);
     });
     manualRuns?.forEach(r => {
-      for (const [userId, profileId] of userToProfile) {
-        if (profileId === r.profile_id) {
-          completedSet.add(`${userId}-${r.level_id}`);
-        }
-      }
+      completedSet.add(`${r.profile_id}-${r.level_id}`);
     });
     
     // Enrich feedback data
     const enrichedFeedback = feedbackData?.map(f => {
       const levelInfo = levelMap.get(f.level_id);
       const profileId = userToProfile.get(f.user_id);
-      // Check if user completed this specific level (by level_id UUID)
-      const userCompleted = profileId ? completedSet.has(`${f.user_id}-${f.level_id}`) : false;
+      // Check if user's profile completed this specific level (by level_id UUID)
+      const userCompleted = profileId ? completedSet.has(`${profileId}-${f.level_id}`) : false;
       return {
         ...f,
         level_name: levelInfo?.name || "Unknown Level",

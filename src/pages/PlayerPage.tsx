@@ -58,8 +58,15 @@ export default function PlayerPage() {
   const [showAll, setShowAll] = useState(false);
   const [activeTab, setActiveTab] = useState(isCreatorView ? "created" : "completed");
   
-  // Fetch levels created by this player
-  const { data: createdLevels = [] } = useQuery({
+  // Set initial tab based on view param or creator status
+  useEffect(() => {
+    if (isCreatorView) {
+      setActiveTab("created");
+    }
+  }, [isCreatorView]);
+  
+  // Fetch levels created by this player/creator
+  const { data: createdLevels = [], isLoading: createdLevelsLoading } = useQuery({
     queryKey: ["created-levels", username],
     queryFn: async () => {
       const { data } = await supabase
@@ -81,6 +88,7 @@ export default function PlayerPage() {
     enabled: !!username,
   });
   
+  
   const createdLevelsTotalPoints = useMemo(() => {
     return createdLevels.reduce((sum: number, l: any) => sum + l.points, 0);
   }, [createdLevels]);
@@ -92,6 +100,16 @@ export default function PlayerPage() {
     (p) => p.username.toLowerCase() === username?.toLowerCase()
   );
   const rank = player ? players.indexOf(player) + 1 : null;
+  
+  // Check if this is a creator-only profile (no player record but has created levels)
+  const isCreatorOnly = !player && createdLevels.length > 0 && !loading && !createdLevelsLoading;
+  
+  const getRankStyle = (r: number) => {
+    if (r === 1) return "rank-gold";
+    if (r === 2) return "rank-silver";
+    if (r === 3) return "rank-bronze";
+    return "text-foreground";
+  };
 
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   
@@ -362,7 +380,21 @@ export default function PlayerPage() {
     );
   }
 
-  if (!player) {
+  // Show not found only if there's no player AND no created levels
+  if (!player && !isCreatorOnly) {
+    if (loading || createdLevelsLoading) {
+      return (
+        <div className="min-h-screen bg-background">
+          <Navbar />
+          <div className="pt-24 container mx-auto px-4">
+            <div className="animate-pulse space-y-6">
+              <div className="h-8 w-48 bg-muted rounded" />
+              <div className="h-64 bg-muted rounded-xl" />
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -376,14 +408,9 @@ export default function PlayerPage() {
     );
   }
 
-  const getRankStyle = (r: number) => {
-    if (r === 1) return "rank-gold";
-    if (r === 2) return "rank-silver";
-    if (r === 3) return "rank-bronze";
-    return "text-foreground";
-  };
-
-  const displayAvatarUrl = localAvatarUrl || profileData?.avatar_url || player.avatarUrl;
+  // For creator-only profiles, use a simplified display
+  const displayName = player?.displayName || player?.username || username || "";
+  const displayAvatarUrl = localAvatarUrl || profileData?.avatar_url || player?.avatarUrl;
   const displayBannerUrl = localBannerUrl || profileData?.banner_url;
 
   return (
