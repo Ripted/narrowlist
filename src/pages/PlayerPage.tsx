@@ -585,91 +585,132 @@ export default function PlayerPage() {
               <div className="rounded-xl bg-card border border-border overflow-hidden">
                 <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <h2 className="font-display text-xl font-bold flex items-center gap-2"><Target className="w-5 h-5 text-primary" />Completed Levels</h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-full sm:w-48">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-sm bg-secondary border-border" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative w-full sm:w-48">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-sm bg-secondary border-border" />
+                    </div>
+                    <Button
+                      variant={sortMode === "rank" ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => setSortMode(sortMode === "rank" ? "date" : "rank")}
+                      className="gap-2 flex-shrink-0"
+                    >
+                      <ArrowUpDown className="w-4 h-4" />
+                      <span className="hidden sm:inline">{sortMode === "rank" ? "By Rank" : "By Date"}</span>
+                    </Button>
+                    <Button
+                      variant={showAll ? "secondary" : "outline"}
+                      size="sm"
+                      onClick={() => { setShowAll(!showAll); setCurrentPage(1); }}
+                      className="flex-shrink-0"
+                    >
+                      {showAll ? "Paginate" : "Show All"}
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  variant={sortMode === "rank" ? "secondary" : "outline"}
-                  size="sm"
-                  onClick={() => setSortMode(sortMode === "rank" ? "date" : "rank")}
-                  className="gap-2 flex-shrink-0"
-                >
-                  <ArrowUpDown className="w-4 h-4" />
-                  <span className="hidden sm:inline">{sortMode === "rank" ? "By Rank" : "By Date"}</span>
-                </Button>
-                <Button
-                  variant={showAll ? "secondary" : "outline"}
-                  size="sm"
-                  onClick={() => { setShowAll(!showAll); setCurrentPage(1); }}
-                  className="flex-shrink-0"
-                >
-                  {showAll ? "Paginate" : "Show All"}
-                </Button>
-              </div>
-            </div>
 
-            {paginatedCompletions.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">{searchQuery ? "No levels found." : "No completions yet."}</div>
-            ) : (
-              <>
-                <div className="divide-y divide-border">
-                {paginatedCompletions.map((completion) => {
-                    const levelData = levelRankMap.get(completion.levelId);
-                    const isHardest = hardestLevel?.levelId === completion.levelId;
-                    return (
-                      <Link key={completion.levelId} to={`/level/${completion.levelId}`} className={`flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors ${isHardest ? "bg-glow-gold/5 border-l-2 border-glow-gold" : ""}`}>
-                        <div className="w-12 text-center flex-shrink-0">
-                          <span className={`font-display font-bold text-lg ${levelData?.rank === 1 ? "rank-gold" : levelData?.rank === 2 ? "rank-silver" : levelData?.rank === 3 ? "rank-bronze" : "text-muted-foreground"}`}>#{levelData?.rank || "?"}</span>
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><Medal className="w-4 h-4 text-primary" /></div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-foreground truncate">{completion.levelName}</span>
-                            {verifiedLevelIds.has(completion.levelId) && (
-                              <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                                <Shield className="w-3 h-3" />
-                                Verifier
-                              </span>
-                            )}
-                            {isHardest && (
-                              <span className="flex items-center gap-1 text-xs text-glow-gold bg-glow-gold/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                                <Star className="w-3 h-3" />
-                                Hardest
-                              </span>
-                            )}
-                            {completion.isManualRun && (
-                              <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                                Not in API
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                          {completion.completedAt && (
-                            <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
-                              <Calendar className="w-4 h-4" />
-                              <span>{formatDate(completion.completedAt)}</span>
+                {paginatedCompletions.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">{searchQuery ? "No levels found." : "No completions yet."}</div>
+                ) : (
+                  <>
+                    <div className="divide-y divide-border">
+                      {paginatedCompletions.map((completion) => {
+                        const levelData = levelRankMap.get(completion.levelId);
+                        const isHardest = hardestLevel?.levelId === completion.levelId;
+                        return (
+                          <Link key={completion.levelId} to={`/level/${completion.levelId}`} className={`flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors ${isHardest ? "bg-glow-gold/5 border-l-2 border-glow-gold" : ""}`}>
+                            <div className="w-12 text-center flex-shrink-0">
+                              <span className={`font-display font-bold text-lg ${levelData?.rank === 1 ? "rank-gold" : levelData?.rank === 2 ? "rank-silver" : levelData?.rank === 3 ? "rank-bronze" : "text-muted-foreground"}`}>#{levelData?.rank || "?"}</span>
                             </div>
-                          )}
-                          <div className="flex items-center gap-1 text-muted-foreground"><Clock className="w-4 h-4" /><span className="font-mono">{formatTime(completion.time)}</span></div>
-                          <div className="flex items-center gap-1 text-primary"><Trophy className="w-4 h-4" /><span className="font-mono font-bold">+{completion.points}</span></div>
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><Medal className="w-4 h-4 text-primary" /></div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-foreground truncate">{completion.levelName}</span>
+                                {verifiedLevelIds.has(completion.levelId) && (
+                                  <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                    <Shield className="w-3 h-3" />
+                                    Verifier
+                                  </span>
+                                )}
+                                {isHardest && (
+                                  <span className="flex items-center gap-1 text-xs text-glow-gold bg-glow-gold/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                    <Star className="w-3 h-3" />
+                                    Hardest
+                                  </span>
+                                )}
+                                {completion.isManualRun && (
+                                  <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                    Not in API
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              {completion.completedAt && (
+                                <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
+                                  <Calendar className="w-4 h-4" />
+                                  <span>{formatDate(completion.completedAt)}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1 text-muted-foreground"><Clock className="w-4 h-4" /><span className="font-mono">{formatTime(completion.time)}</span></div>
+                              <div className="flex items-center gap-1 text-primary"><Trophy className="w-4 h-4" /><span className="font-mono font-bold">+{completion.points}</span></div>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                    {!showAll && totalPages > 1 && (
+                      <div className="p-4 border-t border-border flex items-center justify-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="w-4 h-4" /></Button>
+                        <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                        <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}><ChevronRight className="w-4 h-4" /></Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </TabsContent>
+
+            {createdLevels.length > 0 && (
+              <TabsContent value="created" className="mt-0">
+                <div className="rounded-xl bg-card border border-border overflow-hidden">
+                  <div className="p-4 border-b border-border bg-secondary/30">
+                    <h2 className="font-display text-xl font-bold flex items-center gap-2">
+                      <Hammer className="w-5 h-5 text-primary" />
+                      Created Levels
+                      <span className="text-sm font-normal text-muted-foreground ml-2">
+                        ({createdLevelsTotalPoints.toLocaleString()} total points)
+                      </span>
+                    </h2>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {createdLevels.map((level: any) => (
+                      <Link key={level.id} to={`/level/${level.level_id}`} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
+                        <div className="w-12 text-center flex-shrink-0">
+                          <span className={`font-display font-bold text-lg ${level.rank_position === 1 ? "rank-gold" : level.rank_position === 2 ? "rank-silver" : level.rank_position === 3 ? "rank-bronze" : "text-muted-foreground"}`}>
+                            #{level.rank_position}
+                          </span>
+                        </div>
+                        {level.thumbnail_url && (
+                          <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0">
+                            <img src={level.thumbnail_url} alt={level.name} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-foreground truncate block">{level.name || level.level_id}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-primary">
+                          <Trophy className="w-4 h-4" />
+                          <span className="font-mono font-bold">{level.points}</span>
                         </div>
                       </Link>
-                    );
-                  })}
-                </div>
-                {!showAll && totalPages > 1 && (
-                  <div className="p-4 border-t border-border flex items-center justify-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="w-4 h-4" /></Button>
-                    <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
-                    <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}><ChevronRight className="w-4 h-4" /></Button>
+                    ))}
                   </div>
-                )}
-              </>
+                </div>
+              </TabsContent>
             )}
-          </div>
+          </Tabs>
         </div>
       </main>
     </div>
