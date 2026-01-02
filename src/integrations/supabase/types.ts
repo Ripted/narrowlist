@@ -678,6 +678,7 @@ export type Database = {
       webhook_settings: {
         Row: {
           created_at: string
+          custom_message_template: string | null
           enabled: boolean
           format_style: string | null
           id: string
@@ -693,6 +694,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_message_template?: string | null
           enabled?: boolean
           format_style?: string | null
           id?: string
@@ -708,6 +710,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_message_template?: string | null
           enabled?: boolean
           format_style?: string | null
           id?: string

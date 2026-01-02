@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       details
     } = await req.json();
 
-    console.log('Received admin notification request:', { event_type, admin_email, level_name });
+    console.log('Received admin notification request:', { event_type, level_name });
 
     // Get webhook settings
     const { data: settings } = await supabase
@@ -69,24 +69,46 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build the message based on format style and event type
-    let message = '';
-    const formatStyle = settings.format_style || 'formal';
-
-    // All messages are now simple 1-sentence format with bold level name
+    // Determine emoji based on event type
+    let emoji = '';
     if (event_type === 'rank_change') {
-      const direction = new_rank < old_rank ? '⬆️' : '⬇️';
-      message = `${direction} **${level_name}** moved from #${old_rank} to #${new_rank}`;
+      emoji = new_rank < old_rank ? '⬆️' : '⬇️';
     } else if (event_type === 'future_level') {
-      message = `📋 **${level_name}** added to the future list at #${new_rank}`;
+      emoji = '📋';
     } else if (event_type === 'level_addition') {
-      message = `✨ **${level_name}** added to the main list at #${new_rank}`;
+      emoji = '✨';
     } else if (event_type === 'level_deletion') {
-      message = `🗑️ **${level_name}** removed from the list`;
+      emoji = '🗑️';
     } else if (event_type === 'future_to_main') {
-      message = `🚀 **${level_name}** promoted to main list at #${new_rank}`;
+      emoji = '🚀';
+    }
+
+    let message = '';
+    
+    // Check if custom template is set
+    if (settings.custom_message_template) {
+      // Use custom template with variable replacement
+      message = settings.custom_message_template
+        .replace(/\[levelName\]/g, `**${level_name}**`)
+        .replace(/\[oldRank\]/g, String(old_rank || ''))
+        .replace(/\[newRank\]/g, String(new_rank || ''))
+        .replace(/\[eventType\]/g, event_type)
+        .replace(/\[emoji\]/g, emoji);
     } else {
-      message = details || `Admin action: ${event_type}`;
+      // Use default one-sentence format with bold level name
+      if (event_type === 'rank_change') {
+        message = `${emoji} **${level_name}** moved from #${old_rank} to #${new_rank}`;
+      } else if (event_type === 'future_level') {
+        message = `${emoji} **${level_name}** added to the future list at #${new_rank}`;
+      } else if (event_type === 'level_addition') {
+        message = `${emoji} **${level_name}** added to the main list at #${new_rank}`;
+      } else if (event_type === 'level_deletion') {
+        message = `${emoji} **${level_name}** removed from the list`;
+      } else if (event_type === 'future_to_main') {
+        message = `${emoji} **${level_name}** promoted to main list at #${new_rank}`;
+      } else {
+        message = details || `Admin action: ${event_type}`;
+      }
     }
 
     console.log('Sending Discord message:', message);

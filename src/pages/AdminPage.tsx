@@ -187,6 +187,7 @@ interface WebhookSettings {
   include_level_additions: boolean;
   include_level_deletions: boolean;
   format_style: string;
+  custom_message_template: string | null;
 }
 
 const ITEMS_PER_PAGE = 20;
@@ -3285,6 +3286,34 @@ export default function AdminPage() {
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* Custom Message Template for admin webhook */}
+                        {webhook.webhook_type === 'admin' && (
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Custom Message Template (optional)</Label>
+                            <Textarea
+                              value={webhook.custom_message_template || ""}
+                              onChange={(e) => updateWebhookSetting(webhook.id, { custom_message_template: e.target.value || null })}
+                              className="mt-1 bg-background border-border text-xs font-mono min-h-[80px]"
+                              placeholder="Leave empty to use default format. Example: [emoji] **[levelName]** moved from #[oldRank] to #[newRank]"
+                            />
+                            <div className="mt-2 p-3 bg-muted/50 rounded-lg">
+                              <Label className="text-xs text-muted-foreground block mb-2">Available Variables:</Label>
+                              <div className="grid grid-cols-2 gap-1 text-xs">
+                                <span className="font-mono text-primary">[levelName]</span>
+                                <span className="text-muted-foreground">Level name</span>
+                                <span className="font-mono text-primary">[oldRank]</span>
+                                <span className="text-muted-foreground">Previous rank</span>
+                                <span className="font-mono text-primary">[newRank]</span>
+                                <span className="text-muted-foreground">New rank</span>
+                                <span className="font-mono text-primary">[eventType]</span>
+                                <span className="text-muted-foreground">Event type</span>
+                                <span className="font-mono text-primary">[emoji]</span>
+                                <span className="text-muted-foreground">Auto emoji based on event</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="pt-2">
                           <Label className="text-xs text-muted-foreground mb-2 block">Event Types</Label>
