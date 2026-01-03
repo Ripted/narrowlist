@@ -61,6 +61,17 @@ interface FutureLevel {
   thumbnail_url: string | null;
 }
 
+interface ExtendedLevel {
+  id: string;
+  level_id: string;
+  name: string | null;
+  author: string | null;
+  creators: string[] | null;
+  rank_position: number;
+  points: number;
+  thumbnail_url: string | null;
+}
+
 // State for editing future level
 interface FutureLevelEdit {
   id: string;
@@ -207,11 +218,17 @@ export default function AdminPage() {
   const [runSubmissions, setRunSubmissions] = useState<RunSubmission[]>([]);
   const [bannedUsers, setBannedUsers] = useState<BannedUser[]>([]);
   const [deletedLevels, setDeletedLevels] = useState<DeletedLevel[]>([]);
+  const [extendedLevels, setExtendedLevels] = useState<ExtendedLevel[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [restoringLevel, setRestoringLevel] = useState<string | null>(null);
   
+  // Extended list form
+  const [newExtendedLevelId, setNewExtendedLevelId] = useState("");
+  const [newExtendedLevelRank, setNewExtendedLevelRank] = useState("");
+  const [addingExtendedLevel, setAddingExtendedLevel] = useState(false);
+  const [extendedSearchQuery, setExtendedSearchQuery] = useState("");
   
   // Submission review
   const [reviewingSubmission, setReviewingSubmission] = useState<LevelSubmission | null>(null);
@@ -339,6 +356,7 @@ export default function AdminPage() {
     if (isAdmin) {
       fetchLevels();
       fetchFutureLevels();
+      fetchExtendedLevels();
       fetchClaimRequests();
       fetchApprovedPlayers();
       fetchChangelog();
@@ -393,6 +411,15 @@ export default function AdminPage() {
     }
   };
 
+  const fetchExtendedLevels = async () => {
+    const { data } = await supabase
+      .from("extended_levels")
+      .select("*")
+      .order("rank_position");
+    
+    if (data) setExtendedLevels(data as ExtendedLevel[]);
+  };
+
   const fetchDeletedLevels = async () => {
     const { data } = await supabase
       .from("deleted_levels")
@@ -439,6 +466,136 @@ export default function AdminPage() {
       toast({ title: "Restore Failed", description: error.message, variant: "destructive" });
     } finally {
       setRestoringLevel(null);
+    }
+  };
+
+  // Extended List functions
+  const addExtendedLevel = async () => {
+    if (!newExtendedLevelId.trim()) return;
+    setAddingExtendedLevel(true);
+
+    try {
+      const targetRank = parseInt(newExtendedLevelRank) || extendedLevels.length + 1;
+
+      // Fetch level details from API
+      const response = await fetch(`https://api.narrowarrow.xyz/level-details/${newExtendedLevelId.trim()}`);
+      let levelData: any = null;
+      if (response.ok) {
+        levelData = await response.json();
+      }
+
+      const { error } = await supabase.from("extended_levels").insert({
+        level_id: newExtendedLevelId.trim(),
+        name: levelData?.levelInfo?.name || null,
+        author: levelData?.levelInfo?.author || null,
+        rank_position: targetRank,
+        points: 1,
+        thumbnail_url: levelData?.levelInfo?.thumbnail_url || null,
+      });
+
+      if (error) throw error;
+
+      await logAction("Added extended level", `${levelData?.levelInfo?.name || newExtendedLevelId.trim()} at rank #${targetRank}`);
+      toast({ title: "Success", description: "Extended level added" });
+      setNewExtendedLevelId("");
+      setNewExtendedLevelRank("");
+      fetchExtendedLevels();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setAddingExtendedLevel(false);
+    }
+  };
+
+  const deleteExtendedLevel = async (level: ExtendedLevel) => {
+    try {
+      const { error } = await supabase
+        .from("extended_levels")
+        .delete()
+        .eq("id", level.id);
+
+      if (error) throw error;
+
+      await logAction("Deleted extended level", level.name || level.level_id);
+      toast({ title: "Deleted", description: "Extended level removed" });
+      fetchExtendedLevels();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const transferExtendedToMain = async (level: ExtendedLevel) => {
+    try {
+      // Get the next rank in main list
+      const targetRank = levels.length + 1;
+
+      // Insert into main levels
+      const { error: insertError } = await supabase.from("levels").insert({
+        level_id: level.level_id,
+        name: level.name,
+        author: level.author,
+        creators: level.creators,
+        rank_position: targetRank,
+        points: 1, // Will be auto-calculated by trigger
+        thumbnail_url: level.thumbnail_url,
+      });
+
+      if (insertError) throw insertError;
+
+      // Delete from extended
+      const { error: deleteError } = await supabase
+        .from("extended_levels")
+        .delete()
+        .eq("id", level.id);
+
+      if (deleteError) throw deleteError;
+
+      await logAction("Transferred to main list", `${level.name || level.level_id} moved to main list at rank #${targetRank}`);
+      toast({ title: "Success", description: `${level.name || level.level_id} moved to main list` });
+      fetchLevels();
+      fetchExtendedLevels();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const transferMainToExtended = async (level: Level) => {
+    try {
+      // Get the next rank in extended list
+      const targetRank = extendedLevels.length + 1;
+
+      // Insert into extended levels
+      const { error: insertError } = await supabase.from("extended_levels").insert({
+        level_id: level.level_id,
+        name: level.name,
+        author: level.author,
+        rank_position: targetRank,
+        points: 1,
+        thumbnail_url: level.thumbnail_url,
+      });
+
+      if (insertError) throw insertError;
+
+      // Delete from main list (this will trigger archiving)
+      const { error: deleteError } = await supabase
+        .from("levels")
+        .delete()
+        .eq("id", level.id);
+
+      if (deleteError) throw deleteError;
+
+      await logAction("Transferred to extended list", `${level.name || level.level_id} moved to extended list at rank #${targetRank}`);
+      await sendAdminNotification("level_to_extended", level.name || level.level_id, level.rank_position, targetRank);
+      toast({ title: "Success", description: `${level.name || level.level_id} moved to extended list` });
+      fetchLevels();
+      fetchExtendedLevels();
+      fetchDeletedLevels();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 
@@ -2063,6 +2220,7 @@ export default function AdminPage() {
               </TabsTrigger>
               <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
               <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
+              <TabsTrigger value="extended" className="text-xs sm:text-sm flex-shrink-0">Extended ({extendedLevels.length})</TabsTrigger>
               <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
               <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
               <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
@@ -2774,6 +2932,15 @@ export default function AdminPage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                onClick={() => transferMainToExtended(level)}
+                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                title="Move to Extended List"
+                              >
+                                <ChevronDown className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => setDeleteConfirmLevel(level)}
                                 className="h-8 w-8 text-destructive hover:text-destructive"
                                 title="Remove level"
@@ -2925,6 +3092,113 @@ export default function AdminPage() {
                             size="icon"
                             onClick={() => setDeleteConfirmFutureLevel(level)}
                             className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Extended List Tab */}
+            <TabsContent value="extended" className="space-y-6">
+              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <List className="w-5 h-5 text-primary" />
+                    Extended List
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-2 flex-1">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search extended levels..."
+                        value={extendedSearchQuery}
+                        onChange={(e) => setExtendedSearchQuery(e.target.value)}
+                        className="pl-9 bg-secondary border-border h-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add Extended Level */}
+                <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-secondary/30 rounded-lg">
+                  <Input
+                    placeholder="Level ID"
+                    value={newExtendedLevelId}
+                    onChange={(e) => setNewExtendedLevelId(e.target.value)}
+                    className="w-40 bg-card border-border h-8"
+                  />
+                  <Input
+                    placeholder="Rank"
+                    type="number"
+                    value={newExtendedLevelRank}
+                    onChange={(e) => setNewExtendedLevelRank(e.target.value)}
+                    className="w-20 bg-card border-border h-8"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={addExtendedLevel}
+                    disabled={addingExtendedLevel || !newExtendedLevelId.trim()}
+                    className="gap-1"
+                  >
+                    {addingExtendedLevel ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Add
+                  </Button>
+                </div>
+
+                {/* Extended Level List */}
+                {extendedLevels.filter(l => 
+                  !extendedSearchQuery.trim() ||
+                  l.name?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
+                  l.author?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
+                  l.level_id.toLowerCase().includes(extendedSearchQuery.toLowerCase())
+                ).length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    {extendedSearchQuery ? "No matching levels found." : "No extended levels yet."}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {extendedLevels.filter(l => 
+                      !extendedSearchQuery.trim() ||
+                      l.name?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
+                      l.author?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
+                      l.level_id.toLowerCase().includes(extendedSearchQuery.toLowerCase())
+                    ).map((level) => (
+                      <div key={level.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                        <div className="w-10 text-center font-display font-bold text-muted-foreground">
+                          #{level.rank_position}
+                        </div>
+                        {level.thumbnail_url && (
+                          <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0">
+                            <img src={level.thumbnail_url} alt={level.name || ""} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground truncate">{level.name || level.level_id}</div>
+                          <div className="text-xs text-muted-foreground">{level.author || "Unknown"}</div>
+                        </div>
+                        <div className="flex items-center gap-1 text-primary">
+                          <span className="font-mono text-sm">{level.points}pts</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-primary hover:text-primary"
+                            onClick={() => transferExtendedToMain(level)}
+                            title="Move to Main List"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={() => deleteExtendedLevel(level)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
