@@ -10,6 +10,7 @@ import LevelPage from "./pages/LevelPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import PlayerPage from "./pages/PlayerPage";
 import FutureListPage from "./pages/FutureListPage";
+import ExtendedListPage from "./pages/ExtendedListPage";
 import RecentRunsPage from "./pages/RecentRunsPage";
 import ComparePage from "./pages/ComparePage";
 import SubmitLevelPage from "./pages/SubmitLevelPage";
@@ -35,6 +36,7 @@ const App = () => (
               <Route path="/level/:levelId" element={<LevelPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/future-list" element={<FutureListPage />} />
+              <Route path="/extended-list" element={<ExtendedListPage />} />
               <Route path="/recent" element={<RecentRunsPage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/submit" element={<SubmitLevelPage />} />

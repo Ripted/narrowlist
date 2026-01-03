@@ -409,9 +409,10 @@ export default function PlayerPage() {
   }
 
   // For creator-only profiles, use a simplified display
-  const displayName = player?.displayName || player?.username || username || "";
+  const displayName = profileData?.display_name || player?.displayName || player?.username || username || "";
   const displayAvatarUrl = localAvatarUrl || profileData?.avatar_url || player?.avatarUrl;
   const displayBannerUrl = localBannerUrl || profileData?.banner_url;
+  const displayUsername = player?.username || username || "";
 
   return (
     <div className="min-h-screen bg-background">
@@ -441,10 +442,10 @@ export default function PlayerPage() {
             <div className="relative group">
               <div className={`w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 bg-background ${rank && rank <= 3 ? "border-primary glow-primary" : "border-border"}`}>
                 {displayAvatarUrl ? (
-                  <img src={displayAvatarUrl} alt={player.displayName || player.username} className="w-full h-full object-cover" />
+                  <img src={displayAvatarUrl} alt={displayName} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                    <span className="text-4xl font-bold text-primary-foreground">{(player.displayName || player.username).charAt(0).toUpperCase()}</span>
+                    <span className="text-4xl font-bold text-primary-foreground">{displayName.charAt(0).toUpperCase()}</span>
                   </div>
                 )}
               </div>
@@ -466,12 +467,12 @@ export default function PlayerPage() {
             <div className="text-center md:text-left space-y-4 pt-4 flex-1">
                 <div>
                   <div className="flex items-center gap-2 justify-center md:justify-start flex-wrap">
-                    <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">{profileData?.display_name || player.displayName || player.username}</h1>
+                    <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">{displayName}</h1>
                   {currentCountry && (
                     <span className="text-2xl" title={currentCountry.name}>{currentCountry.flag}</span>
                   )}
                 </div>
-                {(profileData?.display_name || player.displayName) && <p className="text-muted-foreground">@{player.username}</p>}
+                {displayName !== displayUsername && displayUsername && <p className="text-muted-foreground">@{displayUsername}</p>}
                 
                 {/* Country selector for owner or admin */}
                 {canEdit && (
@@ -533,33 +534,50 @@ export default function PlayerPage() {
                 </Button>
               )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
-                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
-                  <div className={`font-display text-xl sm:text-2xl font-bold ${rank ? getRankStyle(rank) : ""}`}>#{rank}</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Global Rank</div>
+              {/* Creator stats section */}
+              {createdLevels.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
+                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                    <div className="flex items-center justify-center gap-1"><Hammer className="w-3 h-3 sm:w-4 sm:h-4 text-accent" /><span className="font-display text-xl sm:text-2xl font-bold text-accent">{createdLevels.length}</span></div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">Created</div>
+                  </div>
+                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                    <div className="flex items-center justify-center gap-1"><Hammer className="w-3 h-3 sm:w-4 sm:h-4 text-accent" /><span className="font-display text-xl sm:text-2xl font-bold text-accent">{createdLevelsTotalPoints.toLocaleString()}</span></div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">Creator Points</div>
+                  </div>
                 </div>
-                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
-                  <div className="flex items-center justify-center gap-1"><Trophy className="w-3 h-3 sm:w-4 sm:h-4 text-primary" /><span className="font-display text-xl sm:text-2xl font-bold text-primary">{player.totalPoints}</span></div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Total Points</div>
+              )}
+
+              {/* Player stats - only show if player exists */}
+              {player && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
+                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                    <div className={`font-display text-xl sm:text-2xl font-bold ${rank ? getRankStyle(rank) : ""}`}>#{rank}</div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">Global Rank</div>
+                  </div>
+                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                    <div className="flex items-center justify-center gap-1"><Trophy className="w-3 h-3 sm:w-4 sm:h-4 text-primary" /><span className="font-display text-xl sm:text-2xl font-bold text-primary">{player.totalPoints}</span></div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">Total Points</div>
+                  </div>
+                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                    <div className="font-display text-xl sm:text-2xl font-bold text-foreground">{player.completions.length}</div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">Completions</div>
+                  </div>
+                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                    <div className="flex items-center justify-center gap-1"><Crown className="w-3 h-3 sm:w-4 sm:h-4 text-glow-gold" /><span className="font-display text-base sm:text-lg font-bold text-foreground">#{hardestLevel?.rank || "-"}</span></div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground truncate" title={hardestLevel?.name}>{hardestLevel?.name ? hardestLevel.name.slice(0, 12) + (hardestLevel.name.length > 12 ? "..." : "") : "Hardest"}</div>
+                  </div>
+                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border col-span-2 sm:col-span-1">
+                    <div className="flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-primary" /><span className="font-display text-xl sm:text-2xl font-bold text-foreground">{verifiedCount}</span></div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">Verified</div>
+                  </div>
                 </div>
-                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
-                  <div className="font-display text-xl sm:text-2xl font-bold text-foreground">{player.completions.length}</div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Completions</div>
-                </div>
-                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
-                  <div className="flex items-center justify-center gap-1"><Crown className="w-3 h-3 sm:w-4 sm:h-4 text-glow-gold" /><span className="font-display text-base sm:text-lg font-bold text-foreground">#{hardestLevel?.rank || "-"}</span></div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground truncate" title={hardestLevel?.name}>{hardestLevel?.name ? hardestLevel.name.slice(0, 12) + (hardestLevel.name.length > 12 ? "..." : "") : "Hardest"}</div>
-                </div>
-                <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border col-span-2 sm:col-span-1">
-                  <div className="flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-primary" /><span className="font-display text-xl sm:text-2xl font-bold text-foreground">{verifiedCount}</span></div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Verified</div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
 
-          {progressionData.length > 1 && (
+          {player && progressionData.length > 1 && (
             <div className="rounded-xl bg-card border border-border p-4 sm:p-6 mb-8">
               <h2 className="font-display text-lg font-bold flex items-center gap-2 mb-4"><TrendingUp className="w-5 h-5 text-primary" />Completion Progression</h2>
               <div className="h-48">
@@ -596,10 +614,12 @@ export default function PlayerPage() {
           {/* Tabs for Completed vs Created */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="bg-secondary/50 border border-border">
-              <TabsTrigger value="completed" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                <Target className="w-4 h-4" />
-                Completed ({filteredCompletions.length})
-              </TabsTrigger>
+              {player && (
+                <TabsTrigger value="completed" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Target className="w-4 h-4" />
+                  Completed ({filteredCompletions.length})
+                </TabsTrigger>
+              )}
               {createdLevels.length > 0 && (
                 <TabsTrigger value="created" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Hammer className="w-4 h-4" />
@@ -608,96 +628,98 @@ export default function PlayerPage() {
               )}
             </TabsList>
 
-            <TabsContent value="completed" className="mt-0">
-              <div className="rounded-xl bg-card border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <h2 className="font-display text-xl font-bold flex items-center gap-2"><Target className="w-5 h-5 text-primary" />Completed Levels</h2>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative w-full sm:w-48">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-sm bg-secondary border-border" />
-                    </div>
-                    <Button
-                      variant={sortMode === "rank" ? "secondary" : "outline"}
-                      size="sm"
-                      onClick={() => setSortMode(sortMode === "rank" ? "date" : "rank")}
-                      className="gap-2 flex-shrink-0"
-                    >
-                      <ArrowUpDown className="w-4 h-4" />
-                      <span className="hidden sm:inline">{sortMode === "rank" ? "By Rank" : "By Date"}</span>
-                    </Button>
-                    <Button
-                      variant={showAll ? "secondary" : "outline"}
-                      size="sm"
-                      onClick={() => { setShowAll(!showAll); setCurrentPage(1); }}
-                      className="flex-shrink-0"
-                    >
-                      {showAll ? "Paginate" : "Show All"}
-                    </Button>
-                  </div>
-                </div>
-
-                {paginatedCompletions.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">{searchQuery ? "No levels found." : "No completions yet."}</div>
-                ) : (
-                  <>
-                    <div className="divide-y divide-border">
-                      {paginatedCompletions.map((completion) => {
-                        const levelData = levelRankMap.get(completion.levelId);
-                        const isHardest = hardestLevel?.levelId === completion.levelId;
-                        return (
-                          <Link key={completion.levelId} to={`/level/${completion.levelId}`} className={`flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors ${isHardest ? "bg-glow-gold/5 border-l-2 border-glow-gold" : ""}`}>
-                            <div className="w-12 text-center flex-shrink-0">
-                              <span className={`font-display font-bold text-lg ${levelData?.rank === 1 ? "rank-gold" : levelData?.rank === 2 ? "rank-silver" : levelData?.rank === 3 ? "rank-bronze" : "text-muted-foreground"}`}>#{levelData?.rank || "?"}</span>
-                            </div>
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><Medal className="w-4 h-4 text-primary" /></div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-foreground truncate">{completion.levelName}</span>
-                                {verifiedLevelIds.has(completion.levelId) && (
-                                  <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                                    <Shield className="w-3 h-3" />
-                                    Verifier
-                                  </span>
-                                )}
-                                {isHardest && (
-                                  <span className="flex items-center gap-1 text-xs text-glow-gold bg-glow-gold/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                                    <Star className="w-3 h-3" />
-                                    Hardest
-                                  </span>
-                                )}
-                                {completion.isManualRun && (
-                                  <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                                    Not in API
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm">
-                              {completion.completedAt && (
-                                <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>{formatDate(completion.completedAt)}</span>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-1 text-muted-foreground"><Clock className="w-4 h-4" /><span className="font-mono">{formatTime(completion.time)}</span></div>
-                              <div className="flex items-center gap-1 text-primary"><Trophy className="w-4 h-4" /><span className="font-mono font-bold">+{completion.points}</span></div>
-                            </div>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                    {!showAll && totalPages > 1 && (
-                      <div className="p-4 border-t border-border flex items-center justify-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="w-4 h-4" /></Button>
-                        <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
-                        <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}><ChevronRight className="w-4 h-4" /></Button>
+            {player && (
+              <TabsContent value="completed" className="mt-0">
+                <div className="rounded-xl bg-card border border-border overflow-hidden">
+                  <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <h2 className="font-display text-xl font-bold flex items-center gap-2"><Target className="w-5 h-5 text-primary" />Completed Levels</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="relative w-full sm:w-48">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-sm bg-secondary border-border" />
                       </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </TabsContent>
+                      <Button
+                        variant={sortMode === "rank" ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setSortMode(sortMode === "rank" ? "date" : "rank")}
+                        className="gap-2 flex-shrink-0"
+                      >
+                        <ArrowUpDown className="w-4 h-4" />
+                        <span className="hidden sm:inline">{sortMode === "rank" ? "By Rank" : "By Date"}</span>
+                      </Button>
+                      <Button
+                        variant={showAll ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => { setShowAll(!showAll); setCurrentPage(1); }}
+                        className="flex-shrink-0"
+                      >
+                        {showAll ? "Paginate" : "Show All"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {paginatedCompletions.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground">{searchQuery ? "No levels found." : "No completions yet."}</div>
+                  ) : (
+                    <>
+                      <div className="divide-y divide-border">
+                        {paginatedCompletions.map((completion) => {
+                          const levelData = levelRankMap.get(completion.levelId);
+                          const isHardest = hardestLevel?.levelId === completion.levelId;
+                          return (
+                            <Link key={completion.levelId} to={`/level/${completion.levelId}`} className={`flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors ${isHardest ? "bg-glow-gold/5 border-l-2 border-glow-gold" : ""}`}>
+                              <div className="w-12 text-center flex-shrink-0">
+                                <span className={`font-display font-bold text-lg ${levelData?.rank === 1 ? "rank-gold" : levelData?.rank === 2 ? "rank-silver" : levelData?.rank === 3 ? "rank-bronze" : "text-muted-foreground"}`}>#{levelData?.rank || "?"}</span>
+                              </div>
+                              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0"><Medal className="w-4 h-4 text-primary" /></div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-foreground truncate">{completion.levelName}</span>
+                                  {verifiedLevelIds.has(completion.levelId) && (
+                                    <span className="flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                      <Shield className="w-3 h-3" />
+                                      Verifier
+                                    </span>
+                                  )}
+                                  {isHardest && (
+                                    <span className="flex items-center gap-1 text-xs text-glow-gold bg-glow-gold/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                      <Star className="w-3 h-3" />
+                                      Hardest
+                                    </span>
+                                  )}
+                                  {completion.isManualRun && (
+                                    <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                                      Not in API
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm">
+                                {completion.completedAt && (
+                                  <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>{formatDate(completion.completedAt)}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1 text-muted-foreground"><Clock className="w-4 h-4" /><span className="font-mono">{formatTime(completion.time)}</span></div>
+                                <div className="flex items-center gap-1 text-primary"><Trophy className="w-4 h-4" /><span className="font-mono font-bold">+{completion.points}</span></div>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                      {!showAll && totalPages > 1 && (
+                        <div className="p-4 border-t border-border flex items-center justify-center gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="w-4 h-4" /></Button>
+                          <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</span>
+                          <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}><ChevronRight className="w-4 h-4" /></Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </TabsContent>
+            )}
 
             {createdLevels.length > 0 && (
               <TabsContent value="created" className="mt-0">

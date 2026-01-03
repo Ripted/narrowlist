@@ -179,6 +179,59 @@ export type Database = {
           },
         ]
       }
+      extended_levels: {
+        Row: {
+          alternative_ids: string[] | null
+          author: string | null
+          created_at: string
+          creators: string[] | null
+          id: string
+          level_id: string
+          name: string | null
+          points: number
+          rank_position: number
+          thumbnail_url: string | null
+          updated_at: string
+          verifier_profile_id: string | null
+        }
+        Insert: {
+          alternative_ids?: string[] | null
+          author?: string | null
+          created_at?: string
+          creators?: string[] | null
+          id?: string
+          level_id: string
+          name?: string | null
+          points?: number
+          rank_position: number
+          thumbnail_url?: string | null
+          updated_at?: string
+          verifier_profile_id?: string | null
+        }
+        Update: {
+          alternative_ids?: string[] | null
+          author?: string | null
+          created_at?: string
+          creators?: string[] | null
+          id?: string
+          level_id?: string
+          name?: string | null
+          points?: number
+          rank_position?: number
+          thumbnail_url?: string | null
+          updated_at?: string
+          verifier_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extended_levels_verifier_profile_id_fkey"
+            columns: ["verifier_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       future_levels: {
         Row: {
           author: string | null
