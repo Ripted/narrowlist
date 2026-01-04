@@ -157,7 +157,7 @@ export function useLevels() {
   };
 }
 
-export function useLevel(levelId: string) {
+export function useLevel(levelId: string, isExtended?: boolean) {
   const [level, setLevel] = useState<LevelDetails | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [rank, setRank] = useState<number | null>(null);
@@ -167,23 +167,44 @@ export function useLevel(levelId: string) {
   const [verifierProfileId, setVerifierProfileId] = useState<string | null>(null);
   const [alternativeIds, setAlternativeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFromExtendedList, setIsFromExtendedList] = useState(false);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       
-      // Fetch from DB and API in parallel
-      const [details, lb, dbResult] = await Promise.all([
+      // Fetch from API
+      const [details, lb] = await Promise.all([
         fetchLevelDetails(levelId),
         fetchLeaderboard(levelId),
-        supabase
-          .from("levels")
-          .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id, alternative_ids")
-          .eq("level_id", levelId)
-          .maybeSingle(),
       ]);
 
-      const altIds = dbResult.data?.alternative_ids || [];
+      // Try main levels table first
+      const dbResult = await supabase
+        .from("levels")
+        .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id, alternative_ids")
+        .eq("level_id", levelId)
+        .maybeSingle();
+
+      let dbData = dbResult.data;
+      let fromExtended = false;
+
+      // If not found in main levels, check extended_levels
+      if (!dbData && isExtended !== false) {
+        const extendedResult = await supabase
+          .from("extended_levels")
+          .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id, alternative_ids")
+          .eq("level_id", levelId)
+          .maybeSingle();
+        
+        if (extendedResult.data) {
+          dbData = extendedResult.data;
+          fromExtended = true;
+        }
+      }
+
+      setIsFromExtendedList(fromExtended);
+      const altIds = dbData?.alternative_ids || [];
       setAlternativeIds(altIds);
 
       // Fetch leaderboards for alternative IDs if any
@@ -209,21 +230,21 @@ export function useLevel(levelId: string) {
         combinedLeaderboard.sort((a, b) => a.completion_time - b.completion_time);
       }
 
-      if (details && dbResult.data) {
+      if (details && dbData) {
         setLevel({
           ...details,
           levelInfo: {
             ...details.levelInfo,
-            name: dbResult.data.name || details.levelInfo.name,
-            author: dbResult.data.author || details.levelInfo.author,
+            name: dbData.name || details.levelInfo.name,
+            author: dbData.author || details.levelInfo.author,
           },
         });
-        setRank(dbResult.data.rank_position);
-        setPoints(dbResult.data.points);
-        setThumbnailUrl(dbResult.data.thumbnail_url);
-        setLevelDbId(dbResult.data.id);
-        setVerifierProfileId(dbResult.data.verifier_profile_id);
-      } else {
+        setRank(dbData.rank_position);
+        setPoints(dbData.points);
+        setThumbnailUrl(dbData.thumbnail_url);
+        setLevelDbId(dbData.id);
+        setVerifierProfileId(dbData.verifier_profile_id);
+      } else if (details) {
         setLevel(details);
       }
       
@@ -232,9 +253,9 @@ export function useLevel(levelId: string) {
     }
 
     load();
-  }, [levelId]);
+  }, [levelId, isExtended]);
 
-  return { level, leaderboard, rank, points, thumbnailUrl, levelDbId, verifierProfileId, alternativeIds, loading };
+  return { level, leaderboard, rank, points, thumbnailUrl, levelDbId, verifierProfileId, alternativeIds, loading, isFromExtendedList };
 }
 
 // Function to fetch player stats data

@@ -3296,8 +3296,8 @@ export default function AdminPage() {
                               : level.author || "Unknown"}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-primary">
-                          <span className="font-mono text-sm">{level.points}pts</span>
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <span className="font-mono text-xs">Extended</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
