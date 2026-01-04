@@ -304,6 +304,17 @@ export default function AdminPage() {
   const [uploadingFutureThumbnail, setUploadingFutureThumbnail] = useState(false);
   const editFutureThumbnailInputRef = useRef<HTMLInputElement>(null);
   
+  // Edit extended level
+  const [editingExtendedLevel, setEditingExtendedLevel] = useState<ExtendedLevel | null>(null);
+  const [editExtendedName, setEditExtendedName] = useState("");
+  const [editExtendedAuthor, setEditExtendedAuthor] = useState("");
+  const [editExtendedCreators, setEditExtendedCreators] = useState("");
+  const [editExtendedRank, setEditExtendedRank] = useState("");
+  const [editExtendedThumbnail, setEditExtendedThumbnail] = useState("");
+  const [savingExtendedLevel, setSavingExtendedLevel] = useState(false);
+  const [uploadingExtendedThumbnail, setUploadingExtendedThumbnail] = useState(false);
+  const editExtendedThumbnailInputRef = useRef<HTMLInputElement>(null);
+  
   // Quick rank change
   const [rankInputId, setRankInputId] = useState<string | null>(null);
   const [rankInputValue, setRankInputValue] = useState("");
@@ -567,25 +578,49 @@ export default function AdminPage() {
       // Get the next rank in extended list
       const targetRank = extendedLevels.length + 1;
 
-      // Insert into extended levels
+      // Insert into extended levels with all relevant data
       const { error: insertError } = await supabase.from("extended_levels").insert({
         level_id: level.level_id,
         name: level.name,
         author: level.author,
+        creators: [],
         rank_position: targetRank,
         points: 1,
         thumbnail_url: level.thumbnail_url,
+        verifier_profile_id: level.verifier_profile_id,
+        alternative_ids: level.alternative_ids,
       });
 
       if (insertError) throw insertError;
 
-      // Delete from main list (this will trigger archiving)
+      // Store the level's original_id to clean up deleted_levels after
+      const originalLevelId = level.id;
+
+      // Delete from main list (this will trigger archiving to deleted_levels)
       const { error: deleteError } = await supabase
         .from("levels")
         .delete()
         .eq("id", level.id);
 
       if (deleteError) throw deleteError;
+
+      // Remove from deleted_levels since this is a transfer, not a deletion
+      await supabase
+        .from("deleted_levels")
+        .delete()
+        .eq("original_id", originalLevelId);
+
+      // Re-rank remaining main list levels
+      const remainingLevels = levels.filter(l => l.id !== level.id).sort((a, b) => a.rank_position - b.rank_position);
+      for (let i = 0; i < remainingLevels.length; i++) {
+        const newRank = i + 1;
+        if (remainingLevels[i].rank_position !== newRank) {
+          await supabase
+            .from("levels")
+            .update({ rank_position: newRank, points: calculatePoints(newRank) })
+            .eq("id", remainingLevels[i].id);
+        }
+      }
 
       await logAction("Transferred to extended list", `${level.name || level.level_id} moved to extended list at rank #${targetRank}`);
       await sendAdminNotification("level_to_extended", level.name || level.level_id, level.rank_position, targetRank);
@@ -1360,6 +1395,78 @@ export default function AdminPage() {
       toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
     } finally {
       setUploadingFutureThumbnail(false);
+      e.target.value = '';
+    }
+  };
+
+  // Extended level editing functions
+  const openEditExtendedLevel = (level: ExtendedLevel) => {
+    setEditingExtendedLevel(level);
+    setEditExtendedName(level.name || "");
+    setEditExtendedAuthor(level.author || "");
+    setEditExtendedCreators(level.creators?.join(", ") || "");
+    setEditExtendedRank(String(level.rank_position));
+    setEditExtendedThumbnail(level.thumbnail_url || "");
+  };
+
+  const saveEditedExtendedLevel = async () => {
+    if (!editingExtendedLevel) return;
+    
+    setSavingExtendedLevel(true);
+    
+    const creatorsArray = editExtendedCreators
+      .split(/[,\n]+/)
+      .map(c => c.trim())
+      .filter(c => c.length > 0);
+    
+    const { error } = await supabase
+      .from("extended_levels")
+      .update({
+        name: editExtendedName || null,
+        author: editExtendedAuthor || null,
+        creators: creatorsArray.length > 0 ? creatorsArray : null,
+        rank_position: parseInt(editExtendedRank) || 1,
+        thumbnail_url: editExtendedThumbnail || null,
+      })
+      .eq("id", editingExtendedLevel.id);
+    
+    if (error) {
+      toast({ title: "Error", description: "Failed to update extended level", variant: "destructive" });
+    } else {
+      await logAction("Edited extended level", `${editExtendedName || editingExtendedLevel.level_id}`);
+      toast({ title: "Success", description: "Extended level updated" });
+      setEditingExtendedLevel(null);
+      fetchExtendedLevels();
+      fetchChangelog();
+    }
+    setSavingExtendedLevel(false);
+  };
+
+  const handleExtendedThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingExtendedLevel) return;
+    
+    setUploadingExtendedThumbnail(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `extended-${editingExtendedLevel.id}-${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('level-thumbnails')
+        .upload(fileName, file, { upsert: true });
+      
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('level-thumbnails')
+        .getPublicUrl(data.path);
+      
+      setEditExtendedThumbnail(publicUrl);
+      toast({ title: "Success", description: "Thumbnail uploaded" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingExtendedThumbnail(false);
       e.target.value = '';
     }
   };
@@ -3172,19 +3279,37 @@ export default function AdminPage() {
                         <div className="w-10 text-center font-display font-bold text-muted-foreground">
                           #{level.rank_position}
                         </div>
-                        {level.thumbnail_url && (
-                          <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0">
+                        <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0 bg-secondary">
+                          {level.thumbnail_url ? (
                             <img src={level.thumbnail_url} alt={level.name || ""} className="w-full h-full object-cover" />
-                          </div>
-                        )}
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Image className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-foreground truncate">{level.name || level.level_id}</div>
-                          <div className="text-xs text-muted-foreground">{level.author || "Unknown"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {level.creators && level.creators.length > 0 
+                              ? level.creators.join(", ") 
+                              : level.author || "Unknown"}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1 text-primary">
                           <span className="font-mono text-sm">{level.points}pts</span>
                         </div>
                         <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2 gap-1"
+                            onClick={() => openEditExtendedLevel(level)}
+                            title="Edit"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span className="hidden sm:inline text-xs">Edit</span>
+                          </Button>
                           <Button
                             size="sm"
                             variant="ghost"
@@ -3199,6 +3324,7 @@ export default function AdminPage() {
                             variant="ghost"
                             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                             onClick={() => deleteExtendedLevel(level)}
+                            title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -4180,6 +4306,116 @@ export default function AdminPage() {
               </Button>
               <Button onClick={saveEditedFutureLevel} disabled={savingFutureLevel}>
                 {savingFutureLevel ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Extended Level Modal */}
+      {editingExtendedLevel && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
+            <h2 className="font-display text-lg font-bold flex items-center gap-2">
+              <Edit2 className="w-5 h-5 text-primary" />
+              Edit Extended Level
+            </h2>
+            
+            <div className="space-y-4">
+              {/* Thumbnail Preview with Upload */}
+              <div className="aspect-video rounded-lg bg-secondary overflow-hidden relative group">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={editExtendedThumbnailInputRef}
+                  onChange={handleExtendedThumbnailUpload}
+                />
+                {editExtendedThumbnail ? (
+                  <img src={editExtendedThumbnail} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    <Image className="w-8 h-8" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => editExtendedThumbnailInputRef.current?.click()}
+                    disabled={uploadingExtendedThumbnail}
+                    className="gap-2"
+                  >
+                    {uploadingExtendedThumbnail ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                    Upload Image
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="editExtendedThumbnail">Thumbnail URL</Label>
+                <Input
+                  id="editExtendedThumbnail"
+                  value={editExtendedThumbnail}
+                  onChange={(e) => setEditExtendedThumbnail(e.target.value)}
+                  placeholder="https://..."
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="editExtendedRank">Rank</Label>
+                <Input
+                  id="editExtendedRank"
+                  type="number"
+                  value={editExtendedRank}
+                  onChange={(e) => setEditExtendedRank(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="editExtendedName">Level Name</Label>
+                <Input
+                  id="editExtendedName"
+                  value={editExtendedName}
+                  onChange={(e) => setEditExtendedName(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="editExtendedAuthor">Author (legacy - single)</Label>
+                <Input
+                  id="editExtendedAuthor"
+                  value={editExtendedAuthor}
+                  onChange={(e) => setEditExtendedAuthor(e.target.value)}
+                  className="mt-1 bg-secondary border-border"
+                  placeholder="Single author (legacy field)"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="editExtendedCreators">Creators (multiple)</Label>
+                <Textarea
+                  id="editExtendedCreators"
+                  value={editExtendedCreators}
+                  onChange={(e) => setEditExtendedCreators(e.target.value)}
+                  placeholder="Enter creator names (comma or newline separated)&#10;e.g., Creator1, Creator2"
+                  className="mt-1 bg-secondary border-border min-h-[60px]"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  For levels with multiple creators. Leave empty to use single Author field.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 justify-end pt-4">
+              <Button variant="outline" onClick={() => setEditingExtendedLevel(null)}>
+                Cancel
+              </Button>
+              <Button onClick={saveEditedExtendedLevel} disabled={savingExtendedLevel}>
+                {savingExtendedLevel ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>

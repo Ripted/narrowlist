@@ -5,8 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy } from "lucide-react";
+import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUserCompletions } from "@/hooks/useUserCompletions";
 
 interface ExtendedLevel {
   id: string;
@@ -17,11 +18,18 @@ interface ExtendedLevel {
   rank_position: number;
   points: number;
   thumbnail_url: string | null;
+  verifier_profile_id: string | null;
+}
+
+interface Profile {
+  id: string;
+  username: string;
+  display_name: string | null;
 }
 
 const ITEMS_PER_PAGE = 25;
 
-function ExtendedLevelCard({ level }: { level: ExtendedLevel }) {
+function ExtendedLevelCard({ level, verifierUsername }: { level: ExtendedLevel; verifierUsername?: string }) {
   const { toast } = useToast();
 
   const handleCopyId = (e: React.MouseEvent) => {
@@ -44,47 +52,106 @@ function ExtendedLevelCard({ level }: { level: ExtendedLevel }) {
     return "text-muted-foreground";
   };
 
+  const getRankBorder = (rank: number) => {
+    if (rank === 1) return "border-glow-gold/50 hover:border-glow-gold";
+    if (rank === 2) return "border-glow-silver/50 hover:border-glow-silver";
+    if (rank === 3) return "border-glow-bronze/50 hover:border-glow-bronze";
+    return "border-border hover:border-primary/50";
+  };
+
+  // Display creators if available, otherwise author
+  const displayCreator = level.creators && level.creators.length > 0 
+    ? level.creators.join(", ")
+    : level.author || "Unknown";
+
   return (
     <Link to={`/level/${level.level_id}?extended=true`}>
-      <div className="group flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary/50 transition-all">
-        <div className="w-12 text-center flex-shrink-0">
-          <span className={`font-display font-bold text-lg ${getRankStyle(level.rank_position)}`}>
-            #{level.rank_position}
-          </span>
-        </div>
-        
-        {level.thumbnail_url ? (
-          <div className="w-20 h-12 rounded overflow-hidden flex-shrink-0">
-            <img src={level.thumbnail_url} alt={level.name || ""} className="w-full h-full object-cover" />
+      <div
+        className={`group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${getRankBorder(level.rank_position)}`}
+      >
+        {/* Thumbnail */}
+        <div className="relative h-48 overflow-hidden bg-gradient-to-br from-secondary to-muted">
+          {level.thumbnail_url ? (
+            <img
+              src={level.thumbnail_url}
+              alt={level.name || ""}
+              className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-110"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-6xl font-display font-bold text-primary/10">
+                #{level.rank_position}
+              </div>
+            </div>
+          )}
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+          
+          {/* Rank badge */}
+          <div className="absolute top-3 left-3">
+            <div className={`flex items-center gap-1 rounded-full bg-background/90 backdrop-blur-sm px-3 py-1 ${level.rank_position <= 3 ? 'glow-gold' : ''}`}>
+              <span className={`font-display font-bold text-lg ${getRankStyle(level.rank_position)}`}>
+                #{level.rank_position}
+              </span>
+            </div>
           </div>
-        ) : (
-          <div className="w-20 h-12 rounded bg-secondary flex items-center justify-center flex-shrink-0">
-            <span className="text-muted-foreground text-xs">No img</span>
-          </div>
-        )}
 
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-foreground truncate">{level.name || level.level_id}</h3>
-          <p className="text-sm text-muted-foreground flex items-center gap-1">
-            <User className="w-3 h-3" />
-            {level.author || "Unknown"}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-primary">
-            <Trophy className="w-4 h-4" />
-            <span className="font-mono font-bold">{level.points}pts</span>
+          {/* Points badge */}
+          <div className="absolute top-3 right-3">
+            <div className="flex items-center gap-1 rounded-full bg-primary/90 backdrop-blur-sm px-3 py-1">
+              <Trophy className="w-3 h-3 text-primary-foreground" />
+              <span className="font-mono font-bold text-sm text-primary-foreground">
+                {level.points}pts
+              </span>
+            </div>
           </div>
 
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handleCopyId} title="Copy ID">
+          {/* Action buttons */}
+          <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 w-8 p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
+              onClick={handleCopyId}
+              title="Copy Level ID"
+            >
               <Copy className="w-4 h-4" />
             </Button>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={handlePlay} title="Play">
+            <Button
+              size="sm"
+              variant="default"
+              className="h-8 w-8 p-0"
+              onClick={handlePlay}
+              title="Play Level"
+            >
               <Play className="w-4 h-4" />
             </Button>
           </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-3">
+          <div>
+            <h3 className="font-display font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-1">
+              {level.name || "Unknown Level"}
+            </h3>
+            <p className="flex items-center gap-1 text-sm text-muted-foreground">
+              <User className="w-3 h-3" />
+              {displayCreator}
+            </p>
+          </div>
+
+          {verifierUsername && (
+            <div className="pt-2 border-t border-border/50">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Shield className="w-3 h-3 text-primary" />
+                Verified by{" "}
+                <span className="text-primary font-medium">
+                  {verifierUsername}
+                </span>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </Link>
@@ -94,9 +161,11 @@ function ExtendedLevelCard({ level }: { level: ExtendedLevel }) {
 export default function ExtendedListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const { completedLevelIds, isLoggedIn } = useUserCompletions();
 
+  // Fetch extended levels with verifier info
   const { data: levels = [], isLoading } = useQuery({
-    queryKey: ["extended-levels"],
+    queryKey: ["extended-levels-with-verifiers"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("extended_levels")
@@ -108,6 +177,28 @@ export default function ExtendedListPage() {
     },
   });
 
+  // Fetch profiles for verifier info
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["profiles-for-extended"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, username, display_name");
+      
+      if (error) throw error;
+      return data as Profile[];
+    },
+  });
+
+  // Create map of profile id to username
+  const profileMap = useMemo(() => {
+    const map = new Map<string, string>();
+    profiles.forEach(p => {
+      map.set(p.id, p.display_name || p.username);
+    });
+    return map;
+  }, [profiles]);
+
   const filteredLevels = useMemo(() => {
     if (!searchQuery.trim()) return levels;
     const q = searchQuery.toLowerCase();
@@ -115,6 +206,7 @@ export default function ExtendedListPage() {
       (l) =>
         l.name?.toLowerCase().includes(q) ||
         l.author?.toLowerCase().includes(q) ||
+        l.creators?.some(c => c.toLowerCase().includes(q)) ||
         l.level_id.toLowerCase().includes(q)
     );
   }, [levels, searchQuery]);
@@ -125,57 +217,89 @@ export default function ExtendedListPage() {
     return filteredLevels.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredLevels, currentPage]);
 
+  const maxPoints = useMemo(() => {
+    return levels.reduce((sum, level) => sum + (level.points || 0), 0);
+  }, [levels]);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="fixed inset-0 bg-grid-pattern bg-grid opacity-20 pointer-events-none" />
+      <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
       
-      <main className="pt-24 pb-12">
+      <main className="relative pt-24 pb-12">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-3 mb-2">
-              <List className="w-8 h-8 text-primary" />
-              <h1 className="font-display text-3xl md:text-4xl font-bold gradient-text">
-                Extended List
-              </h1>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <List className="w-5 h-5 text-primary" />
+                <h1 className="font-display text-2xl font-bold">Extended List</h1>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">
+                  {levels.length} Levels
+                </span>
+                <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono">{maxPoints} Max Points</span>
+              </div>
             </div>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Levels that used to be in the main list or don't quite meet main list standards. 
-              Ranked separately from the main list.
-            </p>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search levels..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-9 bg-secondary border-border"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search levels..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-10 bg-card border-border"
-              />
-            </div>
-            <div className="text-sm text-muted-foreground flex items-center">
-              {filteredLevels.length} levels
-            </div>
-          </div>
+          <p className="text-muted-foreground text-sm mb-6">
+            Levels that used to be in the main list or don't quite meet main list standards. 
+            Ranked separately with their own point system.
+          </p>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-64 rounded-xl bg-card border border-border animate-pulse"
+                />
+              ))}
             </div>
           ) : paginatedLevels.length === 0 ? (
-            <div className="text-center py-20 text-muted-foreground">
-              {searchQuery ? "No levels found matching your search." : "No extended levels yet."}
+            <div className="text-center py-20 space-y-4">
+              <div className="w-20 h-20 mx-auto rounded-full bg-muted flex items-center justify-center">
+                <List className="w-10 h-10 text-muted-foreground" />
+              </div>
+              <h3 className="font-display text-xl font-semibold">
+                {searchQuery ? "No Results Found" : "No Extended Levels Yet"}
+              </h3>
+              <p className="text-muted-foreground">
+                {searchQuery ? "Try a different search term." : "Extended levels will appear here when added."}
+              </p>
             </div>
           ) : (
             <>
-              <div className="grid gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {paginatedLevels.map((level) => (
-                  <ExtendedLevelCard key={level.id} level={level} />
+                  <div
+                    key={level.id}
+                    className="animate-fade-in"
+                    style={{ animationDelay: `${level.rank_position * 50}ms` }}
+                  >
+                    <ExtendedLevelCard
+                      level={level}
+                      verifierUsername={level.verifier_profile_id ? profileMap.get(level.verifier_profile_id) : undefined}
+                    />
+                  </div>
                 ))}
               </div>
 
