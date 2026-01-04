@@ -96,12 +96,11 @@ function ExtendedLevelCard({ level, verifierUsername }: { level: ExtendedLevel; 
             </div>
           </div>
 
-          {/* Points badge */}
+          {/* Extended badge */}
           <div className="absolute top-3 right-3">
-            <div className="flex items-center gap-1 rounded-full bg-primary/90 backdrop-blur-sm px-3 py-1">
-              <Trophy className="w-3 h-3 text-primary-foreground" />
-              <span className="font-mono font-bold text-sm text-primary-foreground">
-                {level.points}pts
+            <div className="flex items-center gap-1 rounded-full bg-muted/90 backdrop-blur-sm px-3 py-1">
+              <span className="font-mono font-medium text-xs text-muted-foreground">
+                Extended
               </span>
             </div>
           </div>
@@ -218,7 +217,8 @@ export default function ExtendedListPage() {
   }, [filteredLevels, currentPage]);
 
   const maxPoints = useMemo(() => {
-    return levels.reduce((sum, level) => sum + (level.points || 0), 0);
+    // Extended list levels don't give points
+    return 0;
   }, [levels]);
 
   return (
@@ -240,7 +240,7 @@ export default function ExtendedListPage() {
                 <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">
                   {levels.length} Levels
                 </span>
-                <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono">{maxPoints} Max Points</span>
+                <span className="bg-muted text-muted-foreground px-2 py-1 rounded font-mono">0 Points</span>
               </div>
             </div>
 
@@ -262,7 +262,7 @@ export default function ExtendedListPage() {
 
           <p className="text-muted-foreground text-sm mb-6">
             Levels that used to be in the main list or don't quite meet main list standards. 
-            Ranked separately with their own point system.
+            Ranked separately. <strong>Note:</strong> Extended list levels do not award any points.
           </p>
 
           {isLoading ? (

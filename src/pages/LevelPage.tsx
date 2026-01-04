@@ -32,7 +32,9 @@ interface ManualRunEntry {
 
 export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
-  const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId, verifierProfileId, alternativeIds } = useLevel(levelId || "");
+  const searchParams = new URLSearchParams(window.location.search);
+  const isExtended = searchParams.get('extended') === 'true';
+  const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId, verifierProfileId, alternativeIds, isFromExtendedList } = useLevel(levelId || "", isExtended);
   const { toast } = useToast();
   const [runDetails, setRunDetails] = useState<Map<number, RunDetails>>(new Map());
   const [loadingRuns, setLoadingRuns] = useState(false);

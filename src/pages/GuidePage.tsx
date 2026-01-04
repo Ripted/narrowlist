@@ -81,6 +81,11 @@ export default function GuidePage() {
             description="Preview upcoming levels that will be added to the main list. Get ready for new challenges!"
           />
           <FeatureCard 
+            icon={List}
+            title="Extended List"
+            description="Levels that used to be on the main list or don't quite meet main list standards. Ranked separately with no points awarded."
+          />
+          <FeatureCard 
             icon={Trophy}
             title="Leaderboard"
             description="See the top players ranked by total points. Compete to reach the top of the rankings!"
@@ -169,6 +174,12 @@ export default function GuidePage() {
             <strong className="text-foreground">Tip:</strong> Focus on completing the hardest levels 
             you can manage to maximize your points. A single #1 completion is worth 30 points - that's 
             as much as 30 levels ranked #51 or below!
+          </div>
+
+          <div className="text-sm text-muted-foreground bg-primary/10 rounded-lg p-4 mt-4 border border-primary/20">
+            <strong className="text-foreground">Extended List:</strong> Levels in the Extended List 
+            do not award any points. The Extended List is for levels that have dropped from the Main 
+            List or don't meet Main List standards. They are tracked separately for historical purposes.
           </div>
         </div>
 
