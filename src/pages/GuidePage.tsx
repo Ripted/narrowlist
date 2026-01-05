@@ -82,7 +82,7 @@ export default function GuidePage() {
           />
           <FeatureCard 
             icon={List}
-            title="Extended List"
+            title="Extra List"
             description="Levels that used to be on the main list or don't quite meet main list standards. Ranked separately with no points awarded."
           />
           <FeatureCard 
@@ -177,8 +177,8 @@ export default function GuidePage() {
           </div>
 
           <div className="text-sm text-muted-foreground bg-primary/10 rounded-lg p-4 mt-4 border border-primary/20">
-            <strong className="text-foreground">Extended List:</strong> Levels in the Extended List 
-            do not award any points. The Extended List is for levels that have dropped from the Main 
+            <strong className="text-foreground">Extra List:</strong> Levels in the Extra List 
+            do not award any points. The Extra List is for levels that have dropped from the Main 
             List or don't meet Main List standards. They are tracked separately for historical purposes.
           </div>
         </div>
