@@ -96,11 +96,11 @@ function ExtendedLevelCard({ level, verifierUsername }: { level: ExtendedLevel; 
             </div>
           </div>
 
-          {/* Extended badge */}
+          {/* Extra badge */}
           <div className="absolute top-3 right-3">
             <div className="flex items-center gap-1 rounded-full bg-muted/90 backdrop-blur-sm px-3 py-1">
               <span className="font-mono font-medium text-xs text-muted-foreground">
-                Extended
+                Extra
               </span>
             </div>
           </div>
@@ -234,7 +234,7 @@ export default function ExtendedListPage() {
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-3">
                 <List className="w-5 h-5 text-primary" />
-                <h1 className="font-display text-2xl font-bold">Extended List</h1>
+                <h1 className="font-display text-2xl font-bold">Extra List</h1>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">
@@ -262,7 +262,7 @@ export default function ExtendedListPage() {
 
           <p className="text-muted-foreground text-sm mb-6">
             Levels that used to be in the main list or don't quite meet main list standards. 
-            Ranked separately. <strong>Note:</strong> Extended list levels do not award any points.
+            Ranked separately. <strong>Note:</strong> Extra list levels do not award any points.
           </p>
 
           {isLoading ? (
@@ -280,10 +280,10 @@ export default function ExtendedListPage() {
                 <List className="w-10 h-10 text-muted-foreground" />
               </div>
               <h3 className="font-display text-xl font-semibold">
-                {searchQuery ? "No Results Found" : "No Extended Levels Yet"}
+                {searchQuery ? "No Results Found" : "No Extra Levels Yet"}
               </h3>
               <p className="text-muted-foreground">
-                {searchQuery ? "Try a different search term." : "Extended levels will appear here when added."}
+                {searchQuery ? "Try a different search term." : "Extra levels will appear here when added."}
               </p>
             </div>
           ) : (

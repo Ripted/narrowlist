@@ -304,7 +304,9 @@ export default function LevelPage() {
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4">
                 <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center">
                   <Trophy className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-primary" />
-                  <div className="font-display text-lg sm:text-2xl font-bold text-primary">{points}</div>
+                  <div className="font-display text-lg sm:text-2xl font-bold text-primary">
+                    {isFromExtendedList ? "0" : points}
+                  </div>
                   <div className="text-[10px] sm:text-xs text-muted-foreground">Points</div>
                 </div>
                 <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center">
@@ -317,9 +319,9 @@ export default function LevelPage() {
                 <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center">
                   <User className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-muted-foreground" />
                   <div className="font-display text-lg sm:text-2xl font-bold text-foreground">
-                    {leaderboard.length}
+                    {combinedSortedRuns.length}
                   </div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Clears</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">Completions</div>
                 </div>
                 <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center hidden sm:block">
                   <Medal className="w-6 h-6 mx-auto mb-2 text-glow-gold" />
@@ -512,8 +514,8 @@ export default function LevelPage() {
             )}
           </div>
 
-          {/* Rank History Chart - moved below completions */}
-          {levelDbId && (
+          {/* Rank History Chart - moved below completions, hidden for Extra List levels */}
+          {levelDbId && !isFromExtendedList && (
             <div className="rounded-lg bg-card border border-border p-4 mt-8">
               <h3 className="font-display text-sm font-bold flex items-center gap-2 mb-4 text-muted-foreground">
                 <TrendingUp className="w-4 h-4" />

@@ -500,14 +500,14 @@ export default function AdminPage() {
         name: levelData?.levelInfo?.name || null,
         author: levelData?.levelInfo?.author || null,
         rank_position: targetRank,
-        points: 1,
+        points: 0,
         thumbnail_url: levelData?.levelInfo?.thumbnail_url || null,
       });
 
       if (error) throw error;
 
-      await logAction("Added extended level", `${levelData?.levelInfo?.name || newExtendedLevelId.trim()} at rank #${targetRank}`);
-      toast({ title: "Success", description: "Extended level added" });
+      await logAction("Added extra level", `${levelData?.levelInfo?.name || newExtendedLevelId.trim()} at rank #${targetRank}`);
+      toast({ title: "Success", description: "Extra level added" });
       setNewExtendedLevelId("");
       setNewExtendedLevelRank("");
       fetchExtendedLevels();
@@ -528,8 +528,8 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      await logAction("Deleted extended level", level.name || level.level_id);
-      toast({ title: "Deleted", description: "Extended level removed" });
+      await logAction("Deleted extra level", level.name || level.level_id);
+      toast({ title: "Deleted", description: "Extra level removed" });
       fetchExtendedLevels();
       fetchChangelog();
     } catch (error: any) {
@@ -585,7 +585,7 @@ export default function AdminPage() {
         author: level.author,
         creators: [],
         rank_position: targetRank,
-        points: 1,
+        points: 0,
         thumbnail_url: level.thumbnail_url,
         verifier_profile_id: level.verifier_profile_id,
         alternative_ids: level.alternative_ids,
@@ -622,9 +622,9 @@ export default function AdminPage() {
         }
       }
 
-      await logAction("Transferred to extended list", `${level.name || level.level_id} moved to extended list at rank #${targetRank}`);
+      await logAction("Transferred to extra list", `${level.name || level.level_id} moved to extra list at rank #${targetRank}`);
       await sendAdminNotification("level_to_extended", level.name || level.level_id, level.rank_position, targetRank);
-      toast({ title: "Success", description: `${level.name || level.level_id} moved to extended list` });
+      toast({ title: "Success", description: `${level.name || level.level_id} moved to extra list` });
       fetchLevels();
       fetchExtendedLevels();
       fetchDeletedLevels();
@@ -1431,10 +1431,10 @@ export default function AdminPage() {
       .eq("id", editingExtendedLevel.id);
     
     if (error) {
-      toast({ title: "Error", description: "Failed to update extended level", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to update extra level", variant: "destructive" });
     } else {
-      await logAction("Edited extended level", `${editExtendedName || editingExtendedLevel.level_id}`);
-      toast({ title: "Success", description: "Extended level updated" });
+      await logAction("Edited extra level", `${editExtendedName || editingExtendedLevel.level_id}`);
+      toast({ title: "Success", description: "Extra level updated" });
       setEditingExtendedLevel(null);
       fetchExtendedLevels();
       fetchChangelog();
@@ -2327,7 +2327,7 @@ export default function AdminPage() {
               </TabsTrigger>
               <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
               <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
-              <TabsTrigger value="extended" className="text-xs sm:text-sm flex-shrink-0">Extended ({extendedLevels.length})</TabsTrigger>
+              <TabsTrigger value="extended" className="text-xs sm:text-sm flex-shrink-0">Extra ({extendedLevels.length})</TabsTrigger>
               <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
               <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
               <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
@@ -3216,13 +3216,13 @@ export default function AdminPage() {
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
                   <h2 className="font-display text-lg font-bold flex items-center gap-2">
                     <List className="w-5 h-5 text-primary" />
-                    Extended List
+                    Extra List
                   </h2>
                   <div className="flex flex-wrap items-center gap-2 flex-1">
                     <div className="relative flex-1 min-w-[200px]">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
-                        placeholder="Search extended levels..."
+                        placeholder="Search extra levels..."
                         value={extendedSearchQuery}
                         onChange={(e) => setExtendedSearchQuery(e.target.value)}
                         className="pl-9 bg-secondary border-border h-9"
@@ -3231,7 +3231,7 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Add Extended Level */}
+                {/* Add Extra Level */}
                 <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-secondary/30 rounded-lg">
                   <Input
                     placeholder="Level ID"
@@ -3257,7 +3257,7 @@ export default function AdminPage() {
                   </Button>
                 </div>
 
-                {/* Extended Level List */}
+                {/* Extra Level List */}
                 {extendedLevels.filter(l => 
                   !extendedSearchQuery.trim() ||
                   l.name?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
@@ -3265,7 +3265,7 @@ export default function AdminPage() {
                   l.level_id.toLowerCase().includes(extendedSearchQuery.toLowerCase())
                 ).length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
-                    {extendedSearchQuery ? "No matching levels found." : "No extended levels yet."}
+                    {extendedSearchQuery ? "No matching levels found." : "No extra levels yet."}
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -3297,7 +3297,7 @@ export default function AdminPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1 text-muted-foreground">
-                          <span className="font-mono text-xs">Extended</span>
+                          <span className="font-mono text-xs">Extra</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -4312,13 +4312,13 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Edit Extended Level Modal */}
+      {/* Edit Extra Level Modal */}
       {editingExtendedLevel && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <Edit2 className="w-5 h-5 text-primary" />
-              Edit Extended Level
+              Edit Extra Level
             </h2>
             
             <div className="space-y-4">
