@@ -8,7 +8,6 @@ export type ThemeName =
   | "copper" | "sage" | "plum" | "arctic" | "flame"
   | "marine" | "lilac" | "moss" | "rust" | "ice"
   | "spotify" | "discord" | "youtube" | "twitch" | "github"
-  // New themes
   | "netflix" | "instagram" | "linkedin" | "slack" | "notion"
   | "figma" | "vercel" | "stripe" | "tailwind" | "react"
   | "vscode" | "atom" | "dracula" | "nord" | "monokai"
@@ -16,12 +15,18 @@ export type ThemeName =
   | "synthwave" | "cyberpunk" | "retrowave" | "vaporwave" | "neon"
   | "matrix" | "hacker" | "terminal" | "coffee" | "candy";
 
-interface ThemeColors {
+export interface ThemeColors {
   primary: string;
   secondary: string;
   accent: string;
   background: string;
   logoHueRotate: string;
+}
+
+export interface CustomTheme {
+  id: string;
+  name: string;
+  colors: ThemeColors;
 }
 
 export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = {
@@ -377,7 +382,6 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
       logoHueRotate: "-20deg",
     },
   },
-  // New themes
   netflix: {
     name: "Netflix",
     colors: {
@@ -501,131 +505,131 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
   dracula: {
     name: "Dracula",
     colors: {
-      primary: "265 90% 70%",
-      secondary: "330 80% 65%",
-      accent: "135 75% 60%",
-      background: "231 15% 14%",
-      logoHueRotate: "30deg",
+      primary: "326 100% 74%",
+      secondary: "191 97% 77%",
+      accent: "265 89% 78%",
+      background: "231 15% 18%",
+      logoHueRotate: "90deg",
     },
   },
   nord: {
     name: "Nord",
     colors: {
-      primary: "210 30% 65%",
-      secondary: "220 35% 55%",
-      accent: "180 25% 60%",
-      background: "220 15% 12%",
-      logoHueRotate: "-25deg",
+      primary: "193 43% 67%",
+      secondary: "179 25% 65%",
+      accent: "210 34% 63%",
+      background: "220 16% 22%",
+      logoHueRotate: "-45deg",
     },
   },
   monokai: {
     name: "Monokai",
     colors: {
-      primary: "80 75% 55%",
-      secondary: "340 80% 60%",
-      accent: "55 90% 55%",
-      background: "70 10% 10%",
+      primary: "80 76% 53%",
+      secondary: "338 95% 56%",
+      accent: "52 100% 50%",
+      background: "70 8% 15%",
       logoHueRotate: "-155deg",
     },
   },
   solarized: {
     name: "Solarized",
     colors: {
-      primary: "45 100% 35%",
-      secondary: "175 60% 40%",
-      accent: "205 80% 45%",
-      background: "193 100% 6%",
-      logoHueRotate: "-190deg",
+      primary: "68 100% 30%",
+      secondary: "175 59% 40%",
+      accent: "45 100% 35%",
+      background: "192 100% 11%",
+      logoHueRotate: "-165deg",
     },
   },
   gruvbox: {
     name: "Gruvbox",
     colors: {
-      primary: "45 80% 55%",
-      secondary: "35 70% 45%",
-      accent: "30 85% 60%",
-      background: "35 25% 10%",
-      logoHueRotate: "170deg",
+      primary: "27 94% 54%",
+      secondary: "104 35% 62%",
+      accent: "60 71% 73%",
+      background: "0 0% 16%",
+      logoHueRotate: "150deg",
     },
   },
   catppuccin: {
     name: "Catppuccin",
     colors: {
-      primary: "320 70% 70%",
-      secondary: "230 60% 65%",
-      accent: "170 55% 60%",
-      background: "240 20% 12%",
-      logoHueRotate: "85deg",
+      primary: "316 72% 86%",
+      secondary: "189 71% 73%",
+      accent: "267 84% 81%",
+      background: "240 21% 15%",
+      logoHueRotate: "80deg",
     },
   },
   onedark: {
     name: "One Dark",
     colors: {
-      primary: "207 80% 60%",
-      secondary: "355 65% 60%",
-      accent: "95 60% 55%",
-      background: "220 12% 13%",
-      logoHueRotate: "-30deg",
+      primary: "29 54% 61%",
+      secondary: "187 47% 55%",
+      accent: "286 60% 67%",
+      background: "220 13% 18%",
+      logoHueRotate: "155deg",
     },
   },
   tokyo: {
     name: "Tokyo Night",
     colors: {
-      primary: "250 70% 70%",
-      secondary: "340 65% 65%",
-      accent: "195 75% 60%",
+      primary: "230 75% 75%",
+      secondary: "195 85% 70%",
+      accent: "340 70% 75%",
       background: "235 20% 12%",
-      logoHueRotate: "15deg",
+      logoHueRotate: "-5deg",
     },
   },
   synthwave: {
     name: "Synthwave",
     colors: {
-      primary: "300 85% 60%",
-      secondary: "190 90% 55%",
-      accent: "45 100% 55%",
-      background: "280 30% 8%",
-      logoHueRotate: "65deg",
+      primary: "320 100% 60%",
+      secondary: "195 100% 50%",
+      accent: "280 100% 65%",
+      background: "260 20% 10%",
+      logoHueRotate: "85deg",
     },
   },
   cyberpunk: {
     name: "Cyberpunk",
     colors: {
-      primary: "55 100% 50%",
+      primary: "60 100% 50%",
       secondary: "180 100% 50%",
-      accent: "320 90% 55%",
-      background: "240 20% 6%",
-      logoHueRotate: "-180deg",
+      accent: "320 100% 55%",
+      background: "240 20% 8%",
+      logoHueRotate: "175deg",
     },
   },
   retrowave: {
     name: "Retrowave",
     colors: {
-      primary: "320 90% 60%",
-      secondary: "270 80% 55%",
-      accent: "180 85% 50%",
-      background: "270 35% 8%",
-      logoHueRotate: "85deg",
+      primary: "300 100% 65%",
+      secondary: "180 100% 60%",
+      accent: "330 100% 60%",
+      background: "270 30% 8%",
+      logoHueRotate: "65deg",
     },
   },
   vaporwave: {
     name: "Vaporwave",
     colors: {
-      primary: "280 70% 70%",
-      secondary: "180 60% 60%",
-      accent: "320 65% 65%",
-      background: "260 25% 10%",
-      logoHueRotate: "45deg",
+      primary: "330 80% 70%",
+      secondary: "180 80% 70%",
+      accent: "300 70% 65%",
+      background: "250 25% 12%",
+      logoHueRotate: "95deg",
     },
   },
   neon: {
     name: "Neon",
     colors: {
-      primary: "130 100% 50%",
-      secondary: "330 100% 55%",
-      accent: "195 100% 50%",
-      background: "0 0% 4%",
-      logoHueRotate: "-105deg",
+      primary: "145 100% 50%",
+      secondary: "280 100% 60%",
+      accent: "55 100% 50%",
+      background: "0 0% 5%",
+      logoHueRotate: "-90deg",
     },
   },
   matrix: {
@@ -634,71 +638,107 @@ export const themes: Record<ThemeName, { name: string; colors: ThemeColors }> = 
       primary: "120 100% 40%",
       secondary: "120 80% 30%",
       accent: "120 100% 50%",
-      background: "120 50% 3%",
+      background: "120 20% 3%",
       logoHueRotate: "-115deg",
     },
   },
   hacker: {
     name: "Hacker",
     colors: {
-      primary: "120 90% 45%",
-      secondary: "120 70% 35%",
-      accent: "120 95% 55%",
-      background: "0 0% 5%",
+      primary: "120 100% 45%",
+      secondary: "180 100% 40%",
+      accent: "60 100% 50%",
+      background: "0 0% 4%",
       logoHueRotate: "-115deg",
     },
   },
   terminal: {
     name: "Terminal",
     colors: {
-      primary: "120 80% 50%",
-      secondary: "60 70% 45%",
-      accent: "120 90% 60%",
-      background: "0 0% 3%",
-      logoHueRotate: "-115deg",
+      primary: "145 80% 45%",
+      secondary: "160 70% 40%",
+      accent: "130 75% 50%",
+      background: "150 10% 5%",
+      logoHueRotate: "-90deg",
     },
   },
   coffee: {
     name: "Coffee",
     colors: {
-      primary: "30 50% 45%",
-      secondary: "25 40% 35%",
-      accent: "35 55% 50%",
-      background: "30 25% 8%",
+      primary: "30 60% 45%",
+      secondary: "20 50% 35%",
+      accent: "35 70% 55%",
+      background: "25 25% 6%",
       logoHueRotate: "155deg",
     },
   },
   candy: {
     name: "Candy",
     colors: {
-      primary: "340 80% 65%",
-      secondary: "195 80% 60%",
-      accent: "50 85% 55%",
-      background: "280 25% 8%",
+      primary: "340 85% 65%",
+      secondary: "200 85% 60%",
+      accent: "45 90% 60%",
+      background: "300 15% 8%",
       logoHueRotate: "105deg",
     },
   },
 };
 
 interface ThemeContextType {
-  theme: ThemeName;
-  setTheme: (theme: ThemeName) => void;
+  theme: ThemeName | string;
+  setTheme: (theme: ThemeName | string) => void;
+  favorites: string[];
+  toggleFavorite: (themeName: string) => void;
+  customThemes: CustomTheme[];
+  addCustomTheme: (theme: CustomTheme) => void;
+  deleteCustomTheme: (id: string) => void;
+  updateCustomTheme: (id: string, theme: Partial<CustomTheme>) => void;
+  getThemeColors: (themeName: string) => ThemeColors | undefined;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeName>(() => {
+  const [theme, setThemeState] = useState<ThemeName | string>(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("narrowlist-theme") as ThemeName;
-      return saved && themes[saved] ? saved : "arrow";
+      const saved = localStorage.getItem("narrowlist-theme");
+      if (saved && (themes[saved as ThemeName] || saved.startsWith("custom-"))) {
+        return saved;
+      }
+      return "arrow";
     }
     return "arrow";
   });
 
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("narrowlist-theme-favorites");
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+
+  const [customThemes, setCustomThemes] = useState<CustomTheme[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("narrowlist-custom-themes");
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+
+  const getThemeColors = (themeName: string): ThemeColors | undefined => {
+    if (themes[themeName as ThemeName]) {
+      return themes[themeName as ThemeName].colors;
+    }
+    const custom = customThemes.find(t => t.id === themeName);
+    return custom?.colors;
+  };
+
   useEffect(() => {
     const root = document.documentElement;
-    const colors = themes[theme].colors;
+    const colors = getThemeColors(theme);
+    
+    if (!colors) return;
     
     // Primary theme colors
     root.style.setProperty("--primary", colors.primary);
@@ -724,14 +764,58 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty("--logo-hue-rotate", colors.logoHueRotate);
     
     localStorage.setItem("narrowlist-theme", theme);
-  }, [theme]);
+  }, [theme, customThemes]);
 
-  const setTheme = (newTheme: ThemeName) => {
+  useEffect(() => {
+    localStorage.setItem("narrowlist-theme-favorites", JSON.stringify(favorites));
+  }, [favorites]);
+
+  useEffect(() => {
+    localStorage.setItem("narrowlist-custom-themes", JSON.stringify(customThemes));
+  }, [customThemes]);
+
+  const setTheme = (newTheme: ThemeName | string) => {
     setThemeState(newTheme);
   };
 
+  const toggleFavorite = (themeName: string) => {
+    setFavorites(prev => 
+      prev.includes(themeName) 
+        ? prev.filter(t => t !== themeName)
+        : [...prev, themeName]
+    );
+  };
+
+  const addCustomTheme = (theme: CustomTheme) => {
+    setCustomThemes(prev => [...prev, theme]);
+  };
+
+  const deleteCustomTheme = (id: string) => {
+    setCustomThemes(prev => prev.filter(t => t.id !== id));
+    // If the deleted theme was active, switch to default
+    if (theme === id) {
+      setTheme("arrow");
+    }
+  };
+
+  const updateCustomTheme = (id: string, updates: Partial<CustomTheme>) => {
+    setCustomThemes(prev => prev.map(t => 
+      t.id === id ? { ...t, ...updates } : t
+    ));
+  };
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={{ 
+      theme, 
+      setTheme, 
+      favorites, 
+      toggleFavorite, 
+      customThemes, 
+      addCustomTheme, 
+      deleteCustomTheme, 
+      updateCustomTheme,
+      getThemeColors
+    }}>
       {children}
     </ThemeContext.Provider>
   );
