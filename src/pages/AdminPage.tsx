@@ -3038,12 +3038,13 @@ export default function AdminPage() {
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="icon"
+                                size="sm"
                                 onClick={() => transferMainToExtended(level)}
-                                className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                title="Move to Extended List"
+                                className="h-8 px-2 text-xs text-muted-foreground hover:text-primary gap-1"
+                                title="Move to Extra List"
                               >
-                                <ChevronDown className="w-4 h-4" />
+                                <ArrowUpDown className="w-3 h-3" />
+                                Extra
                               </Button>
                               <Button
                                 variant="ghost"
