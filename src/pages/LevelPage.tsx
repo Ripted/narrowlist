@@ -11,6 +11,8 @@ import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Ha
 import { LevelFeedbackButton } from "@/components/LevelFeedbackButton";
 import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
 import { WatchlistButton } from "@/components/WatchlistButton";
+import { LevelTagsList } from "@/components/LevelTagBadge";
+import { useLevelTags } from "@/hooks/useLevelTags";
 
 interface DbProfile {
   id: string;
@@ -41,6 +43,7 @@ export default function LevelPage() {
   const [profiles, setProfiles] = useState<Map<string, DbProfile>>(new Map());
   const [manualRuns, setManualRuns] = useState<ManualRunEntry[]>([]);
   const [sortMode, setSortMode] = useState<"time" | "date">("time");
+  const { data: levelTags = [] } = useLevelTags(levelDbId);
   // Fetch profiles from DB
   useEffect(() => {
     async function loadProfiles() {
@@ -298,6 +301,10 @@ export default function LevelPage() {
                       {formatDate(levelInfo.created_at)}
                     </span>
                   </div>
+                  {/* Tags */}
+                  {levelTags.length > 0 && (
+                    <LevelTagsList tags={levelTags} variant="page" className="mt-2" />
+                  )}
                 </div>
               </div>
 
