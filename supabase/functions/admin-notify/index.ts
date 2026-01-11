@@ -81,6 +81,12 @@ Deno.serve(async (req) => {
       emoji = '🗑️';
     } else if (event_type === 'future_to_main') {
       emoji = '🚀';
+    } else if (event_type === 'extra_level_added') {
+      emoji = '📦';
+    } else if (event_type === 'level_to_extra') {
+      emoji = '📤';
+    } else if (event_type === 'extra_to_main') {
+      emoji = '⬆️';
     }
 
     let message = '';
@@ -106,6 +112,12 @@ Deno.serve(async (req) => {
         message = `${emoji} **${level_name}** removed from the list`;
       } else if (event_type === 'future_to_main') {
         message = `${emoji} **${level_name}** promoted to main list at #${new_rank}`;
+      } else if (event_type === 'extra_level_added') {
+        message = `${emoji} **${level_name}** added to the extra list at #${new_rank}`;
+      } else if (event_type === 'level_to_extra') {
+        message = `${emoji} **${level_name}** moved to extra list at #${new_rank}`;
+      } else if (event_type === 'extra_to_main') {
+        message = `${emoji} **${level_name}** promoted from extra list to main list at #${new_rank}`;
       } else {
         message = details || `Admin action: ${event_type}`;
       }

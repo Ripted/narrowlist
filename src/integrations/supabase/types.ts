@@ -398,6 +398,45 @@ export type Database = {
         }
         Relationships: []
       }
+      level_tags: {
+        Row: {
+          created_at: string
+          display_order: number
+          emoji: string
+          id: string
+          level_id: string
+          level_type: string
+          show_on_card: boolean
+          show_on_page: boolean
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          emoji?: string
+          id?: string
+          level_id: string
+          level_type: string
+          show_on_card?: boolean
+          show_on_page?: boolean
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          emoji?: string
+          id?: string
+          level_id?: string
+          level_type?: string
+          show_on_card?: boolean
+          show_on_page?: boolean
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       levels: {
         Row: {
           alternative_ids: string[] | null

@@ -15,6 +15,7 @@ import {
   ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
+import { LevelTagsEditor } from "@/components/admin/LevelTagsEditor";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -506,7 +507,12 @@ export default function AdminPage() {
 
       if (error) throw error;
 
-      await logAction("Added extra level", `${levelData?.levelInfo?.name || newExtendedLevelId.trim()} at rank #${targetRank}`);
+      const levelName = levelData?.levelInfo?.name || newExtendedLevelId.trim();
+      await logAction("Added extra level", `${levelName} at rank #${targetRank}`);
+      
+      // Send webhook notification
+      await sendAdminNotification("extra_level_added", levelName, undefined, targetRank);
+      
       toast({ title: "Success", description: "Extra level added" });
       setNewExtendedLevelId("");
       setNewExtendedLevelRank("");
@@ -563,8 +569,13 @@ export default function AdminPage() {
 
       if (deleteError) throw deleteError;
 
-      await logAction("Transferred to main list", `${level.name || level.level_id} moved to main list at rank #${targetRank}`);
-      toast({ title: "Success", description: `${level.name || level.level_id} moved to main list` });
+      const levelName = level.name || level.level_id;
+      await logAction("Transferred to main list", `${levelName} moved to main list at rank #${targetRank}`);
+      
+      // Send webhook notification
+      await sendAdminNotification("extra_to_main", levelName, level.rank_position, targetRank);
+      
+      toast({ title: "Success", description: `${levelName} moved to main list` });
       fetchLevels();
       fetchExtendedLevels();
       fetchChangelog();
@@ -3313,12 +3324,13 @@ export default function AdminPage() {
                           </Button>
                           <Button
                             size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-primary hover:text-primary"
+                            variant="outline"
+                            className="h-8 px-2 gap-1 text-primary border-primary/50 hover:bg-primary/10"
                             onClick={() => transferExtendedToMain(level)}
                             title="Move to Main List"
                           >
-                            <ChevronUp className="w-4 h-4" />
+                            <ChevronUp className="w-3 h-3" />
+                            <span className="hidden sm:inline text-xs">Main</span>
                           </Button>
                           <Button
                             size="sm"
@@ -4143,6 +4155,11 @@ export default function AdminPage() {
                   Completions on these levels will count as completions for the main level
                 </p>
               </div>
+              
+              {/* Tags Editor */}
+              <div className="border-t border-border pt-4">
+                <LevelTagsEditor levelId={editingLevel.id} levelType="main" />
+              </div>
             </div>
             
             <div className="flex gap-2 justify-end pt-4">
@@ -4299,6 +4316,11 @@ export default function AdminPage() {
                   className="mt-1 bg-secondary border-border"
                 />
               </div>
+              
+              {/* Tags Editor */}
+              <div className="border-t border-border pt-4">
+                <LevelTagsEditor levelId={editingFutureLevel.id} levelType="future" />
+              </div>
             </div>
             
             <div className="flex gap-2 justify-end pt-4">
@@ -4408,6 +4430,11 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   For levels with multiple creators. Leave empty to use single Author field.
                 </p>
+              </div>
+              
+              {/* Tags Editor */}
+              <div className="border-t border-border pt-4">
+                <LevelTagsEditor levelId={editingExtendedLevel.id} levelType="extra" />
               </div>
             </div>
             

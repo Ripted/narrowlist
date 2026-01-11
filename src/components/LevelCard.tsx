@@ -4,6 +4,8 @@ import { getPointsForRank } from "@/config/levels";
 import { Trophy, User, Clock, Heart, Copy, Play, Shield, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { LevelTagsList } from "@/components/LevelTagBadge";
+import { LevelTag } from "@/hooks/useLevelTags";
 
 interface LevelCardProps {
   level: LevelDetails;
@@ -12,9 +14,10 @@ interface LevelCardProps {
   verifierUsername?: string;
   isCompleted?: boolean;
   showCompletionStatus?: boolean;
+  tags?: LevelTag[];
 }
 
-export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompleted, showCompletionStatus }: LevelCardProps) {
+export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompleted, showCompletionStatus, tags = [] }: LevelCardProps) {
   const { toast } = useToast();
   const points = getPointsForRank(rank);
   const { levelInfo, worldRecord } = level;
@@ -130,6 +133,11 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompl
               {levelInfo.author}
             </p>
           </div>
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <LevelTagsList tags={tags} variant="card" />
+          )}
 
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-1 text-muted-foreground">
