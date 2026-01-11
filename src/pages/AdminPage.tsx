@@ -12,10 +12,11 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings
+  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import { LevelTagsEditor } from "@/components/admin/LevelTagsEditor";
+import { BulkTagManager } from "@/components/admin/BulkTagManager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -356,6 +357,9 @@ export default function AdminPage() {
   // Rank confirmation dialog
   const [rankConfirmLevel, setRankConfirmLevel] = useState<Level | null>(null);
   const [pendingNewRank, setPendingNewRank] = useState<number | null>(null);
+  
+  // Bulk tag manager
+  const [bulkTagManagerOpen, setBulkTagManagerOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -2326,33 +2330,44 @@ export default function AdminPage() {
           )}
 
           <Tabs defaultValue="levels" className="space-y-6">
-            <TabsList className="w-full justify-start overflow-x-auto flex-nowrap gap-1 h-auto p-1">
-              <TabsTrigger value="submissions" className="text-xs sm:text-sm gap-1 flex-shrink-0">
-                <Send className="w-3 h-3 hidden sm:inline" />
-                Submissions
-                {levelSubmissions.filter(s => s.status === 'pending').length > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-500 text-yellow-950 rounded-full">
-                    {levelSubmissions.filter(s => s.status === 'pending').length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
-              <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
-              <TabsTrigger value="extended" className="text-xs sm:text-sm flex-shrink-0">Extra ({extendedLevels.length})</TabsTrigger>
-              <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
-              <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
-              <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
-              <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
-              <TabsTrigger value="deleted" className="text-xs sm:text-sm flex-shrink-0 text-destructive">
-                <RotateCcw className="w-3 h-3 hidden sm:inline" />
-                Deleted ({deletedLevels.length})
-              </TabsTrigger>
-              <TabsTrigger value="webhooks" className="text-xs sm:text-sm flex-shrink-0">
-                <Bell className="w-3 h-3 hidden sm:inline" />
-                Webhooks
-              </TabsTrigger>
-              <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <TabsList className="justify-start overflow-x-auto flex-nowrap gap-1 h-auto p-1">
+                <TabsTrigger value="submissions" className="text-xs sm:text-sm gap-1 flex-shrink-0">
+                  <Send className="w-3 h-3 hidden sm:inline" />
+                  Submissions
+                  {levelSubmissions.filter(s => s.status === 'pending').length > 0 && (
+                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-500 text-yellow-950 rounded-full">
+                      {levelSubmissions.filter(s => s.status === 'pending').length}
+                    </span>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
+                <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
+                <TabsTrigger value="extended" className="text-xs sm:text-sm flex-shrink-0">Extra ({extendedLevels.length})</TabsTrigger>
+                <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
+                <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
+                <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
+                <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
+                <TabsTrigger value="deleted" className="text-xs sm:text-sm flex-shrink-0 text-destructive">
+                  <RotateCcw className="w-3 h-3 hidden sm:inline" />
+                  Deleted ({deletedLevels.length})
+                </TabsTrigger>
+                <TabsTrigger value="webhooks" className="text-xs sm:text-sm flex-shrink-0">
+                  <Bell className="w-3 h-3 hidden sm:inline" />
+                  Webhooks
+                </TabsTrigger>
+                <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
+              </TabsList>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBulkTagManagerOpen(true)}
+                className="gap-1 flex-shrink-0"
+              >
+                <Tag className="w-4 h-4" />
+                <span className="hidden sm:inline">Bulk Tags</span>
+              </Button>
+            </div>
 
             {/* Level Submissions Tab */}
             <TabsContent value="submissions" className="space-y-6">
@@ -4752,6 +4767,11 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Tag Manager */}
+      {bulkTagManagerOpen && (
+        <BulkTagManager onClose={() => setBulkTagManagerOpen(false)} />
+      )}
     </div>
   );
 }
