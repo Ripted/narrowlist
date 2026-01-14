@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Send, Search, Loader2, CheckCircle, Clock, XCircle, AlertCircle, Ban, Play, Image, Upload } from "lucide-react";
+import { Send, Search, Loader2, CheckCircle, Clock, XCircle, AlertCircle, Ban, Play, Image, Upload, Link, Video } from "lucide-react";
 
 interface LevelData {
   name: string;
@@ -67,6 +67,8 @@ export default function SubmitLevelPage() {
   const [isVerifier, setIsVerifier] = useState(false);
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [proofType, setProofType] = useState<"upload" | "link">("upload");
+  const [proofVideoLink, setProofVideoLink] = useState("");
   const [fetchingRun, setFetchingRun] = useState(false);
   const [submittingRun, setSubmittingRun] = useState(false);
   const [runFetchError, setRunFetchError] = useState<string | null>(null);
@@ -333,8 +335,23 @@ export default function SubmitLevelPage() {
     }
   };
 
+  const isValidVideoUrl = (url: string): boolean => {
+    const patterns = [
+      /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//,
+      /^https?:\/\/(www\.)?twitch\.tv\//,
+      /^https?:\/\/(www\.)?streamable\.com\//,
+      /^https?:\/\/(www\.)?medal\.tv\//,
+      /^https?:\/\/(www\.)?clips\.twitch\.tv\//,
+      /^https?:\/\/(www\.)?vimeo\.com\//,
+      /^https?:\/\/(www\.)?(drive\.google\.com|docs\.google\.com)\//,
+      /^https?:\/\/(www\.)?bilibili\.com\//,
+    ];
+    return patterns.some(pattern => pattern.test(url));
+  };
+
   const handleRunSubmit = async () => {
-    if (!user || !runLevelData || !runUsername.trim() || !proofFile) return;
+    const hasValidProof = proofType === "upload" ? proofFile : proofVideoLink.trim();
+    if (!user || !runLevelData || !runUsername.trim() || !hasValidProof) return;
 
     if (isBanned) {
       toast({ title: "Banned", description: "You are banned from submitting", variant: "destructive" });
@@ -366,27 +383,39 @@ export default function SubmitLevelPage() {
         throw new Error("This run already has a pending submission!");
       }
 
-      // Upload proof image
-      const fileExt = proofFile.name.split('.').pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `run-proofs/${fileName}`;
+      let finalProofUrl: string;
 
-      const { error: uploadError } = await supabase.storage
-        .from("profile-images")
-        .upload(filePath, proofFile);
+      if (proofType === "link") {
+        // Validate video link
+        if (!isValidVideoUrl(proofVideoLink.trim())) {
+          throw new Error("Please enter a valid video URL (YouTube, Twitch, Streamable, Medal, Vimeo, Google Drive, or Bilibili)");
+        }
+        finalProofUrl = proofVideoLink.trim();
+      } else {
+        // Upload proof file
+        const fileExt = proofFile!.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `run-proofs/${fileName}`;
 
-      if (uploadError) throw new Error("Failed to upload proof image");
+        const { error: uploadError } = await supabase.storage
+          .from("profile-images")
+          .upload(filePath, proofFile!);
 
-      const { data: urlData } = supabase.storage
-        .from("profile-images")
-        .getPublicUrl(filePath);
+        if (uploadError) throw new Error("Failed to upload proof file");
+
+        const { data: urlData } = supabase.storage
+          .from("profile-images")
+          .getPublicUrl(filePath);
+        
+        finalProofUrl = urlData.publicUrl;
+      }
 
       const { error } = await supabase.from("run_submissions").insert({
         level_id: runLevelId.trim(),
         level_name: runLevelData.name,
         username: runUsername.trim(),
         is_verifier: isVerifier,
-        proof_url: urlData.publicUrl,
+        proof_url: finalProofUrl,
         submitted_by: user.id,
         submitted_by_email: user.email || "unknown",
       });
@@ -405,6 +434,8 @@ export default function SubmitLevelPage() {
       setIsVerifier(false);
       setProofFile(null);
       setProofPreview(null);
+      setProofVideoLink("");
+      setProofType("upload");
       fetchMyRunSubmissions();
       checkRunRateLimit();
     } catch (error: any) {
@@ -759,53 +790,115 @@ export default function SubmitLevelPage() {
                     </div>
 
                     <div>
-                      <Label>Proof Screenshot</Label>
-                      <div className="mt-1">
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          accept="image/*"
-                          onChange={handleProofFileChange}
-                          className="hidden"
-                        />
-                        {proofPreview ? (
-                          <div className="space-y-2">
-                            <div className="aspect-video rounded-lg overflow-hidden bg-muted">
-                              <img 
-                                src={proofPreview} 
-                                alt="Proof preview"
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => fileInputRef.current?.click()}
-                              className="w-full gap-2"
-                            >
-                              <Image className="w-4 h-4" />
-                              Change Image
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button 
-                            variant="outline"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="w-full h-32 border-dashed gap-2"
-                          >
-                            <Upload className="w-5 h-5" />
-                            Upload Proof Screenshot
-                          </Button>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Screenshot showing completion. Max 5MB.
-                        </p>
+                      <Label>Proof</Label>
+                      
+                      {/* Proof type toggle */}
+                      <div className="flex gap-2 mt-2 mb-3">
+                        <Button
+                          type="button"
+                          variant={proofType === "upload" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setProofType("upload")}
+                          className="flex-1 gap-2"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Upload File
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={proofType === "link" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setProofType("link")}
+                          className="flex-1 gap-2"
+                        >
+                          <Link className="w-4 h-4" />
+                          Video Link
+                        </Button>
                       </div>
+
+                      {proofType === "upload" ? (
+                        <div>
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept="image/*,video/*"
+                            onChange={handleProofFileChange}
+                            className="hidden"
+                          />
+                          {proofPreview ? (
+                            <div className="space-y-2">
+                              {proofFile?.type.startsWith("video/") ? (
+                                <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+                                  <video 
+                                    src={proofPreview} 
+                                    controls
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+                                  <img 
+                                    src={proofPreview} 
+                                    alt="Proof preview"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-full gap-2"
+                              >
+                                <Image className="w-4 h-4" />
+                                Change File
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button 
+                              variant="outline"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="w-full h-32 border-dashed gap-2"
+                            >
+                              <Upload className="w-5 h-5" />
+                              Upload Proof (Image or Video)
+                            </Button>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Screenshot or short clip. Max 100MB.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg">
+                            <Video className="w-5 h-5 text-primary flex-shrink-0" />
+                            <Input
+                              placeholder="Paste YouTube, Twitch, or other video URL..."
+                              value={proofVideoLink}
+                              onChange={(e) => setProofVideoLink(e.target.value)}
+                              className="bg-transparent border-0 p-0 h-auto focus-visible:ring-0"
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Supported: YouTube, Twitch, Streamable, Medal, Vimeo, Google Drive, Bilibili
+                          </p>
+                          {proofVideoLink && !isValidVideoUrl(proofVideoLink) && (
+                            <p className="text-xs text-destructive flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              Please enter a valid video URL
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <Button 
                       onClick={handleRunSubmit} 
-                      disabled={!runUsername.trim() || !proofFile || submittingRun}
+                      disabled={
+                        !runUsername.trim() || 
+                        submittingRun ||
+                        (proofType === "upload" ? !proofFile : !proofVideoLink.trim() || !isValidVideoUrl(proofVideoLink))
+                      }
                       className="w-full gap-2"
                     >
                       {submittingRun ? (
