@@ -16,6 +16,7 @@ import ComparePage from "./pages/ComparePage";
 import SubmitLevelPage from "./pages/SubmitLevelPage";
 import GuidePage from "./pages/GuidePage";
 import ThemesPage from "./pages/ThemesPage";
+import StatisticsPage from "./pages/StatisticsPage";
 import AuthPage from "./pages/AuthPage";
 import AdminPage from "./pages/AdminPage";
 import WatchlistPage from "./pages/WatchlistPage";
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/submit" element={<SubmitLevelPage />} />
               <Route path="/guide" element={<GuidePage />} />
               <Route path="/themes" element={<ThemesPage />} />
+              <Route path="/statistics" element={<StatisticsPage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/player/:username" element={<PlayerPage />} />
               <Route path="/auth" element={<AuthPage />} />
