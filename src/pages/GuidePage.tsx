@@ -176,10 +176,17 @@ export default function GuidePage() {
             as much as 30 levels ranked #51 or below!
           </div>
 
+          <div className="text-sm text-muted-foreground bg-accent/10 rounded-lg p-4 mt-4 border border-accent/20">
+            <strong className="text-foreground">Extra Points System:</strong> The Extra List now awards 
+            "Extra Points" - a separate point system tracked independently from Main List points. Extra 
+            points follow a similar tier structure but at reduced values (#1 = 10pts, #2 = 8pts, etc.). 
+            Extra points are visible on player profiles and have their own leaderboard tab.
+          </div>
+
           <div className="text-sm text-muted-foreground bg-primary/10 rounded-lg p-4 mt-4 border border-primary/20">
-            <strong className="text-foreground">Extra List:</strong> Levels in the Extra List 
-            do not award any points. The Extra List is for levels that have dropped from the Main 
-            List or don't meet Main List standards. They are tracked separately for historical purposes.
+            <strong className="text-foreground">Level Submissions:</strong> You can now submit levels 
+            to the Main List, Extra List, or Future List. Admins may approve your submission to a 
+            different list or rank position than you originally suggested.
           </div>
         </div>
 

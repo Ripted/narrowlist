@@ -134,9 +134,9 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompl
             </p>
           </div>
 
-          {/* Tags */}
+          {/* Tags - emoji only with text on hover */}
           {tags.length > 0 && (
-            <LevelTagsList tags={tags} variant="card" />
+            <LevelTagsList tags={tags} variant="card" emojiOnly={true} />
           )}
 
           <div className="flex items-center justify-between text-sm">
