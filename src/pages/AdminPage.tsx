@@ -140,6 +140,8 @@ interface LevelSubmission {
   author: string | null;
   thumbnail_url: string | null;
   suggested_rank: number;
+  target_list: string;
+  approved_list: string | null;
   final_rank: number | null;
   submitted_by: string | null;
   submitted_by_email: string;
@@ -236,9 +238,14 @@ export default function AdminPage() {
   const [reviewingSubmission, setReviewingSubmission] = useState<LevelSubmission | null>(null);
   const [submissionRank, setSubmissionRank] = useState("");
   const [submissionNote, setSubmissionNote] = useState("");
+  const [submissionTargetList, setSubmissionTargetList] = useState<"main" | "extra" | "future">("main");
   const [processingSubmission, setProcessingSubmission] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editNoteValue, setEditNoteValue] = useState("");
+  
+  // Move confirmation dialogs
+  const [moveToMainConfirm, setMoveToMainConfirm] = useState<ExtendedLevel | null>(null);
+  const [moveToExtraConfirm, setMoveToExtraConfirm] = useState<Level | null>(null);
   
   // Run submission review
   const [reviewingRunSubmission, setReviewingRunSubmission] = useState<RunSubmission | null>(null);
@@ -961,34 +968,69 @@ export default function AdminPage() {
     try {
       if (action === "approved") {
         const rank = parseInt(submissionRank) || submission.suggested_rank;
+        const targetList = submissionTargetList;
         
-        // Shift existing levels
-        const levelsToUpdate = levels.filter(l => l.rank_position >= rank);
-        for (const level of levelsToUpdate) {
-          await supabase
-            .from("levels")
-            .update({ 
-              rank_position: level.rank_position + 1,
-              points: calculatePoints(level.rank_position + 1)
-            })
-            .eq("id", level.id);
+        if (targetList === "main") {
+          // Shift existing main levels
+          const levelsToUpdate = levels.filter(l => l.rank_position >= rank);
+          for (const level of levelsToUpdate) {
+            await supabase
+              .from("levels")
+              .update({ 
+                rank_position: level.rank_position + 1,
+                points: calculatePoints(level.rank_position + 1)
+              })
+              .eq("id", level.id);
+          }
+
+          // Add to main list
+          const { error: insertError } = await supabase.from("levels").insert({
+            level_id: submission.level_id,
+            name: submission.level_name,
+            author: submission.author,
+            rank_position: rank,
+            points: calculatePoints(rank),
+            thumbnail_url: submission.thumbnail_url,
+          });
+
+          if (insertError) throw insertError;
+          
+          await logAction("Approved level submission to Main List", `${submission.level_name || submission.level_id} at rank #${rank}`);
+          toast({ title: "Level Approved", description: `Added to Main List at rank #${rank}` });
+          fetchLevels();
+        } else if (targetList === "extra") {
+          // Add to extra list
+          const { error: insertError } = await supabase.from("extended_levels").insert({
+            level_id: submission.level_id,
+            name: submission.level_name,
+            author: submission.author,
+            rank_position: rank,
+            points: 0, // Will be auto-calculated by trigger
+            thumbnail_url: submission.thumbnail_url,
+          });
+
+          if (insertError) throw insertError;
+          
+          await logAction("Approved level submission to Extra List", `${submission.level_name || submission.level_id} at rank #${rank}`);
+          toast({ title: "Level Approved", description: `Added to Extra List at rank #${rank}` });
+          fetchExtendedLevels();
+        } else if (targetList === "future") {
+          // Add to future list
+          const { error: insertError } = await supabase.from("future_levels").insert({
+            level_id: submission.level_id,
+            name: submission.level_name,
+            author: submission.author,
+            rank_position: rank,
+            points: calculatePoints(rank),
+            thumbnail_url: submission.thumbnail_url,
+          });
+
+          if (insertError) throw insertError;
+          
+          await logAction("Approved level submission to Future List", `${submission.level_name || submission.level_id} at rank #${rank}`);
+          toast({ title: "Level Approved", description: `Added to Future List at rank #${rank}` });
+          fetchFutureLevels();
         }
-
-        // Add to main list
-        const { error: insertError } = await supabase.from("levels").insert({
-          level_id: submission.level_id,
-          name: submission.level_name,
-          author: submission.author,
-          rank_position: rank,
-          points: calculatePoints(rank),
-          thumbnail_url: submission.thumbnail_url,
-        });
-
-        if (insertError) throw insertError;
-
-        await logAction("Approved level submission", `${submission.level_name || submission.level_id} at rank #${rank} (submitted by ${submission.submitted_by_email})`);
-        toast({ title: "Level Approved", description: `Added to main list at rank #${rank}` });
-        fetchLevels();
       } else {
         await logAction("Rejected level submission", `${submission.level_name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
         toast({ title: "Submission Rejected" });
@@ -999,6 +1041,7 @@ export default function AdminPage() {
         .from("level_submissions")
         .update({ 
           status: action,
+          approved_list: action === "approved" ? submissionTargetList : null,
           final_rank: action === "approved" ? (parseInt(submissionRank) || submission.suggested_rank) : null,
           admin_note: submissionNote || null,
           reviewed_at: new Date().toISOString(),
@@ -1008,6 +1051,7 @@ export default function AdminPage() {
       setReviewingSubmission(null);
       setSubmissionRank("");
       setSubmissionNote("");
+      setSubmissionTargetList("main");
       fetchLevelSubmissions();
       fetchChangelog();
     } catch (error: any) {
@@ -4075,10 +4119,10 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Modal - with scroll support for tags at bottom */}
       {editingLevel && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto space-y-4 my-4">
             <h2 className="font-display text-xl font-bold">Edit Level</h2>
             
             <div className="aspect-video rounded-lg bg-secondary overflow-hidden relative group">
@@ -4519,6 +4563,22 @@ export default function AdminPage() {
                 <div className="text-xs text-muted-foreground mt-1">
                   Submitted by {reviewingSubmission.submitted_by_email}
                 </div>
+              </div>
+
+              <div>
+                <Label>Target List</Label>
+                <select
+                  value={submissionTargetList}
+                  onChange={(e) => setSubmissionTargetList(e.target.value as "main" | "extra" | "future")}
+                  className="mt-1 w-full h-10 px-3 bg-secondary border border-border rounded-md text-foreground text-sm"
+                >
+                  <option value="main">Main List</option>
+                  <option value="extra">Extra List</option>
+                  <option value="future">Future List</option>
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Submitter requested: {reviewingSubmission.target_list === "main" ? "Main" : reviewingSubmission.target_list === "extra" ? "Extra" : "Future"}
+                </p>
               </div>
 
               <div>

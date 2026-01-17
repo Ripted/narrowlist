@@ -347,6 +347,7 @@ export type Database = {
       level_submissions: {
         Row: {
           admin_note: string | null
+          approved_list: string | null
           author: string | null
           created_at: string
           final_rank: number | null
@@ -359,11 +360,13 @@ export type Database = {
           submitted_by: string | null
           submitted_by_email: string
           suggested_rank: number
+          target_list: string
           thumbnail_url: string | null
           updated_at: string
         }
         Insert: {
           admin_note?: string | null
+          approved_list?: string | null
           author?: string | null
           created_at?: string
           final_rank?: number | null
@@ -376,11 +379,13 @@ export type Database = {
           submitted_by?: string | null
           submitted_by_email: string
           suggested_rank: number
+          target_list?: string
           thumbnail_url?: string | null
           updated_at?: string
         }
         Update: {
           admin_note?: string | null
+          approved_list?: string | null
           author?: string | null
           created_at?: string
           final_rank?: number | null
@@ -393,6 +398,7 @@ export type Database = {
           submitted_by?: string | null
           submitted_by_email?: string
           suggested_rank?: number
+          target_list?: string
           thumbnail_url?: string | null
           updated_at?: string
         }
@@ -602,6 +608,7 @@ export type Database = {
           country_code: string | null
           created_at: string
           display_name: string | null
+          extra_points: number
           id: string
           total_points: number | null
           updated_at: string
@@ -615,6 +622,7 @@ export type Database = {
           country_code?: string | null
           created_at?: string
           display_name?: string | null
+          extra_points?: number
           id?: string
           total_points?: number | null
           updated_at?: string
@@ -628,6 +636,7 @@ export type Database = {
           country_code?: string | null
           created_at?: string
           display_name?: string | null
+          extra_points?: number
           id?: string
           total_points?: number | null
           updated_at?: string
@@ -823,6 +832,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_extra_points_for_rank: {
+        Args: { rank_position: number }
+        Returns: number
+      }
       calculate_points_for_rank: {
         Args: { rank_position: number }
         Returns: number
@@ -836,6 +849,10 @@ export type Database = {
         Returns: boolean
       }
       is_head_admin: { Args: { _user_id: string }; Returns: boolean }
+      recalculate_player_extra_points: {
+        Args: { player_profile_id: string }
+        Returns: undefined
+      }
       recalculate_player_points: {
         Args: { player_profile_id: string }
         Returns: undefined

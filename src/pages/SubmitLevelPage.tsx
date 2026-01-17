@@ -17,11 +17,15 @@ interface LevelData {
   thumbnail_url: string | null;
 }
 
+type TargetList = "main" | "extra" | "future";
+
 interface Submission {
   id: string;
   level_id: string;
   level_name: string | null;
   suggested_rank: number;
+  target_list: string;
+  approved_list: string | null;
   status: string;
   created_at: string;
   admin_note: string | null;
@@ -51,6 +55,7 @@ export default function SubmitLevelPage() {
   const [levelId, setLevelId] = useState("");
   const [levelData, setLevelData] = useState<LevelData | null>(null);
   const [suggestedRank, setSuggestedRank] = useState("");
+  const [targetList, setTargetList] = useState<TargetList>("main");
   const [fetching, setFetching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -285,14 +290,21 @@ export default function SubmitLevelPage() {
     setSubmitting(true);
 
     try {
-      const { data: existingLevel } = await supabase
-        .from("levels")
-        .select("id")
-        .eq("level_id", levelId.trim())
-        .maybeSingle();
+      // Check if level already exists in any list
+      const [mainResult, extraResult, futureResult] = await Promise.all([
+        supabase.from("levels").select("id").eq("level_id", levelId.trim()).maybeSingle(),
+        supabase.from("extended_levels").select("id").eq("level_id", levelId.trim()).maybeSingle(),
+        supabase.from("future_levels").select("id").eq("level_id", levelId.trim()).maybeSingle(),
+      ]);
 
-      if (existingLevel) {
-        throw new Error("This level is already in the main list!");
+      if (mainResult.data) {
+        throw new Error("This level is already in the Main List!");
+      }
+      if (extraResult.data) {
+        throw new Error("This level is already in the Extra List!");
+      }
+      if (futureResult.data) {
+        throw new Error("This level is already in the Future List!");
       }
 
       const { data: existingSubmission } = await supabase
@@ -312,20 +324,23 @@ export default function SubmitLevelPage() {
         author: levelData.author,
         thumbnail_url: levelData.thumbnail_url,
         suggested_rank: rank,
+        target_list: targetList,
         submitted_by: user.id,
         submitted_by_email: user.email || "unknown",
       });
 
       if (error) throw error;
 
+      const listName = targetList === "main" ? "Main List" : targetList === "extra" ? "Extra List" : "Future List";
       toast({ 
         title: "Submission Sent!", 
-        description: "Your level submission is now pending admin review." 
+        description: `Your ${listName} submission is now pending admin review.` 
       });
 
       setLevelId("");
       setLevelData(null);
       setSuggestedRank("");
+      setTargetList("main");
       fetchMySubmissions();
       checkRateLimit();
     } catch (error: any) {
@@ -601,6 +616,23 @@ export default function SubmitLevelPage() {
                     </div>
 
                     <div>
+                      <Label htmlFor="targetList">Target List</Label>
+                      <select
+                        id="targetList"
+                        value={targetList}
+                        onChange={(e) => setTargetList(e.target.value as TargetList)}
+                        className="mt-1 w-full h-10 px-3 bg-secondary border border-border rounded-md text-foreground text-sm"
+                      >
+                        <option value="main">Main List</option>
+                        <option value="extra">Extra List</option>
+                        <option value="future">Future List</option>
+                      </select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Select which list this level should be added to
+                      </p>
+                    </div>
+
+                    <div>
                       <Label htmlFor="suggestedRank">Suggested Rank</Label>
                       <Input
                         id="suggestedRank"
@@ -612,7 +644,7 @@ export default function SubmitLevelPage() {
                         className="mt-1 bg-secondary border-border"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Admins may adjust this rank before approval
+                        Admins may adjust this rank or target list before approval
                       </p>
                     </div>
 
@@ -659,8 +691,17 @@ export default function SubmitLevelPage() {
                           <div className="font-medium text-foreground">
                             {submission.level_name || submission.level_id}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            Suggested rank: #{submission.suggested_rank} • {new Date(submission.created_at).toLocaleDateString()}
+                          <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+                            <span>Rank #{submission.suggested_rank}</span>
+                            <span className="px-1.5 py-0.5 rounded text-xs bg-primary/10 text-primary">
+                              {submission.target_list === "main" ? "Main" : submission.target_list === "extra" ? "Extra" : "Future"}
+                            </span>
+                            {submission.approved_list && submission.approved_list !== submission.target_list && (
+                              <span className="px-1.5 py-0.5 rounded text-xs bg-green-500/10 text-green-500">
+                                → {submission.approved_list === "main" ? "Main" : submission.approved_list === "extra" ? "Extra" : "Future"}
+                              </span>
+                            )}
+                            <span>• {new Date(submission.created_at).toLocaleDateString()}</span>
                           </div>
                           {submission.admin_note && (
                             <div className="text-sm text-accent mt-1">
