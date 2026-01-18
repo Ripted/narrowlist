@@ -216,9 +216,9 @@ export default function ExtendedListPage() {
     return filteredLevels.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredLevels, currentPage]);
 
-  const maxPoints = useMemo(() => {
-    // Extended list levels don't give points
-    return 0;
+  const totalExtraPoints = useMemo(() => {
+    // Sum up all extra points from extended levels
+    return levels.reduce((sum, level) => sum + (level.points || 0), 0);
   }, [levels]);
 
   return (
@@ -240,7 +240,7 @@ export default function ExtendedListPage() {
                 <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">
                   {levels.length} Levels
                 </span>
-                <span className="bg-muted text-muted-foreground px-2 py-1 rounded font-mono">0 Points</span>
+                <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono">{totalExtraPoints} Extra Pts</span>
               </div>
             </div>
 
@@ -262,7 +262,7 @@ export default function ExtendedListPage() {
 
           <p className="text-muted-foreground text-sm mb-6">
             Levels that used to be in the main list or don't quite meet main list standards. 
-            Ranked separately. <strong>Note:</strong> Extra list levels do not award any points.
+            Ranked separately. <strong>Note:</strong> Extra List levels award <span className="text-accent font-medium">Extra Points</span> — a separate point system tracked independently.
           </p>
 
           {isLoading ? (

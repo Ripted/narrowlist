@@ -17,6 +17,7 @@ import {
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import { LevelTagsEditor } from "@/components/admin/LevelTagsEditor";
 import { BulkTagManager } from "@/components/admin/BulkTagManager";
+import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -233,6 +234,9 @@ export default function AdminPage() {
   const [newExtendedLevelRank, setNewExtendedLevelRank] = useState("");
   const [addingExtendedLevel, setAddingExtendedLevel] = useState(false);
   const [extendedSearchQuery, setExtendedSearchQuery] = useState("");
+  const [fetchingExtendedLevelInfo, setFetchingExtendedLevelInfo] = useState(false);
+  const [extendedLevelPreview, setExtendedLevelPreview] = useState<{ name: string; author: string } | null>(null);
+  const [resyncingExtraLevels, setResyncingExtraLevels] = useState(false);
   
   // Submission review
   const [reviewingSubmission, setReviewingSubmission] = useState<LevelSubmission | null>(null);
@@ -493,6 +497,47 @@ export default function AdminPage() {
   };
 
   // Extended List functions
+  const fetchExtendedLevelPreview = async (levelId: string) => {
+    if (!levelId.trim()) {
+      setExtendedLevelPreview(null);
+      return;
+    }
+    setFetchingExtendedLevelInfo(true);
+    try {
+      const response = await fetch(`https://api.narrowarrow.xyz/level-details/${levelId.trim()}?isCustomLevel=true`);
+      if (response.ok) {
+        const data = await response.json();
+        setExtendedLevelPreview({
+          name: data.levelInfo?.name || "Unknown",
+          author: data.levelInfo?.author || "Unknown",
+        });
+      } else {
+        setExtendedLevelPreview(null);
+      }
+    } catch {
+      setExtendedLevelPreview(null);
+    } finally {
+      setFetchingExtendedLevelInfo(false);
+    }
+  };
+
+  const resyncExtraLevels = async () => {
+    setResyncingExtraLevels(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("resync-extra-levels");
+      if (error) throw error;
+      toast({ 
+        title: "Resync Complete", 
+        description: `Updated ${data?.updated || 0} extra levels with fresh data` 
+      });
+      fetchExtendedLevels();
+    } catch (error: any) {
+      toast({ title: "Resync Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setResyncingExtraLevels(false);
+    }
+  };
+
   const addExtendedLevel = async () => {
     if (!newExtendedLevelId.trim()) return;
     setAddingExtendedLevel(true);
@@ -500,11 +545,15 @@ export default function AdminPage() {
     try {
       const targetRank = parseInt(newExtendedLevelRank) || extendedLevels.length + 1;
 
-      // Fetch level details from API
-      const response = await fetch(`https://api.narrowarrow.xyz/level-details/${newExtendedLevelId.trim()}`);
+      // Use preview data if available, otherwise fetch fresh
       let levelData: any = null;
-      if (response.ok) {
-        levelData = await response.json();
+      if (extendedLevelPreview) {
+        levelData = { levelInfo: extendedLevelPreview };
+      } else {
+        const response = await fetch(`https://api.narrowarrow.xyz/level-details/${newExtendedLevelId.trim()}?isCustomLevel=true`);
+        if (response.ok) {
+          levelData = await response.json();
+        }
       }
 
       const { error } = await supabase.from("extended_levels").insert({
@@ -527,6 +576,7 @@ export default function AdminPage() {
       toast({ title: "Success", description: "Extra level added" });
       setNewExtendedLevelId("");
       setNewExtendedLevelRank("");
+      setExtendedLevelPreview(null);
       fetchExtendedLevels();
       fetchChangelog();
     } catch (error: any) {
@@ -2400,6 +2450,10 @@ export default function AdminPage() {
                   <Bell className="w-3 h-3 hidden sm:inline" />
                   Webhooks
                 </TabsTrigger>
+                <TabsTrigger value="tags" className="text-xs sm:text-sm flex-shrink-0">
+                  <Tag className="w-3 h-3 hidden sm:inline" />
+                  Tag Presets
+                </TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
               <Button
@@ -3109,7 +3163,7 @@ export default function AdminPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => transferMainToExtended(level)}
+                                onClick={() => setMoveToExtraConfirm(level)}
                                 className="h-8 px-2 text-xs text-muted-foreground hover:text-primary gap-1"
                                 title="Move to Extra List"
                               >
@@ -3304,12 +3358,34 @@ export default function AdminPage() {
 
                 {/* Add Extra Level */}
                 <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-secondary/30 rounded-lg">
-                  <Input
-                    placeholder="Level ID"
-                    value={newExtendedLevelId}
-                    onChange={(e) => setNewExtendedLevelId(e.target.value)}
-                    className="w-40 bg-card border-border h-8"
-                  />
+                  <div className="flex-1 min-w-[200px]">
+                    <Input
+                      placeholder="Level ID"
+                      value={newExtendedLevelId}
+                      onChange={(e) => {
+                        setNewExtendedLevelId(e.target.value);
+                        // Debounce fetch preview
+                        const value = e.target.value;
+                        setTimeout(() => {
+                          if (value && value.length > 5) {
+                            fetchExtendedLevelPreview(value);
+                          }
+                        }, 500);
+                      }}
+                      onBlur={() => fetchExtendedLevelPreview(newExtendedLevelId)}
+                      className="bg-card border-border h-8"
+                    />
+                    {fetchingExtendedLevelInfo && (
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Fetching level info...
+                      </p>
+                    )}
+                    {extendedLevelPreview && (
+                      <p className="text-xs text-primary mt-1">
+                        ✓ {extendedLevelPreview.name} by {extendedLevelPreview.author}
+                      </p>
+                    )}
+                  </div>
                   <Input
                     placeholder="Rank"
                     type="number"
@@ -3325,6 +3401,16 @@ export default function AdminPage() {
                   >
                     {addingExtendedLevel ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Add
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={resyncExtraLevels}
+                    disabled={resyncingExtraLevels}
+                    className="gap-1"
+                  >
+                    {resyncingExtraLevels ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    Resync All
                   </Button>
                 </div>
 
@@ -3385,7 +3471,7 @@ export default function AdminPage() {
                             size="sm"
                             variant="outline"
                             className="h-8 px-2 gap-1 text-primary border-primary/50 hover:bg-primary/10"
-                            onClick={() => transferExtendedToMain(level)}
+                            onClick={() => setMoveToMainConfirm(level)}
                             title="Move to Main List"
                           >
                             <ChevronUp className="w-3 h-3" />
@@ -3863,6 +3949,13 @@ export default function AdminPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            </TabsContent>
+
+            {/* Tags Tab */}
+            <TabsContent value="tags" className="space-y-6">
+              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
+                <TagPresetsManager />
               </div>
             </TabsContent>
 
@@ -4832,6 +4925,96 @@ export default function AdminPage() {
       {bulkTagManagerOpen && (
         <BulkTagManager onClose={() => setBulkTagManagerOpen(false)} />
       )}
+
+      {/* Move to Main Confirmation Dialog */}
+      <AlertDialog open={!!moveToMainConfirm} onOpenChange={(open) => !open && setMoveToMainConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              Move to Main List?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to move <strong className="text-foreground">{moveToMainConfirm?.name || moveToMainConfirm?.level_id}</strong> from the Extra List to the Main List.
+              </p>
+              <div className="flex items-center justify-center gap-4 py-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-muted-foreground">Extra #{moveToMainConfirm?.rank_position}</div>
+                  <div className="text-xs text-muted-foreground">Current</div>
+                </div>
+                <ChevronUp className="w-6 h-6 text-primary" />
+                <div className="text-center">
+                  <div className="text-lg font-bold text-primary">Main #{levels.length + 1}</div>
+                  <div className="text-xs text-muted-foreground">New</div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This will add the level to the main list and award points. A Discord notification will be sent.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (moveToMainConfirm) {
+                  transferExtendedToMain(moveToMainConfirm);
+                  setMoveToMainConfirm(null);
+                }
+              }}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Move to Main
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Move to Extra Confirmation Dialog */}
+      <AlertDialog open={!!moveToExtraConfirm} onOpenChange={(open) => !open && setMoveToExtraConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              Move to Extra List?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to move <strong className="text-foreground">{moveToExtraConfirm?.name || moveToExtraConfirm?.level_id}</strong> from the Main List to the Extra List.
+              </p>
+              <div className="flex items-center justify-center gap-4 py-4">
+                <div className="text-center">
+                  <div className="text-lg font-bold text-muted-foreground">Main #{moveToExtraConfirm?.rank_position}</div>
+                  <div className="text-xs text-muted-foreground">Current</div>
+                </div>
+                <ChevronDown className="w-6 h-6 text-accent" />
+                <div className="text-center">
+                  <div className="text-lg font-bold text-accent">Extra #{extendedLevels.length + 1}</div>
+                  <div className="text-xs text-muted-foreground">New</div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This will remove the level from the main list (no points) and add it to the extra list. All main list levels will be re-ranked.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (moveToExtraConfirm) {
+                  transferMainToExtended(moveToExtraConfirm);
+                  setMoveToExtraConfirm(null);
+                }
+              }}
+              className="bg-accent hover:bg-accent/90"
+            >
+              Move to Extra
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
