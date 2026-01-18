@@ -317,6 +317,61 @@ export default function StatisticsPage() {
     },
   });
 
+  // Fetch Main vs Extra completion comparison over time
+  const { data: mainVsExtraTrend = [] } = useQuery({
+    queryKey: ["stats-main-vs-extra-trend"],
+    queryFn: async () => {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Get main level IDs
+      const { data: mainLevels } = await supabase
+        .from("levels")
+        .select("id");
+      const mainLevelIds = new Set((mainLevels || []).map(l => l.id));
+
+      // Get extra level IDs
+      const { data: extraLevels } = await supabase
+        .from("extended_levels")
+        .select("id");
+      const extraLevelIds = new Set((extraLevels || []).map(l => l.id));
+
+      // Get completions
+      const { data: completions } = await supabase
+        .from("completions")
+        .select("completed_at, level_id")
+        .gte("completed_at", thirtyDaysAgo.toISOString())
+        .order("completed_at");
+
+      // Group by day and list type
+      const mainGrouped: { [key: string]: number } = {};
+      const extraGrouped: { [key: string]: number } = {};
+      
+      completions?.forEach((c) => {
+        const date = new Date(c.completed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        if (mainLevelIds.has(c.level_id)) {
+          mainGrouped[date] = (mainGrouped[date] || 0) + 1;
+        } else if (extraLevelIds.has(c.level_id)) {
+          extraGrouped[date] = (extraGrouped[date] || 0) + 1;
+        }
+      });
+
+      // Generate all dates for last 30 days
+      const result: { date: string; main: number; extra: number }[] = [];
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        result.push({ 
+          date: dateStr, 
+          main: mainGrouped[dateStr] || 0,
+          extra: extraGrouped[dateStr] || 0
+        });
+      }
+      return result;
+    },
+  });
+
   // Level distribution data for pie chart
   const levelDistribution = useMemo(() => {
     if (!levelsData) return [];
@@ -339,7 +394,7 @@ export default function StatisticsPage() {
     {
       title: "Total Levels",
       value: levelsData?.total.toLocaleString() || "0",
-      subtitle: `${levelsData?.main || 0} Main • ${levelsData?.extra || 0} Extra`,
+      subtitle: `${levelsData?.main || 0} Main • ${levelsData?.extra || 0} Extra • ${levelsData?.future || 0} Future`,
       icon: Target,
       color: "text-accent",
       gradient: "from-accent/20 to-accent/5",
@@ -815,6 +870,65 @@ export default function StatisticsPage() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Main vs Extra Completion Comparison Chart */}
+          <div className="rounded-xl border border-border bg-card p-6 mb-6">
+            <div className="flex items-center gap-2 mb-6">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <h2 className="font-display text-lg font-bold">Main vs Extra List Completions</h2>
+              <span className="text-xs text-muted-foreground ml-auto">Last 30 days</span>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={mainVsExtraTrend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                    tickLine={{ stroke: "hsl(var(--border))" }}
+                    axisLine={{ stroke: "hsl(var(--border))" }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis 
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                    tickLine={{ stroke: "hsl(var(--border))" }}
+                    axisLine={{ stroke: "hsl(var(--border))" }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      color: "hsl(var(--foreground))",
+                    }}
+                  />
+                  <Legend 
+                    formatter={(value) => (
+                      <span className="text-foreground text-sm">
+                        {value === "main" ? "Main List" : "Extra List"}
+                      </span>
+                    )}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="main"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="extra"
+                    stroke="hsl(var(--accent))"
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--accent))', strokeWidth: 0, r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
 

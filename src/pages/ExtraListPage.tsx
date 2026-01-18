@@ -96,11 +96,12 @@ function ExtendedLevelCard({ level, verifierUsername }: { level: ExtendedLevel; 
             </div>
           </div>
 
-          {/* Extra badge */}
+          {/* Points badge */}
           <div className="absolute top-3 right-3">
-            <div className="flex items-center gap-1 rounded-full bg-muted/90 backdrop-blur-sm px-3 py-1">
-              <span className="font-mono font-medium text-xs text-muted-foreground">
-                Extra
+            <div className="flex items-center gap-1 rounded-full bg-accent/90 backdrop-blur-sm px-3 py-1">
+              <Trophy className="w-3 h-3 text-accent-foreground" />
+              <span className="font-mono font-bold text-sm text-accent-foreground">
+                {level.points} Extra
               </span>
             </div>
           </div>
