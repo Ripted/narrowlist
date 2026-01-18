@@ -561,7 +561,6 @@ export default function AdminPage() {
         name: levelData?.levelInfo?.name || null,
         author: levelData?.levelInfo?.author || null,
         rank_position: targetRank,
-        points: 0,
         thumbnail_url: levelData?.levelInfo?.thumbnail_url || null,
       });
 

@@ -1,13 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Clock } from "lucide-react";
+import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
+import { useAllLevelTags, LevelTag } from "@/hooks/useLevelTags";
+import { LevelTagsList } from "@/components/LevelTagBadge";
 
 interface ExtendedLevel {
   id: string;
@@ -29,7 +31,21 @@ interface Profile {
 
 const ITEMS_PER_PAGE = 25;
 
-function ExtendedLevelCard({ level, verifierUsername }: { level: ExtendedLevel; verifierUsername?: string }) {
+function ExtendedLevelCard({ 
+  level, 
+  verifierUsername, 
+  likeCount,
+  isCompleted,
+  showCompletionStatus,
+  tags = []
+}: { 
+  level: ExtendedLevel; 
+  verifierUsername?: string;
+  likeCount?: number;
+  isCompleted?: boolean;
+  showCompletionStatus?: boolean;
+  tags?: LevelTag[];
+}) {
   const { toast } = useToast();
 
   const handleCopyId = (e: React.MouseEvent) => {
@@ -64,10 +80,15 @@ function ExtendedLevelCard({ level, verifierUsername }: { level: ExtendedLevel; 
     ? level.creators.join(", ")
     : level.author || "Unknown";
 
+  // Filter tags for card display
+  const cardTags = tags.filter(t => t.show_on_card);
+
   return (
     <Link to={`/level/${level.level_id}?extended=true`}>
       <div
-        className={`group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${getRankBorder(level.rank_position)}`}
+        className={`group relative overflow-hidden rounded-xl border bg-card transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${getRankBorder(level.rank_position)} ${
+          showCompletionStatus && isCompleted ? "ring-2 ring-accent/30" : ""
+        }`}
       >
         {/* Thumbnail */}
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-secondary to-muted">
@@ -97,11 +118,16 @@ function ExtendedLevelCard({ level, verifierUsername }: { level: ExtendedLevel; 
           </div>
 
           {/* Points badge */}
-          <div className="absolute top-3 right-3">
+          <div className="absolute top-3 right-3 flex items-center gap-2">
+            {showCompletionStatus && isCompleted && (
+              <div className="flex items-center gap-1 rounded-full bg-accent/90 backdrop-blur-sm px-2 py-1" title="Completed">
+                <Check className="w-3 h-3 text-accent-foreground" />
+              </div>
+            )}
             <div className="flex items-center gap-1 rounded-full bg-accent/90 backdrop-blur-sm px-3 py-1">
               <Trophy className="w-3 h-3 text-accent-foreground" />
               <span className="font-mono font-bold text-sm text-accent-foreground">
-                {level.points} Extra
+                {level.points} pts
               </span>
             </div>
           </div>
@@ -141,14 +167,31 @@ function ExtendedLevelCard({ level, verifierUsername }: { level: ExtendedLevel; 
             </p>
           </div>
 
+          {/* Tags - emoji only with text on hover */}
+          {cardTags.length > 0 && (
+            <LevelTagsList tags={cardTags} variant="card" emojiOnly={true} />
+          )}
+
+          {/* Like count */}
+          {likeCount !== undefined && likeCount > 0 && (
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Heart className="w-3 h-3 text-destructive" />
+              <span>{likeCount}</span>
+            </div>
+          )}
+
           {verifierUsername && (
             <div className="pt-2 border-t border-border/50">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Shield className="w-3 h-3 text-primary" />
                 Verified by{" "}
-                <span className="text-primary font-medium">
+                <Link 
+                  to={`/player/${verifierUsername}`} 
+                  className="text-primary font-medium hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {verifierUsername}
-                </span>
+                </Link>
               </p>
             </div>
           )}
@@ -162,6 +205,7 @@ export default function ExtendedListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const { completedLevelIds, isLoggedIn } = useUserCompletions();
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
 
   // Fetch extended levels with verifier info
   const { data: levels = [], isLoading } = useQuery({
@@ -177,6 +221,9 @@ export default function ExtendedListPage() {
     },
   });
 
+  // Fetch all level tags
+  const { data: allTags = [] } = useAllLevelTags();
+
   // Fetch profiles for verifier info
   const { data: profiles = [] } = useQuery({
     queryKey: ["profiles-for-extended"],
@@ -190,6 +237,34 @@ export default function ExtendedListPage() {
     },
   });
 
+  // Fetch like counts from API for visible levels
+  useEffect(() => {
+    const fetchLikeCounts = async () => {
+      const levelIds = levels.slice(0, 50).map(l => l.level_id); // Limit to first 50 for performance
+      const counts: Record<string, number> = {};
+      
+      for (const levelId of levelIds) {
+        try {
+          const response = await fetch(`https://api.narrowarrow.xyz/level-details/${levelId}?isCustomLevel=true`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data?.levelInfo?.like_count !== undefined) {
+              counts[levelId] = data.levelInfo.like_count;
+            }
+          }
+        } catch {
+          // Ignore errors for individual fetches
+        }
+      }
+      
+      setLikeCounts(counts);
+    };
+
+    if (levels.length > 0) {
+      fetchLikeCounts();
+    }
+  }, [levels]);
+
   // Create map of profile id to username
   const profileMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -198,6 +273,19 @@ export default function ExtendedListPage() {
     });
     return map;
   }, [profiles]);
+
+  // Create map of level_id to tags
+  const tagsByLevelId = useMemo(() => {
+    const map = new Map<string, LevelTag[]>();
+    allTags.forEach(tag => {
+      if (tag.level_type === "extra") {
+        const existing = map.get(tag.level_id) || [];
+        existing.push(tag);
+        map.set(tag.level_id, existing);
+      }
+    });
+    return map;
+  }, [allTags]);
 
   const filteredLevels = useMemo(() => {
     if (!searchQuery.trim()) return levels;
@@ -234,11 +322,11 @@ export default function ExtendedListPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-3">
-                <List className="w-5 h-5 text-primary" />
+                <List className="w-5 h-5 text-accent" />
                 <h1 className="font-display text-2xl font-bold">Extra List</h1>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="bg-primary/10 text-primary px-2 py-1 rounded font-mono">
+                <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono">
                   {levels.length} Levels
                 </span>
                 <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono">{totalExtraPoints} Extra Pts</span>
@@ -294,11 +382,15 @@ export default function ExtendedListPage() {
                   <div
                     key={level.id}
                     className="animate-fade-in"
-                    style={{ animationDelay: `${level.rank_position * 50}ms` }}
+                    style={{ animationDelay: `${(level.rank_position % 25) * 50}ms` }}
                   >
                     <ExtendedLevelCard
                       level={level}
                       verifierUsername={level.verifier_profile_id ? profileMap.get(level.verifier_profile_id) : undefined}
+                      likeCount={likeCounts[level.level_id]}
+                      isCompleted={completedLevelIds.has(level.id)}
+                      showCompletionStatus={isLoggedIn}
+                      tags={tagsByLevelId.get(level.id) || []}
                     />
                   </div>
                 ))}
