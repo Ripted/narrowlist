@@ -15,8 +15,8 @@ import {
   ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
-import { LevelTagsEditor } from "@/components/admin/LevelTagsEditor";
-import { BulkTagManager } from "@/components/admin/BulkTagManager";
+import { LevelTagAssigner } from "@/components/admin/LevelTagAssigner";
+import { BulkTagAssigner } from "@/components/admin/BulkTagAssigner";
 import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import {
   AlertDialog,
@@ -4310,7 +4310,7 @@ export default function AdminPage() {
               
               {/* Tags Editor */}
               <div className="border-t border-border pt-4">
-                <LevelTagsEditor levelId={editingLevel.id} levelType="main" />
+                <LevelTagAssigner levelId={editingLevel.id} levelType="main" />
               </div>
             </div>
             
@@ -4471,7 +4471,7 @@ export default function AdminPage() {
               
               {/* Tags Editor */}
               <div className="border-t border-border pt-4">
-                <LevelTagsEditor levelId={editingFutureLevel.id} levelType="future" />
+                <LevelTagAssigner levelId={editingFutureLevel.id} levelType="future" />
               </div>
             </div>
             
@@ -4586,7 +4586,7 @@ export default function AdminPage() {
               
               {/* Tags Editor */}
               <div className="border-t border-border pt-4">
-                <LevelTagsEditor levelId={editingExtendedLevel.id} levelType="extra" />
+                <LevelTagAssigner levelId={editingExtendedLevel.id} levelType="extra" />
               </div>
             </div>
             
@@ -4923,7 +4923,7 @@ export default function AdminPage() {
 
       {/* Bulk Tag Manager */}
       {bulkTagManagerOpen && (
-        <BulkTagManager onClose={() => setBulkTagManagerOpen(false)} />
+        <BulkTagAssigner onClose={() => setBulkTagManagerOpen(false)} />
       )}
 
       {/* Move to Main Confirmation Dialog */}

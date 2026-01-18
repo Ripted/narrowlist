@@ -27,6 +27,7 @@ interface ProfileData {
   bio: string | null;
   display_name: string | null;
   country_code: string | null;
+  extra_points?: number;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -121,7 +122,7 @@ export default function PlayerPage() {
     if (username) {
       supabase
         .from("profiles")
-        .select("id, user_id, banner_url, avatar_url, bio, display_name, country_code")
+        .select("id, user_id, banner_url, avatar_url, bio, display_name, country_code, extra_points")
         .eq("username", username)
         .single()
         .then(async ({ data }) => {
@@ -550,7 +551,7 @@ export default function PlayerPage() {
 
               {/* Player stats - only show if player exists */}
               {player && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-4">
                   <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
                     <div className={`font-display text-xl sm:text-2xl font-bold ${rank ? getRankStyle(rank) : ""}`}>#{rank}</div>
                     <div className="text-[10px] sm:text-xs text-muted-foreground">Global Rank</div>
@@ -560,6 +561,10 @@ export default function PlayerPage() {
                     <div className="text-[10px] sm:text-xs text-muted-foreground">Total Points</div>
                   </div>
                   <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
+                    <div className="flex items-center justify-center gap-1"><Star className="w-3 h-3 sm:w-4 sm:h-4 text-accent" /><span className="font-display text-xl sm:text-2xl font-bold text-accent">{profileData?.extra_points || 0}</span></div>
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">Extra Points</div>
+                  </div>
+                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
                     <div className="font-display text-xl sm:text-2xl font-bold text-foreground">{player.completions.length}</div>
                     <div className="text-[10px] sm:text-xs text-muted-foreground">Completions</div>
                   </div>
@@ -567,7 +572,7 @@ export default function PlayerPage() {
                     <div className="flex items-center justify-center gap-1"><Crown className="w-3 h-3 sm:w-4 sm:h-4 text-glow-gold" /><span className="font-display text-base sm:text-lg font-bold text-foreground">#{hardestLevel?.rank || "-"}</span></div>
                     <div className="text-[10px] sm:text-xs text-muted-foreground truncate" title={hardestLevel?.name}>{hardestLevel?.name ? hardestLevel.name.slice(0, 12) + (hardestLevel.name.length > 12 ? "..." : "") : "Hardest"}</div>
                   </div>
-                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border col-span-2 sm:col-span-1">
+                  <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
                     <div className="flex items-center justify-center gap-1"><CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-primary" /><span className="font-display text-xl sm:text-2xl font-bold text-foreground">{verifiedCount}</span></div>
                     <div className="text-[10px] sm:text-xs text-muted-foreground">Verified</div>
                   </div>
