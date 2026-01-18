@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Medal, Search, Calendar, X, Hammer, Crown, Loader2 } from "lucide-react";
+import { Trophy, Medal, Search, Calendar, X, Hammer, Crown, Loader2, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
@@ -34,6 +34,14 @@ interface CreatorStats {
   }[];
 }
 
+interface ExtraPointsPlayer {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  extra_points: number;
+}
+
 export default function LeaderboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") || "players";
@@ -44,6 +52,21 @@ export default function LeaderboardPage() {
   const [historicalDate, setHistoricalDate] = useState<string | null>(null);
   const [historicalPlayers, setHistoricalPlayers] = useState<HistoricalPlayerStats[]>([]);
   const [loadingHistorical, setLoadingHistorical] = useState(false);
+
+  // Extra Points leaderboard data
+  const { data: extraPointsPlayers = [], isLoading: loadingExtraPoints } = useQuery({
+    queryKey: ["extra-points-leaderboard"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, username, display_name, avatar_url, extra_points")
+        .gt("extra_points", 0)
+        .order("extra_points", { ascending: false });
+      
+      if (error) throw error;
+      return (data as ExtraPointsPlayer[]) || [];
+    },
+  });
 
   // Creator leaderboard data
   const { data: levels = [], isLoading: loadingCreators } = useQuery({
@@ -298,6 +321,10 @@ export default function LeaderboardPage() {
                   <Trophy className="w-4 h-4" />
                   Players
                 </TabsTrigger>
+                <TabsTrigger value="extra" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Star className="w-4 h-4" />
+                  Extra
+                </TabsTrigger>
                 <TabsTrigger value="creators" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Hammer className="w-4 h-4" />
                   Creators
@@ -469,6 +496,83 @@ export default function LeaderboardPage() {
                       </div>
                     );
                   })
+                )}
+              </div>
+            </TabsContent>
+
+            {/* Extra Points Tab */}
+            <TabsContent value="extra" className="space-y-6 mt-0">
+              {/* Stats */}
+              {!loadingExtraPoints && extraPointsPlayers.length > 0 && (
+                <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
+                  <span className="bg-muted px-2 py-1 rounded font-mono">{extraPointsPlayers.length} Players</span>
+                  <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono flex items-center gap-1">
+                    <Star className="w-3 h-3" />
+                    {extraPointsPlayers[0]?.extra_points || 0} Top
+                  </span>
+                </div>
+              )}
+
+              {/* Extra Points Player list */}
+              <div className="max-w-3xl mx-auto space-y-2 sm:space-y-3">
+                {loadingExtraPoints ? (
+                  [...Array(10)].map((_, i) => (
+                    <div key={i} className="h-16 sm:h-20 rounded-xl bg-card border border-border animate-pulse" />
+                  ))
+                ) : extraPointsPlayers.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    No players have earned extra points yet. Complete levels from the Extra List to earn extra points!
+                  </div>
+                ) : (
+                  extraPointsPlayers
+                    .filter(player => {
+                      if (!searchQuery.trim()) return true;
+                      const query = searchQuery.toLowerCase();
+                      return (
+                        player.username.toLowerCase().includes(query) ||
+                        player.display_name?.toLowerCase().includes(query)
+                      );
+                    })
+                    .map((player, index) => {
+                      const rank = index + 1;
+                      const { color, bg } = getRankBadge(rank);
+                      
+                      return (
+                        <Link
+                          key={player.id}
+                          to={`/player/${player.username}`}
+                          className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl hover:border-primary/50 transition-all animate-fade-in"
+                          style={{ animationDelay: `${index * 30}ms` }}
+                        >
+                          <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center flex-shrink-0`}>
+                            <span className={`font-display font-bold ${color}`}>#{rank}</span>
+                          </div>
+                          
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {player.avatar_url ? (
+                              <img src={player.avatar_url} alt={player.username} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="font-display font-bold text-foreground">
+                                {(player.display_name || player.username).charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="font-display font-semibold truncate">{player.display_name || player.username}</div>
+                            <div className="text-sm text-muted-foreground">@{player.username}</div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="font-mono font-bold text-accent flex items-center gap-1 justify-end">
+                              <Star className="w-4 h-4" />
+                              {player.extra_points}
+                            </div>
+                            <div className="text-xs text-muted-foreground">extra pts</div>
+                          </div>
+                        </Link>
+                      );
+                    })
                 )}
               </div>
             </TabsContent>

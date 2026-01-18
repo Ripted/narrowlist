@@ -726,6 +726,33 @@ export type Database = {
         }
         Relationships: []
       }
+      tag_presets: {
+        Row: {
+          created_at: string
+          description: string | null
+          emoji: string
+          id: string
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          emoji?: string
+          id?: string
+          text: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          emoji?: string
+          id?: string
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
