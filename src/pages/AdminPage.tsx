@@ -237,6 +237,8 @@ export default function AdminPage() {
   const [fetchingExtendedLevelInfo, setFetchingExtendedLevelInfo] = useState(false);
   const [extendedLevelPreview, setExtendedLevelPreview] = useState<{ name: string; author: string } | null>(null);
   const [resyncingExtraLevels, setResyncingExtraLevels] = useState(false);
+  const [resyncingMainLevels, setResyncingMainLevels] = useState(false);
+  const [resyncingFutureLevels, setResyncingFutureLevels] = useState(false);
   
   // Submission review
   const [reviewingSubmission, setReviewingSubmission] = useState<LevelSubmission | null>(null);
@@ -535,6 +537,40 @@ export default function AdminPage() {
       toast({ title: "Resync Failed", description: error.message, variant: "destructive" });
     } finally {
       setResyncingExtraLevels(false);
+    }
+  };
+
+  const resyncMainLevels = async () => {
+    setResyncingMainLevels(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("resync-main-levels");
+      if (error) throw error;
+      toast({ 
+        title: "Resync Complete", 
+        description: `Updated ${data?.updated || 0} main levels with fresh data` 
+      });
+      fetchLevels();
+    } catch (error: any) {
+      toast({ title: "Resync Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setResyncingMainLevels(false);
+    }
+  };
+
+  const resyncFutureLevels = async () => {
+    setResyncingFutureLevels(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("resync-future-levels");
+      if (error) throw error;
+      toast({ 
+        title: "Resync Complete", 
+        description: `Updated ${data?.updated || 0} future levels with fresh data` 
+      });
+      fetchFutureLevels();
+    } catch (error: any) {
+      toast({ title: "Resync Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setResyncingFutureLevels(false);
     }
   };
 
@@ -2965,7 +3001,16 @@ export default function AdminPage() {
                         {filteredLevels.length}{levelSearchQuery ? ` of ${levels.length}` : ""} levels
                       </span>
                     </h2>
-                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={resyncMainLevels}
+                        disabled={resyncingMainLevels}
+                        className="gap-1 text-xs"
+                      >
+                        {resyncingMainLevels ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        Resync All
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -3255,16 +3300,28 @@ export default function AdminPage() {
                         {filteredFutureLevels.length}{futureSearchQuery ? ` of ${futureLevels.length}` : ""} levels
                       </span>
                     </h2>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={checkVerifiedFutureLevels}
-                      disabled={syncing}
-                      className="gap-1 text-xs"
-                    >
-                      <Shield className="w-3 h-3" />
-                      Check Verified Levels
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={resyncFutureLevels}
+                        disabled={resyncingFutureLevels}
+                        className="gap-1 text-xs"
+                      >
+                        {resyncingFutureLevels ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        Resync All
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={checkVerifiedFutureLevels}
+                        disabled={syncing}
+                        className="gap-1 text-xs"
+                      >
+                        <Shield className="w-3 h-3" />
+                        Check Verified Levels
+                      </Button>
+                    </div>
                   </div>
                   <div className="relative w-full sm:w-80">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

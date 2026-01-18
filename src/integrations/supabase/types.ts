@@ -232,6 +232,54 @@ export type Database = {
           },
         ]
       }
+      extra_completions: {
+        Row: {
+          arrow_name: string | null
+          completed_at: string
+          completion_time: number
+          created_at: string
+          id: string
+          level_id: string
+          profile_id: string
+          run_id: number | null
+        }
+        Insert: {
+          arrow_name?: string | null
+          completed_at?: string
+          completion_time: number
+          created_at?: string
+          id?: string
+          level_id: string
+          profile_id: string
+          run_id?: number | null
+        }
+        Update: {
+          arrow_name?: string | null
+          completed_at?: string
+          completion_time?: number
+          created_at?: string
+          id?: string
+          level_id?: string
+          profile_id?: string
+          run_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extra_completions_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "extended_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extra_completions_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       future_levels: {
         Row: {
           author: string | null
