@@ -88,6 +88,25 @@ export default function PlayerPage() {
     },
     enabled: !!username,
   });
+
+  // Fetch extra list completions for this user (to detect extra-list-only players)
+  const { data: extraCompletions = [], isLoading: extraCompletionsLoading } = useQuery({
+    queryKey: ["extra-completions", username],
+    queryFn: async () => {
+      // First get the profile by username
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, extra_points")
+        .eq("username", username)
+        .single();
+      
+      if (!profile) return [];
+      
+      // There's no direct extra completions table yet, but extra_points > 0 means they have extra completions
+      return profile.extra_points > 0 ? [{ hasExtras: true }] : [];
+    },
+    enabled: !!username,
+  });
   
   
   const createdLevelsTotalPoints = useMemo(() => {
@@ -102,8 +121,10 @@ export default function PlayerPage() {
   );
   const rank = player ? players.indexOf(player) + 1 : null;
   
-  // Check if this is a creator-only profile (no player record but has created levels)
+  // Check if this is a creator-only or extra-only profile (no main list player record)
   const isCreatorOnly = !player && createdLevels.length > 0 && !loading && !createdLevelsLoading;
+  const hasExtraPointsOnly = !player && extraCompletions.length > 0 && !loading && !extraCompletionsLoading;
+  const isSpecialProfile = isCreatorOnly || hasExtraPointsOnly;
   
   const getRankStyle = (r: number) => {
     if (r === 1) return "rank-gold";
@@ -381,9 +402,9 @@ export default function PlayerPage() {
     );
   }
 
-  // Show not found only if there's no player AND no created levels
-  if (!player && !isCreatorOnly) {
-    if (loading || createdLevelsLoading) {
+  // Show not found only if there's no player AND no created levels AND no extra points
+  if (!player && !isSpecialProfile) {
+    if (loading || createdLevelsLoading || extraCompletionsLoading) {
       return (
         <div className="min-h-screen bg-background">
           <Navbar />
