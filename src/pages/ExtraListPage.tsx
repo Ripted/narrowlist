@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Check } from "lucide-react";
+import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Check, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags, LevelTag } from "@/hooks/useLevelTags";
@@ -29,12 +29,22 @@ interface Profile {
   display_name: string | null;
 }
 
+interface WorldRecordInfo {
+  username: string;
+  completion_time: number;
+}
+
 const ITEMS_PER_PAGE = 25;
+
+function formatTime(seconds: number): string {
+  return `${seconds.toFixed(3)}s`;
+}
 
 function ExtendedLevelCard({ 
   level, 
   verifierUsername, 
   likeCount,
+  worldRecord,
   isCompleted,
   showCompletionStatus,
   tags = []
@@ -42,6 +52,7 @@ function ExtendedLevelCard({
   level: ExtendedLevel; 
   verifierUsername?: string;
   likeCount?: number;
+  worldRecord?: WorldRecordInfo;
   isCompleted?: boolean;
   showCompletionStatus?: boolean;
   tags?: LevelTag[];
@@ -172,13 +183,27 @@ function ExtendedLevelCard({
             <LevelTagsList tags={cardTags} variant="card" emojiOnly={true} />
           )}
 
-          {/* Like count */}
-          {likeCount !== undefined && likeCount > 0 && (
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Heart className="w-3 h-3 text-destructive" />
-              <span>{likeCount}</span>
-            </div>
-          )}
+          <div className="flex items-center justify-between text-sm">
+            {/* Like count */}
+            {likeCount !== undefined && likeCount > 0 ? (
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Heart className="w-3 h-3 text-destructive" />
+                <span>{likeCount}</span>
+              </div>
+            ) : (
+              <div />
+            )}
+
+            {/* World Record */}
+            {worldRecord && (
+              <div className="flex items-center gap-1 text-primary">
+                <Clock className="w-3 h-3" />
+                <span className="font-mono">
+                  {formatTime(worldRecord.completion_time)}
+                </span>
+              </div>
+            )}
+          </div>
 
           {verifierUsername && (
             <div className="pt-2 border-t border-border/50">
@@ -237,11 +262,14 @@ export default function ExtendedListPage() {
     },
   });
 
-  // Fetch like counts from API for visible levels
+  // Fetch like counts and world records from API for visible levels
+  const [worldRecords, setWorldRecords] = useState<Record<string, WorldRecordInfo>>({});
+  
   useEffect(() => {
-    const fetchLikeCounts = async () => {
-      const levelIds = levels.slice(0, 50).map(l => l.level_id); // Limit to first 50 for performance
+    const fetchLevelData = async () => {
+      const levelIds = levels.slice(0, 50).map(l => l.level_id);
       const counts: Record<string, number> = {};
+      const wrs: Record<string, WorldRecordInfo> = {};
       
       for (const levelId of levelIds) {
         try {
@@ -251,6 +279,12 @@ export default function ExtendedListPage() {
             if (data?.levelInfo?.like_count !== undefined) {
               counts[levelId] = data.levelInfo.like_count;
             }
+            if (data?.worldRecord) {
+              wrs[levelId] = {
+                username: data.worldRecord.username,
+                completion_time: data.worldRecord.completion_time,
+              };
+            }
           }
         } catch {
           // Ignore errors for individual fetches
@@ -258,10 +292,11 @@ export default function ExtendedListPage() {
       }
       
       setLikeCounts(counts);
+      setWorldRecords(wrs);
     };
 
     if (levels.length > 0) {
-      fetchLikeCounts();
+      fetchLevelData();
     }
   }, [levels]);
 
@@ -388,6 +423,7 @@ export default function ExtendedListPage() {
                       level={level}
                       verifierUsername={level.verifier_profile_id ? profileMap.get(level.verifier_profile_id) : undefined}
                       likeCount={likeCounts[level.level_id]}
+                      worldRecord={worldRecords[level.level_id]}
                       isCompleted={completedLevelIds.has(level.id)}
                       showCompletionStatus={isLoggedIn}
                       tags={tagsByLevelId.get(level.id) || []}

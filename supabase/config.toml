@@ -8,3 +8,15 @@ verify_jwt = false
 
 [functions.admin-notify]
 verify_jwt = false
+
+[functions.resync-extra-levels]
+verify_jwt = false
+
+[functions.sync-extra-completions]
+verify_jwt = false
+
+[functions.resync-main-levels]
+verify_jwt = false
+
+[functions.resync-future-levels]
+verify_jwt = false
