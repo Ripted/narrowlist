@@ -12,7 +12,11 @@ import {
   Zap,
   Award,
   Activity,
-  Calendar
+  Calendar,
+  Star,
+  Crown,
+  Flame,
+  Percent
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -27,7 +31,14 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend
+  Legend,
+  LineChart,
+  Line,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar
 } from "recharts";
 
 interface StatCard {
@@ -131,6 +142,21 @@ export default function StatisticsPage() {
     },
   });
 
+  // Fetch top players by extra points
+  const { data: topExtraPlayers = [] } = useQuery({
+    queryKey: ["stats-top-extra-players"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("username, display_name, extra_points")
+        .not("extra_points", "is", null)
+        .gt("extra_points", 0)
+        .order("extra_points", { ascending: false })
+        .limit(8);
+      return data || [];
+    },
+  });
+
   // Fetch rank history for chart
   const { data: rankHistoryData = [] } = useQuery({
     queryKey: ["stats-rank-history"],
@@ -186,13 +212,118 @@ export default function StatisticsPage() {
     },
   });
 
+  // Fetch most completed levels
+  const { data: mostCompletedLevels = [] } = useQuery({
+    queryKey: ["stats-most-completed"],
+    queryFn: async () => {
+      const { data: completions } = await supabase
+        .from("completions")
+        .select("level_id");
+      
+      const { data: levels } = await supabase
+        .from("levels")
+        .select("id, name, rank_position");
+      
+      if (!completions || !levels) return [];
+      
+      // Count completions per level
+      const counts: { [key: string]: number } = {};
+      completions.forEach((c) => {
+        counts[c.level_id] = (counts[c.level_id] || 0) + 1;
+      });
+      
+      // Map to level names
+      const result = levels
+        .map((level) => ({
+          name: level.name || `#${level.rank_position}`,
+          rank: level.rank_position,
+          completions: counts[level.id] || 0,
+        }))
+        .sort((a, b) => b.completions - a.completions)
+        .slice(0, 8);
+      
+      return result;
+    },
+  });
+
+  // Fetch arrow distribution
+  const { data: arrowDistribution = [] } = useQuery({
+    queryKey: ["stats-arrow-distribution"],
+    queryFn: async () => {
+      const { data: completions } = await supabase
+        .from("completions")
+        .select("arrow_name");
+      
+      const { data: manualRuns } = await supabase
+        .from("manual_runs")
+        .select("arrow_name");
+      
+      const allRuns = [...(completions || []), ...(manualRuns || [])];
+      const counts: { [key: string]: number } = {};
+      
+      allRuns.forEach((run) => {
+        const arrow = run.arrow_name || "Unknown";
+        counts[arrow] = (counts[arrow] || 0) + 1;
+      });
+      
+      return Object.entries(counts).map(([name, value]) => ({
+        name,
+        value,
+        color: name === "Energy Arrow" ? "hsl(var(--primary))" 
+             : name === "Speedy Arrow" ? "hsl(var(--accent))"
+             : name === "Narrow Arrow" ? "hsl(45, 90%, 55%)"
+             : "hsl(var(--muted-foreground))"
+      }));
+    },
+  });
+
+  // Fetch completion rate by rank tier
+  const { data: completionByTier = [] } = useQuery({
+    queryKey: ["stats-completion-by-tier"],
+    queryFn: async () => {
+      const { data: levels } = await supabase
+        .from("levels")
+        .select("id, rank_position");
+      
+      const { data: completions } = await supabase
+        .from("completions")
+        .select("level_id");
+      
+      if (!levels || !completions) return [];
+      
+      // Define tiers
+      const tiers = [
+        { name: "Top 5", min: 1, max: 5 },
+        { name: "#6-10", min: 6, max: 10 },
+        { name: "#11-25", min: 11, max: 25 },
+        { name: "#26-50", min: 26, max: 50 },
+        { name: "#51+", min: 51, max: 999 },
+      ];
+      
+      return tiers.map((tier) => {
+        const tierLevelIds = levels
+          .filter((l) => l.rank_position >= tier.min && l.rank_position <= tier.max)
+          .map((l) => l.id);
+        
+        const tierCompletions = completions.filter((c) => tierLevelIds.includes(c.level_id)).length;
+        const avgCompletions = tierLevelIds.length > 0 ? Math.round(tierCompletions / tierLevelIds.length) : 0;
+        
+        return {
+          tier: tier.name,
+          completions: tierCompletions,
+          avgPerLevel: avgCompletions,
+        };
+      });
+    },
+  });
+
   // Level distribution data for pie chart
   const levelDistribution = useMemo(() => {
     if (!levelsData) return [];
     return [
       { name: "Main List", value: levelsData.main, color: "hsl(var(--primary))" },
       { name: "Extra List", value: levelsData.extra, color: "hsl(var(--accent))" },
-      { name: "Future List", value: levelsData.future, color: "hsl(var(--glow-gold))" },
+      { name: "Future List", value: levelsData.future, color: "hsl(45, 90%, 55%)" },
     ].filter(item => item.value > 0);
   }, [levelsData]);
 
@@ -287,8 +418,8 @@ export default function StatisticsPage() {
             ))}
           </div>
 
-          {/* Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Charts Grid - Row 1 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Completions Trend */}
             <div className="rounded-xl border border-border bg-card p-6">
               <div className="flex items-center gap-2 mb-6">
@@ -385,8 +516,99 @@ export default function StatisticsPage() {
             </div>
           </div>
 
-          {/* Top Players & Rank Changes */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Charts Grid - Row 2: Most Completed & Arrow Distribution */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Most Completed Levels */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
+                <Flame className="w-5 h-5 text-orange-500" />
+                <h2 className="font-display text-lg font-bold">Most Completed Levels</h2>
+              </div>
+              <div className="p-4">
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={mostCompletedLevels} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                      <XAxis 
+                        type="number" 
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                        tickLine={{ stroke: "hsl(var(--border))" }}
+                        axisLine={{ stroke: "hsl(var(--border))" }}
+                      />
+                      <YAxis 
+                        type="category" 
+                        dataKey="name"
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={100}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          color: "hsl(var(--foreground))",
+                        }}
+                        formatter={(value: number) => [`${value} completions`, "Total"]}
+                      />
+                      <Bar 
+                        dataKey="completions" 
+                        fill="hsl(var(--accent))" 
+                        radius={[0, 4, 4, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Arrow Distribution */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
+                <Zap className="w-5 h-5 text-primary" />
+                <h2 className="font-display text-lg font-bold">Arrow Usage</h2>
+              </div>
+              <div className="p-4">
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={arrowDistribution}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        labelLine={{ stroke: "hsl(var(--muted-foreground))" }}
+                      >
+                        {arrowDistribution.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.color}
+                            stroke="hsl(var(--card))"
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          color: "hsl(var(--foreground))",
+                        }}
+                        formatter={(value: number) => [`${value} runs`, "Count"]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Charts Grid - Row 3: Top Players & Rank Changes */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Top Players */}
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
@@ -436,7 +658,7 @@ export default function StatisticsPage() {
             {/* Rank Changes Activity */}
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
-                <Zap className="w-5 h-5 text-accent" />
+                <TrendingUp className="w-5 h-5 text-accent" />
                 <h2 className="font-display text-lg font-bold">Rank Changes</h2>
                 <span className="text-xs text-muted-foreground ml-auto">Last 30 days</span>
               </div>
@@ -485,8 +707,119 @@ export default function StatisticsPage() {
             </div>
           </div>
 
+          {/* Charts Grid - Row 4: Completion by Tier & Extra Points Leaders */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Completion by Difficulty Tier */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
+                <Percent className="w-5 h-5 text-primary" />
+                <h2 className="font-display text-lg font-bold">Completions by Difficulty</h2>
+              </div>
+              <div className="p-4">
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={completionByTier}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis 
+                        dataKey="tier" 
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                        tickLine={{ stroke: "hsl(var(--border))" }}
+                        axisLine={{ stroke: "hsl(var(--border))" }}
+                      />
+                      <YAxis 
+                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                        tickLine={{ stroke: "hsl(var(--border))" }}
+                        axisLine={{ stroke: "hsl(var(--border))" }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          color: "hsl(var(--foreground))",
+                        }}
+                        formatter={(value: number, name: string) => [
+                          `${value}`,
+                          name === "completions" ? "Total Completions" : "Avg per Level"
+                        ]}
+                      />
+                      <Legend 
+                        formatter={(value) => (
+                          <span className="text-foreground text-sm">
+                            {value === "completions" ? "Total" : "Avg/Level"}
+                          </span>
+                        )}
+                      />
+                      <Bar 
+                        dataKey="completions" 
+                        fill="hsl(var(--primary))" 
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar 
+                        dataKey="avgPerLevel" 
+                        fill="hsl(var(--accent))" 
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Extra Points Players */}
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
+                <Star className="w-5 h-5 text-accent" />
+                <h2 className="font-display text-lg font-bold">Top Extra Points</h2>
+              </div>
+              <div className="p-4">
+                {topExtraPlayers.length === 0 ? (
+                  <div className="h-64 flex items-center justify-center text-muted-foreground">
+                    No extra points data yet
+                  </div>
+                ) : (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={topExtraPlayers} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                        <XAxis 
+                          type="number" 
+                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                          tickLine={{ stroke: "hsl(var(--border))" }}
+                          axisLine={{ stroke: "hsl(var(--border))" }}
+                        />
+                        <YAxis 
+                          type="category" 
+                          dataKey="username"
+                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                          tickLine={false}
+                          axisLine={false}
+                          width={80}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                            color: "hsl(var(--foreground))",
+                          }}
+                          formatter={(value: number) => [`${value} extra pts`, "Total"]}
+                        />
+                        <Bar 
+                          dataKey="extra_points" 
+                          fill="hsl(var(--accent))" 
+                          radius={[0, 4, 4, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Quick Stats Footer */}
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
               <Clock className="w-5 h-5 text-muted-foreground" />
               <div>
