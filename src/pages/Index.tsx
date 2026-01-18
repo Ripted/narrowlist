@@ -1,12 +1,14 @@
 import { useState, useMemo } from "react";
 import { useLevels } from "@/hooks/useLevels";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
+import { useAllLevelTags } from "@/hooks/useLevelTags";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Target, Search, Filter, History } from "lucide-react";
+import { Target, Search, Filter, History, Tag, X } from "lucide-react";
 import { HistoricalListViewer } from "@/components/HistoricalListViewer";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface HistoricalLevel {
   id: string;
@@ -21,15 +23,45 @@ interface HistoricalLevel {
 const Index = () => {
   const { levels, loading, error } = useLevels();
   const { completedLevelIds, isLoggedIn } = useUserCompletions();
+  const { data: allTags = [] } = useAllLevelTags();
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyUncompleted, setShowOnlyUncompleted] = useState(false);
   const [historicalLevels, setHistoricalLevels] = useState<HistoricalLevel[] | null>(null);
   const [historicalDate, setHistoricalDate] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const handleHistoricalData = (levels: HistoricalLevel[] | null, date: string | null) => {
     setHistoricalLevels(levels);
     setHistoricalDate(date);
   };
+
+  // Calculate top 5 most used tags
+  const topTags = useMemo(() => {
+    const tagCounts = new Map<string, { emoji: string; text: string; count: number }>();
+    allTags.forEach(tag => {
+      const key = `${tag.emoji}|${tag.text}`;
+      if (tagCounts.has(key)) {
+        tagCounts.get(key)!.count++;
+      } else {
+        tagCounts.set(key, { emoji: tag.emoji, text: tag.text, count: 1 });
+      }
+    });
+    return Array.from(tagCounts.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [allTags]);
+
+  // Group tags by level_id for display on cards
+  const tagsByLevelId = useMemo(() => {
+    const map = new Map();
+    allTags.forEach(tag => {
+      if (!map.has(tag.level_id)) {
+        map.set(tag.level_id, []);
+      }
+      map.get(tag.level_id).push(tag);
+    });
+    return map;
+  }, [allTags]);
 
   const filteredLevels = useMemo(() => {
     let result = levels;
@@ -50,9 +82,20 @@ const Index = () => {
         (level) => !completedLevelIds.has(level.levelInfo.level_id)
       );
     }
+
+    // Filter by selected tag
+    if (selectedTag) {
+      const levelIdsWithTag = new Set(
+        allTags
+          .filter(tag => `${tag.emoji}|${tag.text}` === selectedTag)
+          .map(tag => tag.level_id)
+      );
+      // Tags reference the database UUID id (dbId in our level objects)
+      result = result.filter(level => level.dbId && levelIdsWithTag.has(level.dbId));
+    }
     
     return result;
-  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds]);
+  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTag, allTags]);
 
   const maxPoints = useMemo(() => {
     return levels.reduce((sum, level) => sum + (level.points || 0), 0);
@@ -115,6 +158,50 @@ const Index = () => {
               </div>
             </div>
           </div>
+
+          {/* Tag Filters */}
+          {!historicalLevels && topTags.length > 0 && (
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Tag className="w-3 h-3" />
+                Filter by tag:
+              </span>
+              <TooltipProvider>
+                {topTags.map((tag) => {
+                  const tagKey = `${tag.emoji}|${tag.text}`;
+                  const isSelected = selectedTag === tagKey;
+                  return (
+                    <Tooltip key={tagKey}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={isSelected ? "default" : "outline"}
+                          size="sm"
+                          className="h-7 px-2 text-sm"
+                          onClick={() => setSelectedTag(isSelected ? null : tagKey)}
+                        >
+                          {tag.emoji}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{tag.emoji} {tag.text} ({tag.count})</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </TooltipProvider>
+              {selectedTag && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 gap-1"
+                  onClick={() => setSelectedTag(null)}
+                >
+                  <X className="w-3 h-3" />
+                  Clear
+                </Button>
+              )}
+            </div>
+          )}
 
           {loading && !historicalLevels ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -214,6 +301,7 @@ const Index = () => {
                     verifierUsername={level.verifierUsername}
                     isCompleted={completedLevelIds.has(level.levelInfo.level_id)}
                     showCompletionStatus={isLoggedIn}
+                    tags={level.dbId ? (tagsByLevelId.get(level.dbId) || []).filter((t: any) => t.show_on_card) : []}
                   />
                 </div>
               ))}
