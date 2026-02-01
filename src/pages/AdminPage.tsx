@@ -3001,6 +3001,7 @@ export default function AdminPage() {
                         {filteredLevels.length}{levelSearchQuery ? ` of ${levels.length}` : ""} levels
                       </span>
                     </h2>
+                    <div className="flex gap-2 flex-wrap">
                       <Button
                         variant="outline"
                         size="sm"

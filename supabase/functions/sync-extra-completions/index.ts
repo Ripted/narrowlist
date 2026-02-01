@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
             // Get or create profile
             let { data: profile } = await supabase
               .from("profiles")
-              .select("id")
+              .select("id, user_id")
               .eq("username", entry.username)
               .maybeSingle();
 
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
               const { data: newProfile, error: createError } = await supabase
                 .from("profiles")
                 .insert({ username: entry.username, extra_points: 0 })
-                .select("id")
+                .select("id, user_id")
                 .single();
 
               if (createError) {
@@ -100,7 +100,54 @@ Deno.serve(async (req) => {
               console.log(`Created new profile for ${entry.username}`);
             }
 
-            // Check if completion already exists
+            // Check if completion already exists by run_id
+            const { data: existingByRunId } = await supabase
+              .from("extra_completions")
+              .select("id, completed_at, profile_id")
+              .eq("run_id", entry.run_id)
+              .maybeSingle();
+
+            // Handle username changes - if run exists but profile differs
+            if (existingByRunId && existingByRunId.profile_id !== profile.id) {
+              const { data: existingProfile } = await supabase
+                .from("profiles")
+                .select("id, username, user_id")
+                .eq("id", existingByRunId.profile_id)
+                .maybeSingle();
+
+              if (existingProfile && existingProfile.username !== entry.username) {
+                // User changed their in-game username
+                if (!profile.user_id) {
+                  // Merge: update old profile username and transfer completions
+                  await supabase
+                    .from("extra_completions")
+                    .update({ profile_id: existingProfile.id })
+                    .eq("profile_id", profile.id);
+
+                  await supabase
+                    .from("profiles")
+                    .update({ username: entry.username })
+                    .eq("id", existingProfile.id);
+
+                  // Delete duplicate empty profile
+                  const { data: profileCompletions } = await supabase
+                    .from("extra_completions")
+                    .select("id")
+                    .eq("profile_id", profile.id)
+                    .limit(1);
+
+                  if (!profileCompletions || profileCompletions.length === 0) {
+                    await supabase.from("profiles").delete().eq("id", profile.id);
+                    console.log(`Merged extra completions: ${existingProfile.username} -> ${entry.username}`);
+                  }
+
+                  profile = { id: existingProfile.id, user_id: existingProfile.user_id };
+                }
+              }
+              continue;
+            }
+
+            // Check if completion already exists for this profile/level combo
             const { data: existingCompletion } = await supabase
               .from("extra_completions")
               .select("id, completed_at")
