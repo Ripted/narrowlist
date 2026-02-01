@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
             // Get or create profile
             let { data: profile, error: profileError } = await supabase
               .from("profiles")
-              .select("id")
+              .select("id, user_id")
               .eq("username", entry.username)
               .maybeSingle();
 
@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
               const { data: newProfile, error: createError } = await supabase
                 .from("profiles")
                 .insert({ username: entry.username })
-                .select("id")
+                .select("id, user_id")
                 .single();
 
               if (createError) {
@@ -221,11 +221,69 @@ Deno.serve(async (req) => {
             // Check if completion already exists for this run
             const { data: existingCompletion } = await supabase
               .from("completions")
-              .select("id, completed_at")
+              .select("id, completed_at, profile_id")
               .eq("run_id", entry.run_id)
               .maybeSingle();
 
             let completedAt = existingCompletion?.completed_at;
+
+            // Handle username changes - if run exists but profile username differs
+            if (existingCompletion && existingCompletion.profile_id !== profile.id) {
+              // Fetch the existing profile to check username
+              const { data: existingProfile } = await supabase
+                .from("profiles")
+                .select("id, username, user_id")
+                .eq("id", existingCompletion.profile_id)
+                .maybeSingle();
+
+              if (existingProfile && existingProfile.username !== entry.username) {
+                // User changed their in-game username
+                // Check if the new username profile is unclaimed (no user_id)
+                if (!profile.user_id) {
+                  // The new profile is unclaimed - we should merge them
+                  // Update all completions from the new empty profile to the old profile
+                  await supabase
+                    .from("completions")
+                    .update({ profile_id: existingProfile.id })
+                    .eq("profile_id", profile.id);
+
+                  // Update all manual_runs from the new profile to the old profile
+                  await supabase
+                    .from("manual_runs")
+                    .update({ profile_id: existingProfile.id })
+                    .eq("profile_id", profile.id);
+
+                  // Update the old profile's username to the new one
+                  await supabase
+                    .from("profiles")
+                    .update({ username: entry.username })
+                    .eq("id", existingProfile.id);
+
+                  // Delete the duplicate empty profile if it has no completions
+                  const { data: profileCompletions } = await supabase
+                    .from("completions")
+                    .select("id")
+                    .eq("profile_id", profile.id)
+                    .limit(1);
+
+                  if (!profileCompletions || profileCompletions.length === 0) {
+                    await supabase
+                      .from("profiles")
+                      .delete()
+                      .eq("id", profile.id);
+                    console.log(`Merged duplicate profile ${entry.username} into existing profile, deleted empty duplicate`);
+                  } else {
+                    console.log(`Updated username from ${existingProfile.username} to ${entry.username}`);
+                  }
+
+                  // Use the existing profile going forward
+                  profile = { id: existingProfile.id, user_id: existingProfile.user_id };
+                } else {
+                  console.log(`Username change detected but new profile is claimed, skipping merge for ${entry.username}`);
+                }
+              }
+              continue; // Skip - completion already exists
+            }
 
             if (!existingCompletion) {
               // Also check if this profile already has a completion for this level (from main or any alternative)
