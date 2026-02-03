@@ -239,6 +239,7 @@ export default function AdminPage() {
   const [resyncingExtraLevels, setResyncingExtraLevels] = useState(false);
   const [resyncingMainLevels, setResyncingMainLevels] = useState(false);
   const [resyncingFutureLevels, setResyncingFutureLevels] = useState(false);
+  const [hardfixing, setHardfixing] = useState(false);
   
   // Submission review
   const [reviewingSubmission, setReviewingSubmission] = useState<LevelSubmission | null>(null);
@@ -571,6 +572,25 @@ export default function AdminPage() {
       toast({ title: "Resync Failed", description: error.message, variant: "destructive" });
     } finally {
       setResyncingFutureLevels(false);
+    }
+  };
+
+  const triggerHardfix = async () => {
+    setHardfixing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("hardfix-resync");
+      if (error) throw error;
+      await logAction("Hardfix resync", `new extra completions: ${data?.newExtraCompletions || 0}, deleted profiles: ${data?.deletedEmptyProfiles || 0}`);
+      toast({
+        title: "Hardfix Complete",
+        description: `Synced ${data?.newExtraCompletions || 0} extra completions and removed ${data?.deletedEmptyProfiles || 0} duplicate profiles`,
+      });
+      fetchExtendedLevels();
+      fetchChangelog();
+    } catch (err: any) {
+      toast({ title: "Hardfix Failed", description: err.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setHardfixing(false);
     }
   };
 
@@ -3468,6 +3488,16 @@ export default function AdminPage() {
                   >
                     {resyncingExtraLevels ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                     Resync All
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={triggerHardfix}
+                    disabled={hardfixing}
+                    className="gap-1"
+                  >
+                    {hardfixing ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+                    Hardfix
                   </Button>
                 </div>
 

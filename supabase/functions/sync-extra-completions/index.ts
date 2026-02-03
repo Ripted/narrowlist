@@ -219,6 +219,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Step 2: Recalculate all extra_points using the DB function
+    const { error: recalcErr } = await supabase.rpc("recalculate_all_extra_points");
+    if (recalcErr) {
+      console.error("recalculate_all_extra_points error:", recalcErr);
+    } else {
+      console.log("Recalculated extra_points for all profiles");
+    }
+
     console.log(`Sync complete. Added ${totalNewCompletions} new extra completions.`);
 
     return new Response(
