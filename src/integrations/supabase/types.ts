@@ -915,6 +915,7 @@ export type Database = {
         Args: { rank_position: number }
         Returns: number
       }
+      cleanup_empty_unclaimed_profiles: { Args: never; Returns: number }
       cleanup_old_data: { Args: never; Returns: Json }
       has_role: {
         Args: {
@@ -924,6 +925,7 @@ export type Database = {
         Returns: boolean
       }
       is_head_admin: { Args: { _user_id: string }; Returns: boolean }
+      recalculate_all_extra_points: { Args: never; Returns: undefined }
       recalculate_player_extra_points: {
         Args: { player_profile_id: string }
         Returns: undefined
