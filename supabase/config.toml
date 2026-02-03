@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.resync-future-levels]
 verify_jwt = false
+
+[functions.hardfix-resync]
+verify_jwt = false
