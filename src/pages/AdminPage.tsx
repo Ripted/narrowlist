@@ -374,6 +374,13 @@ export default function AdminPage() {
   
   // Bulk tag manager
   const [bulkTagManagerOpen, setBulkTagManagerOpen] = useState(false);
+  
+  // Profile merge state
+  const [mergeSourceProfile, setMergeSourceProfile] = useState("");
+  const [mergeTargetProfile, setMergeTargetProfile] = useState("");
+  const [mergeDisplayName, setMergeDisplayName] = useState("");
+  const [mergingProfiles, setMergingProfiles] = useState(false);
+  const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAdmin) {
@@ -1193,13 +1200,34 @@ export default function AdminPage() {
   };
 
   // Auto-move levels with 0 completions to future list
+  // IMPORTANT: Also checks manual_runs table to avoid moving levels that have not-on-API runs
   const checkAndMoveEmptyLevels = async (currentLevels: Level[]) => {
     const { fetchLeaderboard } = await import("@/lib/api");
     const emptyLevels: Level[] = [];
     
     for (const level of currentLevels) {
+      // Check API leaderboard
       const leaderboard = await fetchLeaderboard(level.level_id);
-      if (leaderboard.length === 0) {
+      
+      // Also check for manual runs in the database
+      const { data: manualRunsForLevel } = await supabase
+        .from("manual_runs")
+        .select("id")
+        .eq("level_id", level.id)
+        .limit(1);
+      
+      // Also check for DB completions
+      const { data: completionsForLevel } = await supabase
+        .from("completions")
+        .select("id")
+        .eq("level_id", level.id)
+        .limit(1);
+      
+      // Only mark as empty if no API completions AND no manual runs AND no DB completions
+      const hasManualRuns = manualRunsForLevel && manualRunsForLevel.length > 0;
+      const hasDbCompletions = completionsForLevel && completionsForLevel.length > 0;
+      
+      if (leaderboard.length === 0 && !hasManualRuns && !hasDbCompletions) {
         emptyLevels.push(level);
       }
     }
@@ -1878,6 +1906,128 @@ export default function AdminPage() {
     await sendAdminNotification("rank_change", rankConfirmLevel.name || rankConfirmLevel.level_id, oldRank, pendingNewRank);
     
     fetchChangelog();
+  };
+
+  // Merge two profiles - transfer all data from source to target
+  const mergeProfiles = async () => {
+    if (!mergeSourceProfile || !mergeTargetProfile) return;
+    
+    setMergingProfiles(true);
+    try {
+      // Find source and target profiles
+      const { data: sourceProfile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("username", mergeSourceProfile)
+        .maybeSingle();
+      
+      const { data: targetProfile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("username", mergeTargetProfile)
+        .maybeSingle();
+      
+      if (!sourceProfile || !targetProfile) {
+        toast({ title: "Error", description: "One or both profiles not found", variant: "destructive" });
+        setMergingProfiles(false);
+        return;
+      }
+      
+      if (sourceProfile.id === targetProfile.id) {
+        toast({ title: "Error", description: "Cannot merge a profile with itself", variant: "destructive" });
+        setMergingProfiles(false);
+        return;
+      }
+      
+      // Transfer completions from source to target
+      await supabase
+        .from("completions")
+        .update({ profile_id: targetProfile.id })
+        .eq("profile_id", sourceProfile.id);
+      
+      // Transfer extra completions from source to target
+      await supabase
+        .from("extra_completions")
+        .update({ profile_id: targetProfile.id })
+        .eq("profile_id", sourceProfile.id);
+      
+      // Transfer manual runs from source to target
+      await supabase
+        .from("manual_runs")
+        .update({ profile_id: targetProfile.id })
+        .eq("profile_id", sourceProfile.id);
+      
+      // Update verifier references - levels table
+      await supabase
+        .from("levels")
+        .update({ verifier_profile_id: targetProfile.id })
+        .eq("verifier_profile_id", sourceProfile.id);
+      
+      // Update verifier references - extended_levels table
+      await supabase
+        .from("extended_levels")
+        .update({ verifier_profile_id: targetProfile.id })
+        .eq("verifier_profile_id", sourceProfile.id);
+      
+      // Update target profile display name if specified
+      const updateData: any = {};
+      if (mergeDisplayName) {
+        updateData.display_name = mergeDisplayName;
+      }
+      // Merge user_id if source had one but target doesn't
+      if (sourceProfile.user_id && !targetProfile.user_id) {
+        updateData.user_id = sourceProfile.user_id;
+      }
+      // Merge avatar/banner if target doesn't have one
+      if (sourceProfile.avatar_url && !targetProfile.avatar_url) {
+        updateData.avatar_url = sourceProfile.avatar_url;
+      }
+      if (sourceProfile.banner_url && !targetProfile.banner_url) {
+        updateData.banner_url = sourceProfile.banner_url;
+      }
+      if (sourceProfile.bio && !targetProfile.bio) {
+        updateData.bio = sourceProfile.bio;
+      }
+      if (sourceProfile.country_code && !targetProfile.country_code) {
+        updateData.country_code = sourceProfile.country_code;
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        await supabase
+          .from("profiles")
+          .update(updateData)
+          .eq("id", targetProfile.id);
+      }
+      
+      // Delete the source profile
+      await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", sourceProfile.id);
+      
+      // Recalculate points for target profile
+      await supabase.rpc("recalculate_player_points", { player_profile_id: targetProfile.id });
+      await supabase.rpc("recalculate_player_extra_points", { player_profile_id: targetProfile.id });
+      
+      await logAction("Merged profiles", `${mergeSourceProfile} → ${mergeTargetProfile}${mergeDisplayName ? ` (display: ${mergeDisplayName})` : ""}`);
+      toast({ title: "Success", description: `Merged ${mergeSourceProfile} into ${mergeTargetProfile}` });
+      
+      // Reset form
+      setMergeSourceProfile("");
+      setMergeTargetProfile("");
+      setMergeDisplayName("");
+      setMergeConfirmOpen(false);
+      
+      // Refresh data
+      fetchAllProfiles();
+      fetchApprovedPlayers();
+      fetchChangelog();
+    } catch (error: any) {
+      console.error("Merge error:", error);
+      toast({ title: "Error", description: error.message || "Failed to merge profiles", variant: "destructive" });
+    } finally {
+      setMergingProfiles(false);
+    }
   };
 
   const startThumbnailEdit = (level: Level) => {
@@ -3662,6 +3812,58 @@ export default function AdminPage() {
             </TabsContent>
 
             <TabsContent value="players" className="space-y-6">
+              {/* Profile Merge Tool */}
+              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
+                <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-accent" />
+                  Merge Duplicate Profiles
+                </h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Transfer all completions, runs, and data from one profile to another. The source profile will be deleted.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Source (will be deleted)</Label>
+                    <Input
+                      placeholder="Source username"
+                      value={mergeSourceProfile}
+                      onChange={(e) => setMergeSourceProfile(e.target.value)}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Target (will keep)</Label>
+                    <Input
+                      placeholder="Target username"
+                      value={mergeTargetProfile}
+                      onChange={(e) => setMergeTargetProfile(e.target.value)}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">New Display Name (optional)</Label>
+                    <Input
+                      placeholder="Display name"
+                      value={mergeDisplayName}
+                      onChange={(e) => setMergeDisplayName(e.target.value)}
+                      className="bg-secondary border-border"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={() => setMergeConfirmOpen(true)} 
+                      disabled={!mergeSourceProfile.trim() || !mergeTargetProfile.trim() || mergingProfiles}
+                      variant="outline"
+                      className="w-full gap-2"
+                    >
+                      <Users className="w-4 h-4" />
+                      {mergingProfiles ? "Merging..." : "Merge Profiles"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Approved Players List */}
               <div className="rounded-lg bg-card border border-border overflow-hidden">
                 <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <h2 className="font-display text-lg font-bold flex items-center gap-2">
@@ -5098,6 +5300,50 @@ export default function AdminPage() {
               className="bg-accent hover:bg-accent/90"
             >
               Move to Extra
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Profile Merge Confirmation Dialog */}
+      <AlertDialog open={mergeConfirmOpen} onOpenChange={setMergeConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              Confirm Profile Merge
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>You are about to merge:</p>
+              <div className="flex items-center justify-center gap-4 py-4">
+                <div className="text-center p-3 bg-destructive/10 rounded-lg">
+                  <div className="text-lg font-bold text-destructive">{mergeSourceProfile}</div>
+                  <div className="text-xs text-muted-foreground">Will be deleted</div>
+                </div>
+                <ChevronUp className="w-6 h-6 text-primary rotate-90" />
+                <div className="text-center p-3 bg-primary/10 rounded-lg">
+                  <div className="text-lg font-bold text-primary">{mergeTargetProfile}</div>
+                  <div className="text-xs text-muted-foreground">Will receive all data</div>
+                </div>
+              </div>
+              {mergeDisplayName && (
+                <p className="text-sm text-muted-foreground">
+                  Display name will be set to: <strong className="text-foreground">{mergeDisplayName}</strong>
+                </p>
+              )}
+              <p className="text-sm text-destructive">
+                ⚠️ This action cannot be undone. All completions, runs, and verifier credits will be transferred.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={mergeProfiles}
+              disabled={mergingProfiles}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {mergingProfiles ? "Merging..." : "Confirm Merge"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

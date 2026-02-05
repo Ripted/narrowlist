@@ -229,7 +229,7 @@ function ExtendedLevelCard({
 export default function ExtendedListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const { completedLevelIds, isLoggedIn } = useUserCompletions();
+  const { completedExtraLevelIds, isLoggedIn } = useUserCompletions();
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
 
   // Fetch extended levels with verifier info
@@ -424,7 +424,7 @@ export default function ExtendedListPage() {
                       verifierUsername={level.verifier_profile_id ? profileMap.get(level.verifier_profile_id) : undefined}
                       likeCount={likeCounts[level.level_id]}
                       worldRecord={worldRecords[level.level_id]}
-                      isCompleted={completedLevelIds.has(level.id)}
+                      isCompleted={completedExtraLevelIds.has(level.level_id)}
                       showCompletionStatus={isLoggedIn}
                       tags={tagsByLevelId.get(level.id) || []}
                     />
