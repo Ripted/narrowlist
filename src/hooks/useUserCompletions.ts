@@ -5,12 +5,14 @@ import { useAuth } from "@/hooks/useAuth";
 export function useUserCompletions() {
   const { user } = useAuth();
   const [completedLevelIds, setCompletedLevelIds] = useState<Set<string>>(new Set());
+  const [completedExtraLevelIds, setCompletedExtraLevelIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadCompletions() {
       if (!user) {
         setCompletedLevelIds(new Set());
+        setCompletedExtraLevelIds(new Set());
         setLoading(false);
         return;
       }
@@ -26,11 +28,12 @@ export function useUserCompletions() {
 
       if (!profile) {
         setCompletedLevelIds(new Set());
+        setCompletedExtraLevelIds(new Set());
         setLoading(false);
         return;
       }
 
-      // Get all level mappings (UUID -> string level_id)
+      // Get all main level mappings (UUID -> string level_id)
       const { data: levels } = await supabase
         .from("levels")
         .select("id, level_id");
@@ -39,6 +42,18 @@ export function useUserCompletions() {
       if (levels) {
         for (const level of levels) {
           levelIdMap.set(level.id, level.level_id);
+        }
+      }
+
+      // Get all extra level mappings (UUID -> string level_id)
+      const { data: extraLevels } = await supabase
+        .from("extended_levels")
+        .select("id, level_id");
+
+      const extraLevelIdMap = new Map<string, string>();
+      if (extraLevels) {
+        for (const level of extraLevels) {
+          extraLevelIdMap.set(level.id, level.level_id);
         }
       }
 
@@ -51,6 +66,12 @@ export function useUserCompletions() {
       // Get user's manual runs
       const { data: manualRuns } = await supabase
         .from("manual_runs")
+        .select("level_id")
+        .eq("profile_id", profile.id);
+
+      // Get user's extra completions
+      const { data: extraCompletions } = await supabase
+        .from("extra_completions")
         .select("level_id")
         .eq("profile_id", profile.id);
 
@@ -76,12 +97,24 @@ export function useUserCompletions() {
         }
       }
 
+      // Build extra completed IDs set
+      const completedExtraIds = new Set<string>();
+      if (extraCompletions) {
+        for (const c of extraCompletions) {
+          const stringLevelId = extraLevelIdMap.get(c.level_id);
+          if (stringLevelId) {
+            completedExtraIds.add(stringLevelId);
+          }
+        }
+      }
+
       setCompletedLevelIds(completedIds);
+      setCompletedExtraLevelIds(completedExtraIds);
       setLoading(false);
     }
 
     loadCompletions();
   }, [user]);
 
-  return { completedLevelIds, loading, isLoggedIn: !!user };
+  return { completedLevelIds, completedExtraLevelIds, loading, isLoggedIn: !!user };
 }
