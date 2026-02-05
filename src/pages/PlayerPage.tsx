@@ -89,7 +89,7 @@ export default function PlayerPage() {
     enabled: !!username,
   });
 
-  // Fetch extra list completions for this user (to detect extra-list-only players)
+  // Fetch extra list completions for this user
   const { data: extraCompletions = [], isLoading: extraCompletionsLoading } = useQuery({
     queryKey: ["extra-completions", username],
     queryFn: async () => {
@@ -98,12 +98,41 @@ export default function PlayerPage() {
         .from("profiles")
         .select("id, extra_points")
         .eq("username", username)
-        .single();
+        .maybeSingle();
       
       if (!profile) return [];
       
-      // There's no direct extra completions table yet, but extra_points > 0 means they have extra completions
-      return profile.extra_points > 0 ? [{ hasExtras: true }] : [];
+      // Fetch actual extra completions with level data
+      const { data: completions } = await supabase
+        .from("extra_completions")
+        .select(`
+          id,
+          completion_time,
+          completed_at,
+          arrow_name,
+          level_id,
+          extended_levels!inner (
+            level_id,
+            name,
+            rank_position,
+            points,
+            thumbnail_url
+          )
+        `)
+        .eq("profile_id", profile.id)
+        .order("completed_at", { ascending: false });
+      
+      return (completions || []).map((c: any) => ({
+        id: c.id,
+        levelId: c.extended_levels.level_id,
+        levelName: c.extended_levels.name || c.extended_levels.level_id,
+        rank: c.extended_levels.rank_position,
+        points: c.extended_levels.points,
+        time: c.completion_time,
+        completedAt: c.completed_at,
+        arrowName: c.arrow_name,
+        thumbnailUrl: c.extended_levels.thumbnail_url,
+      }));
     },
     enabled: !!username,
   });
@@ -637,13 +666,19 @@ export default function PlayerPage() {
             </div>
           )}
 
-          {/* Tabs for Completed vs Created */}
+          {/* Tabs for Completed vs Extra vs Created */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="bg-secondary/50 border border-border">
               {player && (
                 <TabsTrigger value="completed" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Target className="w-4 h-4" />
-                  Completed ({filteredCompletions.length})
+                  Main ({filteredCompletions.length})
+                </TabsTrigger>
+              )}
+              {extraCompletions.length > 0 && (
+                <TabsTrigger value="extra" className="gap-2 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">
+                  <Star className="w-4 h-4" />
+                  Extra ({extraCompletions.length})
                 </TabsTrigger>
               )}
               {createdLevels.length > 0 && (
@@ -743,6 +778,63 @@ export default function PlayerPage() {
                       )}
                     </>
                   )}
+                </div>
+              </TabsContent>
+            )}
+
+            {/* Extra completions tab */}
+            {extraCompletions.length > 0 && (
+              <TabsContent value="extra" className="mt-0">
+                <div className="rounded-xl bg-card border border-border overflow-hidden">
+                  <div className="p-4 border-b border-border bg-secondary/30">
+                    <h2 className="font-display text-xl font-bold flex items-center gap-2">
+                      <Star className="w-5 h-5 text-accent" />
+                      Extra List Completions
+                      <span className="text-sm font-normal text-muted-foreground ml-2">
+                        ({profileData?.extra_points || 0} extra points)
+                      </span>
+                    </h2>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {extraCompletions.map((completion: any) => (
+                      <Link key={completion.id} to={`/extra/${completion.levelId}`} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
+                        <div className="w-12 text-center flex-shrink-0">
+                          <span className={`font-display font-bold text-lg ${completion.rank === 1 ? "rank-gold" : completion.rank === 2 ? "rank-silver" : completion.rank === 3 ? "rank-bronze" : "text-muted-foreground"}`}>
+                            #{completion.rank}
+                          </span>
+                        </div>
+                        {completion.thumbnailUrl && (
+                          <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0">
+                            <img src={completion.thumbnailUrl} alt={completion.levelName} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-foreground truncate">{completion.levelName}</span>
+                            <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full flex-shrink-0">
+                              Extra List
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm">
+                          {completion.completedAt && (
+                            <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
+                              <Calendar className="w-4 h-4" />
+                              <span>{formatDate(completion.completedAt)}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            <Clock className="w-4 h-4" />
+                            <span className="font-mono">{formatTime(completion.time)}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-accent">
+                            <Star className="w-4 h-4" />
+                            <span className="font-mono font-bold">+{completion.points}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               </TabsContent>
             )}
