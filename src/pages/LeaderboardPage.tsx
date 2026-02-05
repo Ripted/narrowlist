@@ -238,6 +238,7 @@ export default function LeaderboardPage() {
   }, [profiles]);
 
   // Creator stats calculation - handles both single author and multiple creators
+  // FIXED: Sort by level count, not total points
   const creatorStats = useMemo(() => {
     const statsMap = new Map<string, CreatorStats>();
     
@@ -284,8 +285,9 @@ export default function LeaderboardPage() {
       });
     });
     
+    // Sort by level count (number of levels created), not by total points
     return Array.from(statsMap.values())
-      .sort((a, b) => b.totalPoints - a.totalPoints);
+      .sort((a, b) => b.levelCount - a.levelCount);
   }, [levels, profileMap]);
 
   const filteredCreators = useMemo(() => {

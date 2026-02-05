@@ -246,7 +246,12 @@ export default function PlayerPage() {
 
   const isOwner = user && profileData?.user_id === user.id;
   const canEdit = isOwner || isAdmin;
-  const canClaim = user && !profileData?.user_id && !isOwner && !userHasProfile;
+  // Allow claiming if: user is logged in, profile exists but not claimed, user doesn't own it, user doesn't already have a profile
+  // Also allow for special profiles (creator-only, extra-only) even if profileData is null (we'll create it during claim)
+  const canClaim = user && !isOwner && !userHasProfile && (
+    (profileData && !profileData.user_id) || 
+    (isSpecialProfile && !profileData)
+  );
 
   const levelRankMap = useMemo(() => {
     const map = new Map<string, { rank: number; points: number; name: string }>();
@@ -338,12 +343,40 @@ export default function PlayerPage() {
   }, [searchQuery]);
 
   const handleClaimProfile = async () => {
-    if (!user || !profileData) return;
+    if (!user || !username) return;
     setClaiming(true);
     try {
+      let targetProfileId = profileData?.id;
+      
+      // If no profile exists (creator-only or extra-only without DB profile), create one first
+      if (!targetProfileId) {
+        const { data: newProfile, error: createError } = await supabase
+          .from("profiles")
+          .insert({ username: username, extra_points: 0 })
+          .select("id")
+          .single();
+        
+        if (createError) {
+          // Profile might exist with different case - try to find it
+          const { data: existingProfile } = await supabase
+            .from("profiles")
+            .select("id")
+            .ilike("username", username)
+            .maybeSingle();
+          
+          if (existingProfile) {
+            targetProfileId = existingProfile.id;
+          } else {
+            throw createError;
+          }
+        } else {
+          targetProfileId = newProfile.id;
+        }
+      }
+      
       const { error } = await supabase
         .from("profile_claim_requests")
-        .insert({ profile_id: profileData.id, user_id: user.id, email: user.email || "" });
+        .insert({ profile_id: targetProfileId, user_id: user.id, email: user.email || "" });
       if (error) {
         if (error.code === "23505") {
           toast({ title: "Already Requested", description: "You've already submitted a claim", variant: "destructive" });
