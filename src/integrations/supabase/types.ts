@@ -555,6 +555,7 @@ export type Database = {
           id: string
           is_verifier: boolean
           level_id: string
+          list_type: string
           note: string | null
           profile_id: string
           proof_url: string | null
@@ -570,6 +571,7 @@ export type Database = {
           id?: string
           is_verifier?: boolean
           level_id: string
+          list_type?: string
           note?: string | null
           profile_id: string
           proof_url?: string | null
@@ -585,6 +587,7 @@ export type Database = {
           id?: string
           is_verifier?: boolean
           level_id?: string
+          list_type?: string
           note?: string | null
           profile_id?: string
           proof_url?: string | null

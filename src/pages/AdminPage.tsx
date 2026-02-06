@@ -73,6 +73,8 @@ interface ExtendedLevel {
   rank_position: number;
   points: number;
   thumbnail_url: string | null;
+  verifier_profile_id: string | null;
+  alternative_ids: string[] | null;
 }
 
 // State for editing future level
@@ -126,6 +128,7 @@ interface ManualRun {
   created_at: string;
   level_name?: string;
   profile_username?: string;
+  list_type?: string;
 }
 
 interface Profile {
@@ -327,9 +330,15 @@ export default function AdminPage() {
   const [editExtendedCreators, setEditExtendedCreators] = useState("");
   const [editExtendedRank, setEditExtendedRank] = useState("");
   const [editExtendedThumbnail, setEditExtendedThumbnail] = useState("");
+  const [editExtendedVerifier, setEditExtendedVerifier] = useState("");
+  const [editExtendedAlternativeIds, setEditExtendedAlternativeIds] = useState("");
   const [savingExtendedLevel, setSavingExtendedLevel] = useState(false);
   const [uploadingExtendedThumbnail, setUploadingExtendedThumbnail] = useState(false);
   const editExtendedThumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [syncingExtraCompletions, setSyncingExtraCompletions] = useState(false);
+  
+  // Manual run list type
+  const [manualRunListType, setManualRunListType] = useState<"main" | "extra">("main");
   
   // Quick rank change
   const [rankInputId, setRankInputId] = useState<string | null>(null);
@@ -608,6 +617,22 @@ export default function AdminPage() {
     try {
       const targetRank = parseInt(newExtendedLevelRank) || extendedLevels.length + 1;
 
+      // Validate target rank
+      if (targetRank < 1 || targetRank > extendedLevels.length + 1) {
+        throw new Error(`Rank must be between 1 and ${extendedLevels.length + 1}`);
+      }
+
+      // Shift existing levels down if inserting at a specific rank
+      if (targetRank <= extendedLevels.length) {
+        const levelsToShift = extendedLevels.filter(l => l.rank_position >= targetRank);
+        for (const level of levelsToShift) {
+          await supabase
+            .from("extended_levels")
+            .update({ rank_position: level.rank_position + 1 })
+            .eq("id", level.id);
+        }
+      }
+
       // Use preview data if available, otherwise fetch fresh
       let levelData: any = null;
       if (extendedLevelPreview) {
@@ -635,7 +660,7 @@ export default function AdminPage() {
       // Send webhook notification
       await sendAdminNotification("extra_level_added", levelName, undefined, targetRank);
       
-      toast({ title: "Success", description: "Extra level added" });
+      toast({ title: "Success", description: `Extra level added at rank #${targetRank}` });
       setNewExtendedLevelId("");
       setNewExtendedLevelRank("");
       setExtendedLevelPreview(null);
@@ -645,6 +670,54 @@ export default function AdminPage() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setAddingExtendedLevel(false);
+    }
+  };
+
+  const moveExtendedLevel = async (index: number, direction: "up" | "down") => {
+    const newLevels = [...extendedLevels];
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newLevels.length) return;
+    
+    // Swap positions
+    const currentLevel = newLevels[index];
+    const swapLevel = newLevels[targetIndex];
+    
+    try {
+      // Update both levels' rank positions
+      await supabase
+        .from("extended_levels")
+        .update({ rank_position: swapLevel.rank_position })
+        .eq("id", currentLevel.id);
+      
+      await supabase
+        .from("extended_levels")
+        .update({ rank_position: currentLevel.rank_position })
+        .eq("id", swapLevel.id);
+      
+      await logAction("Moved extra level", `${currentLevel.name || currentLevel.level_id} ${direction}`);
+      fetchExtendedLevels();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const syncExtraCompletions = async () => {
+    setSyncingExtraCompletions(true);
+    try {
+      const response = await supabase.functions.invoke("sync-extra-completions");
+      if (response.error) throw response.error;
+      
+      await logAction("Synced extra completions", "Manual sync triggered");
+      toast({ 
+        title: "Sync Complete", 
+        description: `Extra completions synced. ${response.data?.newCompletions || 0} new completions added.` 
+      });
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Sync Failed", description: error.message || "Failed to sync extra completions", variant: "destructive" });
+    } finally {
+      setSyncingExtraCompletions(false);
     }
   };
 
@@ -1599,6 +1672,8 @@ export default function AdminPage() {
     setEditExtendedCreators(level.creators?.join(", ") || "");
     setEditExtendedRank(String(level.rank_position));
     setEditExtendedThumbnail(level.thumbnail_url || "");
+    setEditExtendedVerifier(level.verifier_profile_id || "");
+    setEditExtendedAlternativeIds(level.alternative_ids?.join(", ") || "");
   };
 
   const saveEditedExtendedLevel = async () => {
@@ -1610,6 +1685,11 @@ export default function AdminPage() {
       .split(/[,\n]+/)
       .map(c => c.trim())
       .filter(c => c.length > 0);
+
+    const alternativeIdsArray = editExtendedAlternativeIds
+      .split(/[,\n]+/)
+      .map(id => id.trim())
+      .filter(id => id.length > 0);
     
     const { error } = await supabase
       .from("extended_levels")
@@ -1619,13 +1699,15 @@ export default function AdminPage() {
         creators: creatorsArray.length > 0 ? creatorsArray : null,
         rank_position: parseInt(editExtendedRank) || 1,
         thumbnail_url: editExtendedThumbnail || null,
+        verifier_profile_id: editExtendedVerifier || null,
+        alternative_ids: alternativeIdsArray.length > 0 ? alternativeIdsArray : null,
       })
       .eq("id", editingExtendedLevel.id);
     
     if (error) {
       toast({ title: "Error", description: "Failed to update extra level", variant: "destructive" });
     } else {
-      await logAction("Edited extra level", `${editExtendedName || editingExtendedLevel.level_id}`);
+      await logAction("Edited extra level", `${editExtendedName || editingExtendedLevel.level_id}${alternativeIdsArray.length > 0 ? ` (alt IDs: ${alternativeIdsArray.join(", ")})` : ""}`);
       toast({ title: "Success", description: "Extra level updated" });
       setEditingExtendedLevel(null);
       fetchExtendedLevels();
@@ -2354,6 +2436,7 @@ export default function AdminPage() {
     setManualRunDate(new Date().toISOString().split("T")[0]);
     setManualRunNote("");
     setManualRunProofUrl("");
+    setManualRunListType("main");
     setAddManualRunOpen(true);
   };
 
@@ -2367,6 +2450,7 @@ export default function AdminPage() {
     setManualRunDate(run.completed_at.split("T")[0]);
     setManualRunNote(run.note || "");
     setManualRunProofUrl(run.proof_url || "");
+    setManualRunListType((run.list_type as "main" | "extra") || "main");
     setAddManualRunOpen(true);
   };
 
@@ -2411,9 +2495,10 @@ export default function AdminPage() {
 
       // If marking as verifier, update the level's verifier_profile_id and clear old verifier
       if (manualRunVerifier) {
-        // Update the level to set this profile as verifier
+        // Update the level to set this profile as verifier based on list type
+        const tableName = manualRunListType === "extra" ? "extended_levels" : "levels";
         const { error: verifierError } = await supabase
-          .from("levels")
+          .from(tableName)
           .update({ verifier_profile_id: manualRunProfile })
           .eq("id", manualRunLevel);
         
@@ -2440,11 +2525,12 @@ export default function AdminPage() {
             completed_at: new Date(manualRunDate).toISOString(),
             note: manualRunNote || null,
             proof_url: manualRunProofUrl || null,
+            list_type: manualRunListType,
           })
           .eq("id", editingManualRun.id);
 
         if (error) throw error;
-        await logAction("Updated manual run", `${manualRunTime}s for profile ${manualRunProfile}`);
+        await logAction("Updated manual run", `${manualRunTime}s for profile ${manualRunProfile} (${manualRunListType})`);
         toast({ title: "Success", description: "Manual run updated" });
       } else {
         // Create new
@@ -2459,19 +2545,22 @@ export default function AdminPage() {
           proof_url: manualRunProofUrl || null,
           added_by_admin_id: user!.id,
           added_by_admin_email: user!.email || "unknown",
+          list_type: manualRunListType,
         }).select("id").single();
 
         if (error) throw error;
         
         // Get level and profile info for Discord notification
-        const levelInfo = levels.find(l => l.id === manualRunLevel);
+        const levelInfo = manualRunListType === "extra" 
+          ? extendedLevels.find(l => l.id === manualRunLevel)
+          : levels.find(l => l.id === manualRunLevel);
         const profileInfo = allProfiles.find(p => p.id === manualRunProfile);
         
         if (levelInfo && profileInfo) {
           try {
             await supabase.functions.invoke("discord-notify", {
               body: {
-                completion_type: "manual_run",
+                completion_type: manualRunListType === "extra" ? "extra_manual_run" : "manual_run",
                 completion_id: insertedRun?.id || `manual-${Date.now()}`,
                 profile_id: manualRunProfile,
                 level_id: manualRunLevel,
@@ -2481,6 +2570,7 @@ export default function AdminPage() {
                 completion_time: completionTime,
                 arrow_name: manualRunArrow,
                 is_verifier: manualRunVerifier,
+                list_type: manualRunListType,
               },
             });
           } catch (discordError) {
@@ -2488,12 +2578,13 @@ export default function AdminPage() {
           }
         }
         
-        await logAction("Added manual run", `${manualRunTime}s for profile ${manualRunProfile}`);
+        await logAction("Added manual run", `${manualRunTime}s for profile ${manualRunProfile} (${manualRunListType})`);
         toast({ title: "Success", description: "Manual run added" });
       }
 
       // Refresh levels to get updated verifier
       fetchLevels();
+      if (manualRunListType === "extra") fetchExtendedLevels();
 
       setAddManualRunOpen(false);
       fetchManualRuns();
@@ -3641,13 +3732,13 @@ export default function AdminPage() {
                   </Button>
                   <Button
                     size="sm"
-                    variant="destructive"
-                    onClick={triggerHardfix}
-                    disabled={hardfixing}
+                    variant="secondary"
+                    onClick={syncExtraCompletions}
+                    disabled={syncingExtraCompletions}
                     className="gap-1"
                   >
-                    {hardfixing ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
-                    Hardfix
+                    {syncingExtraCompletions ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    Sync Completions
                   </Button>
                 </div>
 
@@ -3668,8 +3759,31 @@ export default function AdminPage() {
                       l.name?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
                       l.author?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
                       l.level_id.toLowerCase().includes(extendedSearchQuery.toLowerCase())
-                    ).map((level) => (
+                    ).map((level, filteredIndex) => {
+                      const actualIndex = extendedLevels.findIndex(l => l.id === level.id);
+                      return (
                       <div key={level.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                        {/* Move up/down buttons */}
+                        <div className="flex flex-col gap-0.5">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-5 w-5"
+                            onClick={() => moveExtendedLevel(actualIndex, "up")}
+                            disabled={actualIndex === 0}
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-5 w-5"
+                            onClick={() => moveExtendedLevel(actualIndex, "down")}
+                            disabled={actualIndex === extendedLevels.length - 1}
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </Button>
+                        </div>
                         <div className="w-10 text-center font-display font-bold text-muted-foreground">
                           #{level.rank_position}
                         </div>
@@ -3690,8 +3804,8 @@ export default function AdminPage() {
                               : level.author || "Unknown"}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <span className="font-mono text-xs">Extra</span>
+                        <div className="flex items-center gap-1 text-accent">
+                          <span className="font-mono text-xs">{level.points} pts</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -3711,7 +3825,7 @@ export default function AdminPage() {
                             onClick={() => setMoveToMainConfirm(level)}
                             title="Move to Main List"
                           >
-                            <ChevronUp className="w-3 h-3" />
+                            <ArrowUpDown className="w-3 h-3" />
                             <span className="hidden sm:inline text-xs">Main</span>
                           </Button>
                           <Button
@@ -3725,7 +3839,7 @@ export default function AdminPage() {
                           </Button>
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 )}
               </div>
@@ -4350,17 +4464,41 @@ export default function AdminPage() {
             
             <div className="space-y-4">
               <div>
+                <Label>List Type *</Label>
+                <Select value={manualRunListType} onValueChange={(v) => {
+                  setManualRunListType(v as "main" | "extra");
+                  setManualRunLevel(""); // Reset level when switching lists
+                }}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="main">Main List</SelectItem>
+                    <SelectItem value="extra">Extra List</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label>Level *</Label>
                 <Select value={manualRunLevel} onValueChange={setManualRunLevel}>
                   <SelectTrigger className="mt-1 bg-secondary border-border">
                     <SelectValue placeholder="Select a level" />
                   </SelectTrigger>
                   <SelectContent>
-                    {levels.map(level => (
-                      <SelectItem key={level.id} value={level.id}>
-                        #{level.rank_position} - {level.name || level.level_id}
-                      </SelectItem>
-                    ))}
+                    {manualRunListType === "main" ? (
+                      levels.map(level => (
+                        <SelectItem key={level.id} value={level.id}>
+                          #{level.rank_position} - {level.name || level.level_id}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      extendedLevels.map(level => (
+                        <SelectItem key={level.id} value={level.id}>
+                          #{level.rank_position} - {level.name || level.level_id} (Extra)
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -4871,6 +5009,34 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   For levels with multiple creators. Leave empty to use single Author field.
                 </p>
+              </div>
+              
+              <div>
+                <Label htmlFor="editExtendedVerifier">Verifier</Label>
+                <Select value={editExtendedVerifier} onValueChange={setEditExtendedVerifier}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border">
+                    <SelectValue placeholder="Select verifier (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {allProfiles.map(profile => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.display_name || profile.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="editExtendedAlternativeIds">Alternative Level IDs</Label>
+                <Textarea
+                  id="editExtendedAlternativeIds"
+                  value={editExtendedAlternativeIds}
+                  onChange={(e) => setEditExtendedAlternativeIds(e.target.value)}
+                  placeholder="Alternative level IDs (comma or newline separated)&#10;Used for syncing completions from remakes"
+                  className="mt-1 bg-secondary border-border min-h-[60px]"
+                />
               </div>
               
               {/* Tags Editor */}
