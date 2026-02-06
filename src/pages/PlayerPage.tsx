@@ -819,7 +819,7 @@ export default function PlayerPage() {
             {extraCompletions.length > 0 && (
               <TabsContent value="extra" className="mt-0">
                 <div className="rounded-xl bg-card border border-border overflow-hidden">
-                  <div className="p-4 border-b border-border bg-secondary/30">
+                  <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <h2 className="font-display text-xl font-bold flex items-center gap-2">
                       <Star className="w-5 h-5 text-accent" />
                       Extra List Completions
@@ -827,47 +827,89 @@ export default function PlayerPage() {
                         ({profileData?.extra_points || 0} extra points)
                       </span>
                     </h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="relative w-full sm:w-48">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-sm bg-secondary border-border" />
+                      </div>
+                      <Button
+                        variant={sortMode === "rank" ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => setSortMode(sortMode === "rank" ? "date" : "rank")}
+                        className="gap-2 flex-shrink-0"
+                      >
+                        <ArrowUpDown className="w-4 h-4" />
+                        <span className="hidden sm:inline">{sortMode === "rank" ? "By Rank" : "By Date"}</span>
+                      </Button>
+                      <Button
+                        variant={showAll ? "secondary" : "outline"}
+                        size="sm"
+                        onClick={() => { setShowAll(!showAll); setCurrentPage(1); }}
+                        className="flex-shrink-0"
+                      >
+                        {showAll ? "Paginate" : "Show All"}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="divide-y divide-border">
-                    {extraCompletions.map((completion: any) => (
-                      <Link key={completion.id} to={`/extra/${completion.levelId}`} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
-                        <div className="w-12 text-center flex-shrink-0">
-                          <span className={`font-display font-bold text-lg ${completion.rank === 1 ? "rank-gold" : completion.rank === 2 ? "rank-silver" : completion.rank === 3 ? "rank-bronze" : "text-muted-foreground"}`}>
-                            #{completion.rank}
-                          </span>
+                  {(() => {
+                    let filtered = extraCompletions.filter((c: any) => 
+                      !searchQuery.trim() || c.levelName.toLowerCase().includes(searchQuery.toLowerCase())
+                    );
+                    if (sortMode === "date") {
+                      filtered = [...filtered].sort((a: any, b: any) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
+                    } else {
+                      filtered = [...filtered].sort((a: any, b: any) => a.rank - b.rank);
+                    }
+                    const paginated = showAll ? filtered : filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+                    const totalExtraPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+                    
+                    return (
+                      <>
+                        <div className="divide-y divide-border">
+                          {paginated.map((completion: any) => (
+                            <Link key={completion.id} to={`/extra/${completion.levelId}`} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
+                              <div className="w-12 text-center flex-shrink-0">
+                                <span className={`font-display font-bold text-lg ${completion.rank === 1 ? "rank-gold" : completion.rank === 2 ? "rank-silver" : completion.rank === 3 ? "rank-bronze" : "text-muted-foreground"}`}>
+                                  #{completion.rank}
+                                </span>
+                              </div>
+                              {completion.thumbnailUrl && (
+                                <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0">
+                                  <img src={completion.thumbnailUrl} alt={completion.levelName} className="w-full h-full object-cover" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium text-foreground truncate block">{completion.levelName}</span>
+                              </div>
+                              <div className="flex items-center gap-4 text-sm">
+                                {completion.completedAt && (
+                                  <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>{formatDate(completion.completedAt)}</span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="w-4 h-4" />
+                                  <span className="font-mono">{formatTime(completion.time)}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-accent">
+                                  <Star className="w-4 h-4" />
+                                  <span className="font-mono font-bold">+{completion.points}</span>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
                         </div>
-                        {completion.thumbnailUrl && (
-                          <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0">
-                            <img src={completion.thumbnailUrl} alt={completion.levelName} className="w-full h-full object-cover" />
+                        {!showAll && totalExtraPages > 1 && (
+                          <div className="p-4 border-t border-border flex items-center justify-center gap-2">
+                            <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft className="w-4 h-4" /></Button>
+                            <span className="text-sm text-muted-foreground">Page {currentPage} of {totalExtraPages}</span>
+                            <Button variant="ghost" size="sm" onClick={() => setCurrentPage(p => Math.min(totalExtraPages, p + 1))} disabled={currentPage === totalExtraPages}><ChevronRight className="w-4 h-4" /></Button>
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-foreground truncate">{completion.levelName}</span>
-                            <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full flex-shrink-0">
-                              Extra List
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                          {completion.completedAt && (
-                            <div className="hidden sm:flex items-center gap-1 text-muted-foreground">
-                              <Calendar className="w-4 h-4" />
-                              <span>{formatDate(completion.completedAt)}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Clock className="w-4 h-4" />
-                            <span className="font-mono">{formatTime(completion.time)}</span>
-                          </div>
-                          <div className="flex items-center gap-1 text-accent">
-                            <Star className="w-4 h-4" />
-                            <span className="font-mono font-bold">+{completion.points}</span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </TabsContent>
             )}

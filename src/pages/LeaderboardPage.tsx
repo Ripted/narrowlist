@@ -515,6 +515,62 @@ export default function LeaderboardPage() {
                 </div>
               )}
 
+              {/* Top 3 Podium for Extra Points */}
+              {!loadingExtraPoints && extraPointsPlayers.length >= 3 && !searchQuery && (
+                <div className="hidden md:flex items-end justify-center gap-4 mb-8">
+                  {/* Second place */}
+                  <Link to={`/player/${extraPointsPlayers[1].username}`} className="text-center animate-fade-in cursor-pointer group" style={{ animationDelay: "100ms" }}>
+                    <div className="w-24 h-24 mx-auto mb-3 rounded-full border-4 border-glow-silver overflow-hidden bg-gradient-to-br from-glow-silver/30 to-glow-silver/60 group-hover:scale-105 transition-transform">
+                      {extraPointsPlayers[1].avatar_url ? (
+                        <img src={extraPointsPlayers[1].avatar_url} alt={extraPointsPlayers[1].display_name || extraPointsPlayers[1].username} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-foreground">
+                          {(extraPointsPlayers[1].display_name || extraPointsPlayers[1].username).charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    <Medal className="w-6 h-6 mx-auto text-glow-silver mb-1" />
+                    <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{extraPointsPlayers[1].display_name || extraPointsPlayers[1].username}</div>
+                    <div className="font-mono text-sm text-accent flex items-center justify-center gap-1"><Star className="w-3 h-3" />{extraPointsPlayers[1].extra_points} pts</div>
+                    <div className="w-24 h-24 bg-gradient-to-t from-glow-silver/60 to-glow-silver/30 rounded-t-lg mt-2" />
+                  </Link>
+
+                  {/* First place */}
+                  <Link to={`/player/${extraPointsPlayers[0].username}`} className="text-center animate-fade-in cursor-pointer group">
+                    <div className="w-32 h-32 mx-auto mb-3 rounded-full border-4 border-glow-gold glow-gold overflow-hidden bg-gradient-to-br from-glow-gold/30 to-glow-gold/60 group-hover:scale-105 transition-transform">
+                      {extraPointsPlayers[0].avatar_url ? (
+                        <img src={extraPointsPlayers[0].avatar_url} alt={extraPointsPlayers[0].display_name || extraPointsPlayers[0].username} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-foreground">
+                          {(extraPointsPlayers[0].display_name || extraPointsPlayers[0].username).charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    <Crown className="w-8 h-8 mx-auto text-glow-gold mb-1" />
+                    <div className="font-display font-bold text-lg text-foreground group-hover:text-primary transition-colors">{extraPointsPlayers[0].display_name || extraPointsPlayers[0].username}</div>
+                    <div className="font-mono text-accent flex items-center justify-center gap-1"><Star className="w-4 h-4" />{extraPointsPlayers[0].extra_points} pts</div>
+                    <div className="w-24 h-32 bg-gradient-to-t from-glow-gold/60 to-glow-gold/30 rounded-t-lg mt-2" />
+                  </Link>
+
+                  {/* Third place */}
+                  <Link to={`/player/${extraPointsPlayers[2].username}`} className="text-center animate-fade-in cursor-pointer group" style={{ animationDelay: "200ms" }}>
+                    <div className="w-20 h-20 mx-auto mb-3 rounded-full border-4 border-glow-bronze overflow-hidden bg-gradient-to-br from-glow-bronze/30 to-glow-bronze/60 group-hover:scale-105 transition-transform">
+                      {extraPointsPlayers[2].avatar_url ? (
+                        <img src={extraPointsPlayers[2].avatar_url} alt={extraPointsPlayers[2].display_name || extraPointsPlayers[2].username} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-foreground">
+                          {(extraPointsPlayers[2].display_name || extraPointsPlayers[2].username).charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    <Medal className="w-5 h-5 mx-auto text-glow-bronze mb-1" />
+                    <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{extraPointsPlayers[2].display_name || extraPointsPlayers[2].username}</div>
+                    <div className="font-mono text-sm text-accent flex items-center justify-center gap-1"><Star className="w-3 h-3" />{extraPointsPlayers[2].extra_points} pts</div>
+                    <div className="w-24 h-16 bg-gradient-to-t from-glow-bronze/60 to-glow-bronze/30 rounded-t-lg mt-2" />
+                  </Link>
+                </div>
+              )}
+
               {/* Extra Points Player list */}
               <div className="max-w-3xl mx-auto space-y-2 sm:space-y-3">
                 {loadingExtraPoints ? (
