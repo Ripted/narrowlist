@@ -9,7 +9,6 @@ const API_BASE = "https://api.narrowarrow.xyz";
 
 const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1454616761637933128/xq4O-w8IV4G1ZHU1-IUTV_G7WVl-z4z6cwaD51OK3dy2ZvcvJt44RmDP1JFvHOBqlsYf';
 
-// Arrow emoji IDs
 const ARROW_EMOJIS: Record<string, string> = {
   'narrow': '<:narrow:1454615571730534400>',
   'narrow arrow': '<:narrow:1454615571730534400>',
@@ -20,7 +19,6 @@ const ARROW_EMOJIS: Record<string, string> = {
 };
 
 function formatTime(seconds: number): string {
-  // Always display in seconds format (e.g., 101.234s)
   return `${seconds.toFixed(3)}s`;
 }
 
@@ -67,7 +65,6 @@ async function sendDiscordNotification(
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Check if already notified
     const { data: existing } = await supabase
       .from('discord_notifications')
       .select('id')
@@ -75,21 +72,14 @@ async function sendDiscordNotification(
       .eq('completion_id', String(completion.run_id))
       .maybeSingle();
 
-    if (existing) {
-      console.log(`Discord notification already sent for run ${completion.run_id}`);
-      return;
-    }
+    if (existing) return;
 
-    // Build the Discord message
     const arrowEmoji = getArrowEmoji(completion.arrow_name);
     const action = completion.is_verifier ? 'verified' : 'completed';
     const formattedTime = formatTime(completion.completion_time);
     
     const message = `${arrowEmoji}**${completion.username}** ${action} **#${completion.level_rank} ${completion.level_name || 'Unknown Level'}** in **${formattedTime}**`;
 
-    console.log('Sending Discord message:', message);
-
-    // Send to Discord
     const discordResponse = await fetch(DISCORD_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -97,15 +87,11 @@ async function sendDiscordNotification(
     });
 
     if (!discordResponse.ok) {
-      const errorText = await discordResponse.text();
-      console.error('Discord webhook failed:', discordResponse.status, errorText);
+      console.error('Discord webhook failed:', discordResponse.status);
       return;
     }
 
-    console.log('Discord message sent successfully for', completion.username);
-
-    // Record the notification
-    const { error: insertError } = await supabase
+    await supabase
       .from('discord_notifications')
       .insert({
         completion_type: 'completion',
@@ -113,18 +99,140 @@ async function sendDiscordNotification(
         profile_id: completion.profile_id,
         level_id: completion.level_db_id,
       });
-    
-    if (insertError) {
-      console.error('Error recording notification:', insertError);
-    }
-
   } catch (error) {
     console.error('Error sending Discord notification:', error);
   }
 }
 
+// Merge sourceProfile into targetProfile: transfer all data, update username references, delete source
+async function mergeProfiles(
+  supabase: ReturnType<typeof createClient>,
+  sourceProfileId: string,
+  targetProfileId: string,
+  newUsername: string,
+  oldUsername: string
+): Promise<void> {
+  console.log(`Merging profile ${oldUsername} (${sourceProfileId}) -> ${newUsername} (${targetProfileId})`);
+
+  // Transfer completions (skip duplicates by level_id)
+  const { data: targetCompletions } = await supabase
+    .from("completions")
+    .select("level_id")
+    .eq("profile_id", targetProfileId);
+  const targetLevelIds = new Set((targetCompletions || []).map(c => c.level_id));
+
+  const { data: sourceCompletions } = await supabase
+    .from("completions")
+    .select("id, level_id")
+    .eq("profile_id", sourceProfileId);
+
+  if (sourceCompletions) {
+    for (const sc of sourceCompletions) {
+      if (!targetLevelIds.has(sc.level_id)) {
+        await supabase.from("completions").update({ profile_id: targetProfileId }).eq("id", sc.id);
+      } else {
+        await supabase.from("completions").delete().eq("id", sc.id);
+      }
+    }
+  }
+
+  // Transfer extra_completions (skip duplicates by level_id)
+  const { data: targetExtra } = await supabase
+    .from("extra_completions")
+    .select("level_id")
+    .eq("profile_id", targetProfileId);
+  const targetExtraIds = new Set((targetExtra || []).map(c => c.level_id));
+
+  const { data: sourceExtra } = await supabase
+    .from("extra_completions")
+    .select("id, level_id")
+    .eq("profile_id", sourceProfileId);
+
+  if (sourceExtra) {
+    for (const se of sourceExtra) {
+      if (!targetExtraIds.has(se.level_id)) {
+        await supabase.from("extra_completions").update({ profile_id: targetProfileId }).eq("id", se.id);
+      } else {
+        await supabase.from("extra_completions").delete().eq("id", se.id);
+      }
+    }
+  }
+
+  // Transfer manual_runs (skip duplicates by level_id+list_type)
+  const { data: targetManual } = await supabase
+    .from("manual_runs")
+    .select("level_id, list_type")
+    .eq("profile_id", targetProfileId);
+  const targetManualKeys = new Set((targetManual || []).map(m => `${m.level_id}:${m.list_type}`));
+
+  const { data: sourceManual } = await supabase
+    .from("manual_runs")
+    .select("id, level_id, list_type")
+    .eq("profile_id", sourceProfileId);
+
+  if (sourceManual) {
+    for (const sm of sourceManual) {
+      if (!targetManualKeys.has(`${sm.level_id}:${sm.list_type}`)) {
+        await supabase.from("manual_runs").update({ profile_id: targetProfileId }).eq("id", sm.id);
+      } else {
+        await supabase.from("manual_runs").delete().eq("id", sm.id);
+      }
+    }
+  }
+
+  // Transfer verifier references
+  await supabase.from("levels").update({ verifier_profile_id: targetProfileId }).eq("verifier_profile_id", sourceProfileId);
+  await supabase.from("extended_levels").update({ verifier_profile_id: targetProfileId }).eq("verifier_profile_id", sourceProfileId);
+
+  // Transfer discord notifications
+  await supabase.from("discord_notifications").update({ profile_id: targetProfileId }).eq("profile_id", sourceProfileId);
+
+  // Transfer claim requests
+  await supabase.from("profile_claim_requests").update({ profile_id: targetProfileId }).eq("profile_id", sourceProfileId);
+
+  // Update username on target profile
+  await supabase.from("profiles").update({ username: newUsername }).eq("id", targetProfileId);
+
+  // Update author/creators fields on levels
+  await supabase.from("levels").update({ author: newUsername }).eq("author", oldUsername);
+  await supabase.from("extended_levels").update({ author: newUsername }).eq("author", oldUsername);
+
+  // Note: array_replace for creators is not available via the JS client,
+  // so we fetch and update manually
+  const { data: levelsWithCreator } = await supabase
+    .from("levels")
+    .select("id, creators")
+    .contains("creators", [oldUsername]);
+  if (levelsWithCreator) {
+    for (const l of levelsWithCreator) {
+      const updated = (l.creators || []).map((c: string) => c === oldUsername ? newUsername : c);
+      await supabase.from("levels").update({ creators: updated }).eq("id", l.id);
+    }
+  }
+  const { data: extLevelsWithCreator } = await supabase
+    .from("extended_levels")
+    .select("id, creators")
+    .contains("creators", [oldUsername]);
+  if (extLevelsWithCreator) {
+    for (const l of extLevelsWithCreator) {
+      const updated = (l.creators || []).map((c: string) => c === oldUsername ? newUsername : c);
+      await supabase.from("extended_levels").update({ creators: updated }).eq("id", l.id);
+    }
+  }
+
+  // Delete source profile
+  // First clean up any remaining references
+  await supabase.from("completions").delete().eq("profile_id", sourceProfileId);
+  await supabase.from("extra_completions").delete().eq("profile_id", sourceProfileId);
+  await supabase.from("manual_runs").delete().eq("profile_id", sourceProfileId);
+  await supabase.from("discord_notifications").delete().eq("profile_id", sourceProfileId);
+  await supabase.from("profile_claim_requests").delete().eq("profile_id", sourceProfileId);
+  await supabase.from("profiles").delete().eq("id", sourceProfileId);
+
+  console.log(`Merged: ${oldUsername} -> ${newUsername}, deleted source profile`);
+}
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -136,23 +244,15 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get all levels from database
     const { data: levels, error: levelsError } = await supabase
       .from("levels")
       .select("id, level_id, name, points, rank_position, verifier_profile_id, alternative_ids")
       .order("rank_position", { ascending: true });
 
-    if (levelsError) {
-      console.error("Error fetching levels:", levelsError);
-      throw levelsError;
-    }
-
+    if (levelsError) throw levelsError;
     if (!levels || levels.length === 0) {
-      console.log("No levels found in database");
-      return new Response(
-        JSON.stringify({ message: "No levels to sync" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ message: "No levels to sync" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     console.log(`Found ${levels.length} levels to sync`);
@@ -160,54 +260,34 @@ Deno.serve(async (req) => {
     let totalNewCompletions = 0;
     const newCompletions: NewCompletion[] = [];
 
-    // Process each level
     for (const level of levels as DbLevel[]) {
-      console.log(`Processing level: ${level.level_id}`);
-
-      // Collect all level IDs to fetch (main + alternatives)
       const levelIdsToFetch = [level.level_id, ...(level.alternative_ids || [])];
-      
-      // Track oldest completion for this level (across main and alternatives)
       let oldestCompletion: { profile_id: string; completed_at: string } | null = null;
 
       for (const currentLevelId of levelIdsToFetch) {
         try {
-          // Fetch leaderboard from external API
           const response = await fetch(`${API_BASE}/leaderboard?levelId=${currentLevelId}`);
-          
           if (!response.ok) {
             console.error(`Failed to fetch leaderboard for ${currentLevelId}: ${response.status}`);
             continue;
           }
 
           const leaderboard: LeaderboardEntry[] = await response.json();
-          
-          if (currentLevelId === level.level_id) {
-            console.log(`Found ${leaderboard.length} entries for main level ${level.level_id}`);
-          } else {
-            console.log(`Found ${leaderboard.length} entries for alternative ${currentLevelId} -> main ${level.level_id}`);
-          }
+          console.log(`Found ${leaderboard.length} entries for ${currentLevelId}`);
 
-          // Process each completion
           for (const entry of leaderboard) {
-            // Get or create profile
-            let { data: profile, error: profileError } = await supabase
+            // Look up profile by current API username
+            let { data: profile } = await supabase
               .from("profiles")
-              .select("id, user_id")
+              .select("id, user_id, username")
               .eq("username", entry.username)
               .maybeSingle();
 
-            if (profileError) {
-              console.error(`Error fetching profile for ${entry.username}:`, profileError);
-              continue;
-            }
-
-            // Create profile if it doesn't exist
             if (!profile) {
               const { data: newProfile, error: createError } = await supabase
                 .from("profiles")
                 .insert({ username: entry.username })
-                .select("id, user_id")
+                .select("id, user_id, username")
                 .single();
 
               if (createError) {
@@ -218,18 +298,17 @@ Deno.serve(async (req) => {
               console.log(`Created new profile for ${entry.username}`);
             }
 
-            // Check if completion already exists for this run
-            const { data: existingCompletion } = await supabase
+            // Check if this run_id already exists - use .limit(1) to handle duplicates safely
+            const { data: existingRuns } = await supabase
               .from("completions")
               .select("id, completed_at, profile_id")
               .eq("run_id", entry.run_id)
-              .maybeSingle();
+              .limit(1);
 
-            let completedAt = existingCompletion?.completed_at;
+            const existingCompletion = existingRuns && existingRuns.length > 0 ? existingRuns[0] : null;
 
-            // Handle username changes - if run exists but profile username differs
+            // Handle username changes: run exists but under a different profile
             if (existingCompletion && existingCompletion.profile_id !== profile.id) {
-              // Fetch the existing profile to check username
               const { data: existingProfile } = await supabase
                 .from("profiles")
                 .select("id, username, user_id")
@@ -237,56 +316,32 @@ Deno.serve(async (req) => {
                 .maybeSingle();
 
               if (existingProfile && existingProfile.username !== entry.username) {
-                // User changed their in-game username
-                // Check if the new username profile is unclaimed (no user_id)
-                if (!profile.user_id) {
-                  // The new profile is unclaimed - we should merge them
-                  // Update all completions from the new empty profile to the old profile
-                  await supabase
-                    .from("completions")
-                    .update({ profile_id: existingProfile.id })
-                    .eq("profile_id", profile.id);
+                // Username changed! Determine which profile to keep.
+                // Keep the one with user_id (claimed), or the one with more data
+                const keepProfile = existingProfile.user_id ? existingProfile : 
+                                    profile.user_id ? profile : existingProfile;
+                const deleteProfile = keepProfile.id === existingProfile.id ? profile : existingProfile;
+                const oldUsername = deleteProfile.username;
 
-                  // Update all manual_runs from the new profile to the old profile
-                  await supabase
-                    .from("manual_runs")
-                    .update({ profile_id: existingProfile.id })
-                    .eq("profile_id", profile.id);
-
-                  // Update the old profile's username to the new one
-                  await supabase
-                    .from("profiles")
-                    .update({ username: entry.username })
-                    .eq("id", existingProfile.id);
-
-                  // Delete the duplicate empty profile if it has no completions
-                  const { data: profileCompletions } = await supabase
-                    .from("completions")
-                    .select("id")
-                    .eq("profile_id", profile.id)
-                    .limit(1);
-
-                  if (!profileCompletions || profileCompletions.length === 0) {
-                    await supabase
-                      .from("profiles")
-                      .delete()
-                      .eq("id", profile.id);
-                    console.log(`Merged duplicate profile ${entry.username} into existing profile, deleted empty duplicate`);
-                  } else {
-                    console.log(`Updated username from ${existingProfile.username} to ${entry.username}`);
-                  }
-
-                  // Use the existing profile going forward
-                  profile = { id: existingProfile.id, user_id: existingProfile.user_id };
-                } else {
-                  console.log(`Username change detected but new profile is claimed, skipping merge for ${entry.username}`);
+                if (keepProfile.id !== deleteProfile.id) {
+                  await mergeProfiles(supabase, deleteProfile.id, keepProfile.id, entry.username, oldUsername);
+                  // Update our reference to point to the kept profile
+                  profile = { id: keepProfile.id, user_id: keepProfile.user_id, username: entry.username };
                 }
               }
-              continue; // Skip - completion already exists
+              continue;
+            }
+
+            // Also clean up duplicate run_ids (same run_id, multiple rows)
+            if (existingRuns && existingRuns.length > 1) {
+              // Keep only the first, delete the rest
+              for (let i = 1; i < existingRuns.length; i++) {
+                await supabase.from("completions").delete().eq("id", existingRuns[i].id);
+              }
             }
 
             if (!existingCompletion) {
-              // Also check if this profile already has a completion for this level (from main or any alternative)
+              // Check if profile already has a completion for this level
               const { data: existingLevelCompletion } = await supabase
                 .from("completions")
                 .select("id")
@@ -294,31 +349,25 @@ Deno.serve(async (req) => {
                 .eq("level_id", level.id)
                 .maybeSingle();
 
-              if (existingLevelCompletion) {
-                // Profile already has a completion for this level, skip
-                continue;
-              }
+              if (existingLevelCompletion) continue;
 
-              // Fetch run details to get the actual completion date
-              completedAt = new Date().toISOString();
+              // Fetch run details for completion date
+              let completedAt = new Date().toISOString();
               try {
                 const runResponse = await fetch(`${API_BASE}/runs/${entry.run_id}`);
                 if (runResponse.ok) {
                   const runDetails = await runResponse.json();
-                  if (runDetails.finishedAt) {
-                    completedAt = runDetails.finishedAt;
-                  }
+                  if (runDetails.finishedAt) completedAt = runDetails.finishedAt;
                 }
               } catch (runError) {
                 console.error(`Error fetching run details for ${entry.run_id}:`, runError);
               }
 
-              // Insert new completion - always link to main level ID
               const { error: insertError } = await supabase
                 .from("completions")
                 .insert({
                   profile_id: profile.id,
-                  level_id: level.id, // Always use main level's DB ID
+                  level_id: level.id,
                   run_id: entry.run_id,
                   completion_time: entry.completion_time,
                   arrow_name: entry.arrow_name,
@@ -326,41 +375,29 @@ Deno.serve(async (req) => {
                 });
 
               if (insertError) {
-                if (insertError.code === '23505') {
-                  // Duplicate, skip
-                  continue;
-                }
+                if (insertError.code === '23505') continue;
                 console.error(`Error inserting completion:`, insertError);
                 continue;
               }
 
               totalNewCompletions++;
-              if (currentLevelId === level.level_id) {
-                console.log(`Added completion: ${entry.username} on ${level.level_id}`);
-              } else {
-                console.log(`Added completion: ${entry.username} on alt ${currentLevelId} -> main ${level.level_id}`);
-              }
+              console.log(`Added completion: ${entry.username} on ${level.level_id}`);
 
-              // Track new completion for Discord notification
-              // Check if this is the first completion for this level (verifier)
-              // We need to check all existing completions for this level
               const { data: existingCompletions } = await supabase
                 .from("completions")
                 .select("id")
                 .eq("level_id", level.id)
                 .limit(2);
-              
-              // Also check manual runs for verifier
+
               const { data: manualVerifierRun } = await supabase
                 .from("manual_runs")
                 .select("id")
                 .eq("level_id", level.id)
                 .eq("is_verifier", true)
                 .limit(1);
-              
-              // Only mark as verifier if this is the very first completion and no manual verifier exists
+
               const isVerifier = !manualVerifierRun?.length && (!existingCompletions || existingCompletions.length === 1);
-              
+
               newCompletions.push({
                 profile_id: profile.id,
                 username: entry.username,
@@ -372,12 +409,17 @@ Deno.serve(async (req) => {
                 run_id: entry.run_id,
                 is_verifier: isVerifier,
               });
-            }
 
-            // Track oldest completion for this level (for verifier)
-            if (completedAt) {
+              // Track oldest completion
               if (!oldestCompletion || new Date(completedAt) < new Date(oldestCompletion.completed_at)) {
                 oldestCompletion = { profile_id: profile.id, completed_at: completedAt };
+              }
+            } else {
+              // Existing completion - track for verifier
+              if (existingCompletion.completed_at) {
+                if (!oldestCompletion || new Date(existingCompletion.completed_at) < new Date(oldestCompletion.completed_at)) {
+                  oldestCompletion = { profile_id: profile.id, completed_at: existingCompletion.completed_at };
+                }
               }
             }
           }
@@ -387,121 +429,43 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Check if there's a manual run marked as verifier for this level
+      // Update verifier
       const { data: manualVerifier } = await supabase
         .from("manual_runs")
-        .select("profile_id, completed_at")
+        .select("profile_id")
         .eq("level_id", level.id)
         .eq("is_verifier", true)
         .limit(1)
         .maybeSingle();
 
-      // Determine verifier: manual run verifier takes priority, otherwise oldest completion
-      let verifierProfileId: string | null = null;
-      
-      if (manualVerifier) {
-        verifierProfileId = manualVerifier.profile_id;
-        console.log(`Level ${level.level_id}: Using manual verifier ${manualVerifier.profile_id}`);
-      } else if (oldestCompletion) {
-        verifierProfileId = oldestCompletion.profile_id;
-        console.log(`Level ${level.level_id}: Using oldest completion as verifier ${oldestCompletion.profile_id}`);
-      }
+      const verifierProfileId = manualVerifier?.profile_id || oldestCompletion?.profile_id || null;
 
-      // Update level's verifier_profile_id if different
       if (verifierProfileId && verifierProfileId !== level.verifier_profile_id) {
-        const { error: updateError } = await supabase
-          .from("levels")
-          .update({ verifier_profile_id: verifierProfileId })
-          .eq("id", level.id);
-        
-        if (updateError) {
-          console.error(`Error updating verifier for ${level.level_id}:`, updateError);
-        } else {
-          console.log(`Updated verifier for ${level.level_id} to ${verifierProfileId}`);
-        }
+        await supabase.from("levels").update({ verifier_profile_id: verifierProfileId }).eq("id", level.id);
+        console.log(`Updated verifier for ${level.level_id}`);
       }
     }
 
-    // Update profile total points
-    console.log("Updating profile total points...");
-    
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, username");
-
+    // Recalculate points for all profiles using DB function
+    const { data: profiles } = await supabase.from("profiles").select("id");
     if (profiles) {
       for (const profile of profiles) {
-        // Get all unique level completions for this profile from both completions and manual_runs
-        const { data: completions } = await supabase
-          .from("completions")
-          .select("level_id, levels(points)")
-          .eq("profile_id", profile.id);
-
-        const { data: manualRuns } = await supabase
-          .from("manual_runs")
-          .select("level_id, levels(points)")
-          .eq("profile_id", profile.id);
-
-        // Sum up points from unique levels
-        const uniqueLevels = new Set<string>();
-        let totalPoints = 0;
-        
-        // Process regular completions
-        if (completions) {
-          for (const completion of completions) {
-            if (!uniqueLevels.has(completion.level_id)) {
-              uniqueLevels.add(completion.level_id);
-              const levelsData = completion.levels;
-              if (levelsData && typeof levelsData === "object") {
-                const points = Array.isArray(levelsData) 
-                  ? (levelsData[0] as { points?: number })?.points 
-                  : (levelsData as { points?: number }).points;
-                if (typeof points === "number") {
-                  totalPoints += points;
-                }
-              }
-            }
-          }
-        }
-
-        // Process manual runs
-        if (manualRuns) {
-          for (const run of manualRuns) {
-            if (!uniqueLevels.has(run.level_id)) {
-              uniqueLevels.add(run.level_id);
-              const levelsData = run.levels;
-              if (levelsData && typeof levelsData === "object") {
-                const points = Array.isArray(levelsData) 
-                  ? (levelsData[0] as { points?: number })?.points 
-                  : (levelsData as { points?: number }).points;
-                if (typeof points === "number") {
-                  totalPoints += points;
-                }
-              }
-            }
-          }
-        }
-
-        await supabase
-          .from("profiles")
-          .update({ total_points: totalPoints })
-          .eq("id", profile.id);
+        await supabase.rpc("recalculate_player_points", { player_profile_id: profile.id });
       }
     }
 
-    // Send Discord notifications for new completions
-    console.log(`Sending Discord notifications for ${newCompletions.length} new completions...`);
+    // Send Discord notifications
+    console.log(`Sending ${newCompletions.length} Discord notifications...`);
     for (const completion of newCompletions) {
       await sendDiscordNotification(supabaseUrl, supabaseKey, completion);
-      // Small delay to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     console.log(`Sync complete. Added ${totalNewCompletions} new completions.`);
 
     return new Response(
-      JSON.stringify({ 
-        message: "Sync complete", 
+      JSON.stringify({
+        message: "Sync complete",
         newCompletions: totalNewCompletions,
         levelsProcessed: levels.length,
         discordNotificationsSent: newCompletions.length,
