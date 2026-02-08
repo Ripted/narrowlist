@@ -143,7 +143,11 @@ export default function GuidePage() {
                     <List className="w-4 h-4" />
                     Main List
                   </Button>
-                  <Button onClick={() => navigate("/extra")} variant="secondary" className="gap-2">
+                  <Button onClick={() => navigate("/extended-list")} variant="secondary" className="gap-2">
+                    <Target className="w-4 h-4" />
+                    Extended List
+                  </Button>
+                  <Button onClick={() => navigate("/extra-list")} variant="secondary" className="gap-2">
                     <ListPlus className="w-4 h-4" />
                     Extra List
                   </Button>
@@ -166,20 +170,26 @@ export default function GuidePage() {
               <FeatureCard 
                 icon={List}
                 title="Main List"
-                description="Browse the official ranked levels sorted by difficulty. Each level awards points based on its position."
+                description="The top 100 hardest levels in Narrow Arrow. Each level awards points based on its ranking position."
                 onClick={() => navigate("/")}
+              />
+              <FeatureCard 
+                icon={Target}
+                title="Extended List"
+                description="Levels ranked 101+ that extend the main list. Notable levels that don't quite make the top 100. No points awarded."
+                onClick={() => navigate("/extended-list")}
               />
               <FeatureCard 
                 icon={Clock}
                 title="Future List"
                 description="Preview upcoming levels that will be added to the main list. Get ready for new challenges!"
-                onClick={() => navigate("/future")}
+                onClick={() => navigate("/future-list")}
               />
               <FeatureCard 
                 icon={ListPlus}
                 title="Extra List"
-                description="Levels that used to be on the main list. Ranked separately with Extra Points awarded."
-                onClick={() => navigate("/extra")}
+                description="Levels that don't meet main list standards. Ranked separately with their own Extra Points system."
+                onClick={() => navigate("/extra-list")}
               />
               <FeatureCard 
                 icon={Trophy}
@@ -215,7 +225,7 @@ export default function GuidePage() {
                 icon={Medal}
                 title="Recent Runs"
                 description="See the latest completions from all players in real-time."
-                onClick={() => navigate("/recent-runs")}
+                onClick={() => navigate("/recent")}
               />
             </div>
           </TabsContent>
@@ -231,20 +241,23 @@ export default function GuidePage() {
                     Main List Points
                   </CardTitle>
                   <CardDescription>
-                    Points awarded based on a level's difficulty ranking
+                    Points awarded based on a level's ranking in the top 100
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    <PointsRow rank="#1 (Hardest)" points={30} highlight />
+                    <PointsRow rank="#1 (Hardest)" points={28} highlight />
                     <PointsRow rank="#2" points={24} />
-                    <PointsRow rank="#3" points={20} />
-                    <PointsRow rank="#4" points={16} />
-                    <PointsRow rank="#5" points={13} />
-                    <PointsRow rank="#6 - #10" points={9} />
-                    <PointsRow rank="#11 - #25" points={6} />
-                    <PointsRow rank="#26 - #50" points={2} />
-                    <PointsRow rank="#51+" points={1} />
+                    <PointsRow rank="#3" points={21} />
+                    <PointsRow rank="#4" points={18} />
+                    <PointsRow rank="#5" points={16} />
+                    <PointsRow rank="#6 - #10" points={13} />
+                    <PointsRow rank="#11 - #20" points={10} />
+                    <PointsRow rank="#21 - #30" points={7} />
+                    <PointsRow rank="#31 - #50" points={4} />
+                    <PointsRow rank="#51 - #70" points={2} />
+                    <PointsRow rank="#71 - #100" points={1} />
+                    <PointsRow rank="#101+ (Extended)" points={0} />
                   </div>
                   <Button 
                     onClick={() => navigate("/")} 
@@ -265,22 +278,22 @@ export default function GuidePage() {
                     Extra List Points
                   </CardTitle>
                   <CardDescription>
-                    Extra Points tracked separately from Main List points
+                    Separate points for levels that don't meet main list standards
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
                     <PointsRow rank="#1 (Hardest)" points={10} highlight />
                     <PointsRow rank="#2" points={8} />
-                    <PointsRow rank="#3" points={6} />
-                    <PointsRow rank="#4" points={5} />
-                    <PointsRow rank="#5" points={4} />
+                    <PointsRow rank="#3" points={7} />
+                    <PointsRow rank="#4" points={6} />
+                    <PointsRow rank="#5" points={5} />
                     <PointsRow rank="#6 - #10" points={3} />
                     <PointsRow rank="#11 - #25" points={2} />
                     <PointsRow rank="#26+" points={1} />
                   </div>
                   <Button 
-                    onClick={() => navigate("/extra")} 
+                    onClick={() => navigate("/extra-list")} 
                     variant="outline" 
                     className="w-full mt-4 gap-2"
                   >
@@ -298,10 +311,12 @@ export default function GuidePage() {
                     <Zap className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-display font-semibold mb-1">Pro Tip</h3>
+                    <h3 className="font-display font-semibold mb-1">How the Lists Work</h3>
                     <p className="text-muted-foreground">
-                      Focus on completing the hardest levels you can manage to maximize your points. 
-                      A single #1 completion is worth 30 points - that's as much as 30 levels ranked #51 or below!
+                      <strong>Main List</strong> (top 100): The 100 hardest levels, awarding points based on rank.{' '}
+                      <strong>Extended List</strong> (101+): Hard levels that extend the main ranking but award no points.{' '}
+                      <strong>Extra List</strong>: Separate list for levels that don't meet main list standards, with their own point system.{' '}
+                      <strong>Future List</strong>: Upcoming levels not yet ranked.
                     </p>
                   </div>
                 </div>

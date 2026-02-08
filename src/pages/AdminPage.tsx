@@ -199,13 +199,6 @@ interface WebhookSettings {
   webhook_type: string;
   webhook_url: string;
   enabled: boolean;
-  include_completions: boolean;
-  include_verifications: boolean;
-  include_rank_changes: boolean;
-  include_future_levels: boolean;
-  include_level_additions: boolean;
-  include_level_deletions: boolean;
-  format_style: string;
   custom_message_template: string | null;
 }
 
@@ -1404,15 +1397,18 @@ export default function AdminPage() {
   };
 
   const calculatePoints = (rank: number): number => {
-    if (rank === 1) return 30;
+    if (rank === 1) return 28;
     if (rank === 2) return 24;
-    if (rank === 3) return 20;
-    if (rank === 4) return 16;
-    if (rank === 5) return 13;
-    if (rank >= 6 && rank <= 10) return 9;
-    if (rank >= 11 && rank <= 25) return 6;
-    if (rank >= 26 && rank <= 50) return 2;
-    return 1;
+    if (rank === 3) return 21;
+    if (rank === 4) return 18;
+    if (rank === 5) return 16;
+    if (rank >= 6 && rank <= 10) return 13;
+    if (rank >= 11 && rank <= 20) return 10;
+    if (rank >= 21 && rank <= 30) return 7;
+    if (rank >= 31 && rank <= 50) return 4;
+    if (rank >= 51 && rank <= 70) return 2;
+    if (rank >= 71 && rank <= 100) return 1;
+    return 0; // 101+ (Extended List)
   };
 
   // Filtered and paginated data
@@ -4178,173 +4174,105 @@ export default function AdminPage() {
                     Discord Webhook Settings
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Configure Discord notifications for completions and admin actions
+                    Configure individual Discord webhooks for each event type with customizable message templates
                   </p>
                 </div>
 
                 <div className="p-4 space-y-6">
-                  {webhookSettings.map((webhook) => (
-                    <div key={webhook.id} className="p-4 bg-secondary/30 rounded-lg space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${webhook.webhook_type === 'completions' ? 'bg-primary/20' : 'bg-accent/20'}`}>
-                            {webhook.webhook_type === 'completions' ? (
-                              <Play className="w-5 h-5 text-primary" />
-                            ) : (
-                              <Settings className="w-5 h-5 text-accent" />
-                            )}
+                  {webhookSettings.map((webhook) => {
+                    const typeLabels: Record<string, { label: string; description: string; icon: React.ReactNode }> = {
+                      main_completions: { label: 'Main List Completions', description: 'Completions & verifications on the main list (ranks 1-100)', icon: <Play className="w-5 h-5 text-primary" /> },
+                      extended_completions: { label: 'Extended List Completions', description: 'Completions on levels ranked 101+', icon: <List className="w-5 h-5 text-accent" /> },
+                      extra_completions: { label: 'Extra List Completions', description: 'Completions on Extra List levels', icon: <ListCollapse className="w-5 h-5 text-accent" /> },
+                      rank_changes: { label: 'Rank Changes & Admin Actions', description: 'Level rank changes, additions, deletions, transfers', icon: <Settings className="w-5 h-5 text-accent" /> },
+                    };
+                    const info = typeLabels[webhook.webhook_type] || { label: webhook.webhook_type, description: '', icon: <Bell className="w-5 h-5" /> };
+                    
+                    return (
+                      <div key={webhook.id} className="p-4 bg-secondary/30 rounded-lg space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/20">
+                              {info.icon}
+                            </div>
+                            <div>
+                              <h3 className="font-display font-semibold">{info.label}</h3>
+                              <p className="text-xs text-muted-foreground">{info.description}</p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-display font-semibold capitalize">
-                              {webhook.webhook_type === 'completions' ? 'Completions Webhook' : 'Admin Actions Webhook'}
-                            </h3>
-                            <p className="text-xs text-muted-foreground">
-                              {webhook.webhook_type === 'completions' 
-                                ? 'Notifies about new completions and verifications' 
-                                : 'Notifies about rank changes, level additions, and more'}
-                            </p>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-1 rounded ${webhook.enabled ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}`}>
+                              {webhook.enabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant={webhook.enabled ? "outline" : "default"}
+                              onClick={() => updateWebhookSetting(webhook.id, { enabled: !webhook.enabled })}
+                              disabled={savingWebhook === webhook.id}
+                            >
+                              {webhook.enabled ? 'Disable' : 'Enable'}
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs px-2 py-1 rounded ${webhook.enabled ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}`}>
-                            {webhook.enabled ? 'Enabled' : 'Disabled'}
-                          </span>
-                          <Button
-                            size="sm"
-                            variant={webhook.enabled ? "outline" : "default"}
-                            onClick={() => updateWebhookSetting(webhook.id, { enabled: !webhook.enabled })}
-                            disabled={savingWebhook === webhook.id}
-                          >
-                            {webhook.enabled ? 'Disable' : 'Enable'}
-                          </Button>
-                        </div>
-                      </div>
 
-                      <div className="space-y-3">
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Webhook URL</Label>
-                          <Input
-                            value={webhook.webhook_url}
-                            onChange={(e) => updateWebhookSetting(webhook.id, { webhook_url: e.target.value })}
-                            className="mt-1 bg-background border-border text-xs font-mono"
-                            placeholder="https://discord.com/api/webhooks/..."
-                          />
-                        </div>
-
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Message Format</Label>
-                          <Select
-                            value={webhook.format_style}
-                            onValueChange={(value) => updateWebhookSetting(webhook.id, { format_style: value })}
-                          >
-                            <SelectTrigger className="mt-1 bg-background border-border">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="formal">Formal (detailed with formatting)</SelectItem>
-                              <SelectItem value="casual">Casual (one-line messages)</SelectItem>
-                              <SelectItem value="minimal">Minimal (shortest format)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Custom Message Template for admin webhook */}
-                        {webhook.webhook_type === 'admin' && (
+                        <div className="space-y-3">
                           <div>
-                            <Label className="text-xs text-muted-foreground">Custom Message Template (optional)</Label>
+                            <Label className="text-xs text-muted-foreground">Webhook URL</Label>
+                            <Input
+                              value={webhook.webhook_url}
+                              onChange={(e) => updateWebhookSetting(webhook.id, { webhook_url: e.target.value })}
+                              className="mt-1 bg-background border-border text-xs font-mono"
+                              placeholder="https://discord.com/api/webhooks/..."
+                            />
+                          </div>
+
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Message Template</Label>
                             <Textarea
                               value={webhook.custom_message_template || ""}
                               onChange={(e) => updateWebhookSetting(webhook.id, { custom_message_template: e.target.value || null })}
                               className="mt-1 bg-background border-border text-xs font-mono min-h-[80px]"
-                              placeholder="Leave empty to use default format. Example: [emoji] **[levelName]** moved from #[oldRank] to #[newRank]"
+                              placeholder="Enter a message template using variables below..."
                             />
                             <div className="mt-2 p-3 bg-muted/50 rounded-lg">
                               <Label className="text-xs text-muted-foreground block mb-2">Available Variables:</Label>
                               <div className="grid grid-cols-2 gap-1 text-xs">
-                                <span className="font-mono text-primary">[levelName]</span>
-                                <span className="text-muted-foreground">Level name</span>
-                                <span className="font-mono text-primary">[oldRank]</span>
-                                <span className="text-muted-foreground">Previous rank</span>
-                                <span className="font-mono text-primary">[newRank]</span>
-                                <span className="text-muted-foreground">New rank</span>
-                                <span className="font-mono text-primary">[eventType]</span>
-                                <span className="text-muted-foreground">Event type</span>
-                                <span className="font-mono text-primary">[emoji]</span>
-                                <span className="text-muted-foreground">Auto emoji based on event</span>
+                                {webhook.webhook_type.includes('completions') ? (
+                                  <>
+                                    <span className="font-mono text-primary">{'{user}'}</span>
+                                    <span className="text-muted-foreground">Player username</span>
+                                    <span className="font-mono text-primary">{'{levelName}'}</span>
+                                    <span className="text-muted-foreground">Level name</span>
+                                    <span className="font-mono text-primary">{'{levelRank}'}</span>
+                                    <span className="text-muted-foreground">Level rank position</span>
+                                    <span className="font-mono text-primary">{'{completionTime}'}</span>
+                                    <span className="text-muted-foreground">Formatted time</span>
+                                    <span className="font-mono text-primary">{'{arrow}'}</span>
+                                    <span className="text-muted-foreground">Arrow emoji</span>
+                                    <span className="font-mono text-primary">{'{action}'}</span>
+                                    <span className="text-muted-foreground">"completed" or "verified"</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="font-mono text-primary">{'{levelName}'}</span>
+                                    <span className="text-muted-foreground">Level name</span>
+                                    <span className="font-mono text-primary">{'{oldRank}'}</span>
+                                    <span className="text-muted-foreground">Previous rank</span>
+                                    <span className="font-mono text-primary">{'{newRank}'}</span>
+                                    <span className="text-muted-foreground">New rank</span>
+                                    <span className="font-mono text-primary">{'{emoji}'}</span>
+                                    <span className="text-muted-foreground">Auto emoji based on event</span>
+                                    <span className="font-mono text-primary">{'{listType}'}</span>
+                                    <span className="text-muted-foreground">Main, Extended, or Extra</span>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
-                        )}
-
-                        <div className="pt-2">
-                          <Label className="text-xs text-muted-foreground mb-2 block">Event Types</Label>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            {webhook.webhook_type === 'completions' ? (
-                              <>
-                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={webhook.include_completions}
-                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_completions: e.target.checked })}
-                                    className="rounded"
-                                  />
-                                  Completions
-                                </label>
-                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={webhook.include_verifications}
-                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_verifications: e.target.checked })}
-                                    className="rounded"
-                                  />
-                                  Verifications
-                                </label>
-                              </>
-                            ) : (
-                              <>
-                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={webhook.include_rank_changes}
-                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_rank_changes: e.target.checked })}
-                                    className="rounded"
-                                  />
-                                  Rank Changes
-                                </label>
-                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={webhook.include_future_levels}
-                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_future_levels: e.target.checked })}
-                                    className="rounded"
-                                  />
-                                  Future Levels
-                                </label>
-                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={webhook.include_level_additions}
-                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_level_additions: e.target.checked })}
-                                    className="rounded"
-                                  />
-                                  Level Additions
-                                </label>
-                                <label className="flex items-center gap-2 text-sm p-2 bg-background rounded cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    checked={webhook.include_level_deletions}
-                                    onChange={(e) => updateWebhookSetting(webhook.id, { include_level_deletions: e.target.checked })}
-                                    className="rounded"
-                                  />
-                                  Level Deletions
-                                </label>
-                              </>
-                            )}
-                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {webhookSettings.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">

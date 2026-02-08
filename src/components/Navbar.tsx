@@ -58,6 +58,7 @@ export function Navbar() {
 
   const mainNavItems = [
     { path: "/", label: "Main List", icon: List },
+    { path: "/extended-list", label: "Extended List", icon: List },
     { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
