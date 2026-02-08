@@ -64,7 +64,8 @@ const Index = () => {
   }, [allTags]);
 
   const filteredLevels = useMemo(() => {
-    let result = levels;
+    // Only show levels ranked 1-100 (Main List)
+    let result = levels.filter(l => l.rank <= 100);
     
     // Filter by search query
     if (searchQuery.trim()) {
@@ -98,7 +99,7 @@ const Index = () => {
   }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTag, allTags]);
 
   const maxPoints = useMemo(() => {
-    return levels.reduce((sum, level) => sum + (level.points || 0), 0);
+    return levels.filter(l => l.rank <= 100).reduce((sum, level) => sum + (level.points || 0), 0);
   }, [levels]);
 
   return (
