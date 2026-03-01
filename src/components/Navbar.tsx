@@ -58,7 +58,6 @@ export function Navbar() {
 
   const mainNavItems = [
     { path: "/", label: "Main List", icon: List },
-    { path: "/extended-list", label: "Extended List", icon: List },
     { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
@@ -68,6 +67,7 @@ export function Navbar() {
 
   const getMoreNavItems = () => {
     const items = [
+      { path: "/extended-list", label: "Extended List", icon: List },
       { path: "/extra-list", label: "Extra List", icon: List },
       { path: "/recent", label: "Recent Runs", icon: Activity },
       { path: "/compare", label: "Compare Players", icon: GitCompare },
