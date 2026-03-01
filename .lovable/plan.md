@@ -1,189 +1,152 @@
 
 
-# Extra List Rank Fix, New Point System, Extended List, and Webhook Overhaul
+# Final Version Plan: Narrowlist Polishing and Bug Fixes
 
 ## Overview
-
-This plan covers four major areas:
-1. Fix duplicate ranks in the Extra List (data cleanup + prevention)
-2. New Main List point system (top 100 only)
-3. Re-introduce the Extended List (ranks 101+, no points)
-4. Redesigned webhook system with per-event webhooks and customizable message templates
+This plan addresses all remaining issues to finalize the site: navigation changes, points system DB fix, admin panel improvements, resync overwrite protection, extended list admin tab, webhook template expansion, extra list rank deduplication, and data tracking.
 
 ---
 
-## 1. Fix Extra List Duplicate Ranks
+## 1. Move Extended List to Dropdown Menu
 
-**Current state:** The `extended_levels` table has duplicate ranks at positions 1, 2, 3, 4, 5, and 50. There are 55 total extra levels.
+**File:** `src/components/Navbar.tsx`
 
-**Data fix:** Run a SQL migration that re-ranks all 55 extra levels sequentially (ordered by current `rank_position` then `created_at`) so every rank is unique.
-
-**Prevention:** Add a UNIQUE constraint on `extended_levels.rank_position` so duplicates can never occur again. The same constraint should be verified on `levels.rank_position`.
+Move "Extended List" from `mainNavItems` into the `moreNavItems` array, positioned above "Extra List". The navbar main links will show: Main List, Future List, Leaderboard. The dropdown "More" menu will show: Extended List, Extra List, Recent Runs, Compare Players, etc.
 
 ---
 
-## 2. New Main List Point System
+## 2. Fix Points System (DB Function Mismatch)
 
-Update the point calculation everywhere it exists:
+**Current bug:** The database function `calculate_points_for_rank()` still uses OLD tiers (#1=30, #3=20, #6-10=9, etc.) while the frontend `calculatePoints()` uses the CORRECT new tiers (#1=28, #3=21, #6-10=13, etc.). This means displayed points look correct, but actual stored points in the DB are wrong.
 
-| Rank | Points |
-|------|--------|
-| #1 | 28 |
-| #2 | 24 |
-| #3 | 21 |
-| #4 | 18 |
-| #5 | 16 |
-| #6-10 | 13 |
-| #11-20 | 10 |
-| #21-30 | 7 |
-| #31-50 | 4 |
-| #51-70 | 2 |
-| #71-100 | 1 |
-
-The main list is capped at 100 levels. Currently there are 94 levels, so no truncation is needed yet.
-
-**Files to update:**
-- `src/config/levels.ts` - `getPointsForRank()` function
-- `src/pages/AdminPage.tsx` - `calculatePoints()` function
-- `src/pages/GuidePage.tsx` - Points table display
-- Database function `calculate_points_for_rank()` - the authoritative source
-
-After updating the DB function, run a migration to recalculate all level points and player total_points.
+**Fix:**
+- SQL migration to update `calculate_points_for_rank()` to match the new tiers:
+  - #1=28, #2=24, #3=21, #4=18, #5=16, #6-10=13, #11-20=10, #21-30=7, #31-50=4, #51-70=2, #71-100=1, 101+=0
+- Recalculate all level points: `UPDATE levels SET points = calculate_points_for_rank(rank_position)`
+- Recalculate all player total_points via `recalculate_player_points` for every profile
 
 ---
 
-## 3. Extended List (Ranks 101+)
+## 3. Fix Extra List Duplicate Ranks (Manual Data Fix)
 
-**Concept:** Levels that are not hard enough for the top 100 but still notable go into the "Extended List." This is a separate tab/page showing levels starting from rank 101. No points are awarded.
+**Current bug:** Multiple extra levels share ranks #2 (sixtuple ritf, ritf, matrix) and possibly others.
 
-**Implementation:**
-- Create a new database table `extension_levels` (or reuse a concept) -- actually, the simplest approach is to keep using the existing `levels` table but display levels with `rank_position > 100` in a separate "Extended List" page. This way ranking and management stays unified.
-- However, since the user wants it as a clearly separate list, and the `extended_levels` table already exists (currently used for "Extra List"), we need to be careful with naming.
+**Fix:** SQL migration to re-rank all `extended_levels` sequentially by current `rank_position` then `created_at`, ensuring unique ranks. The UNIQUE constraint on `rank_position` should already exist from a previous migration, but we'll verify and re-apply if needed.
 
-**Naming clarification:**
-- "Main List" = top 100 hardest levels (awards points)
-- "Extended List" = levels ranked 101+ that are hard but not top 100 (no points, extension of main list)
-- "Extra List" = levels that don't meet main list standards at all (awards Extra Points)
+---
 
-**Approach:** Use the `levels` table for both Main and Extended. Levels with `rank_position <= 100` are "Main List" and get points. Levels with `rank_position > 100` are "Extended List" and get 0 points. This keeps ranking unified -- moving a level from #99 to #101 naturally transitions it.
+## 4. Admin Panel - Extended List as Separate Tab
+
+**File:** `src/pages/AdminPage.tsx`
+
+Currently the `levels` tab in admin shows ALL levels from the `levels` table (both main list rank 1-100 and extended list rank 101+) but they're mixed together. 
 
 **Changes:**
-- Update `calculate_points_for_rank()` DB function to return 0 for rank > 100
-- Create a new page `src/pages/ExtendedListPage.tsx` that shows levels with rank > 100
-- Add route `/extended-list` in `App.tsx`
-- Add "Extended List" to navbar
-- The Index page filters to only show levels with rank <= 100
-- Admin panel continues to manage all levels in one unified list
+- Add a new "Extended" tab to the admin TabsList (between "Main" and "Future")
+- The "Main" tab filters to show only levels with `rank_position <= 100`
+- The "Extended" tab shows levels with `rank_position > 100`
+- The Extended tab should have the same controls: search, move up/down, edit, delete, transfer to Extra List
+- Moving levels between Main and Extended is just changing rank (e.g., moving last main list level to #101 makes it extended)
+- Add a "Move to Extended" button on main list items and "Move to Main" on extended items
+- Rank numbering is continuous (main list ends at #100, extended starts at #101)
 
 ---
 
-## 4. Guide Page Update
+## 5. Fix Extra List Edit Modal (Black Screen Bug)
 
-Update the Guide page to reflect:
-- New point system table
-- Main List description: "The top 100 hardest levels in Narrow Arrow"
-- Extended List description: "Levels ranked 101+ that extend the main list. No points awarded."
-- Extra List description: "Levels that don't meet main list standards. Awards separate Extra Points."
-- Add Extended List to the features grid and quick actions
+**File:** `src/pages/AdminPage.tsx` (lines 4845-4986)
 
----
+The edit modal for extra levels uses a raw `div` with `fixed inset-0` backdrop but lacks `overflow-y-auto` on the outer container and potentially has z-index issues. 
 
-## 5. Webhook System Overhaul
-
-**Current state:** Two webhook entries (`admin` and `completions`) with a hardcoded Discord URL in `discord-notify`. Toggle flags like `include_completions`, `include_rank_changes` etc. on the admin webhook.
-
-**New design:** Replace with individual webhook entries, each with its own URL and customizable message template using `{variable}` syntax.
-
-### New Webhook Types:
-1. `main_completions` - Main list completions and verifications
-2. `extended_completions` - Extended list completions (rank 101+) 
-3. `extra_completions` - Extra list completions
-4. `rank_changes` - Admin rank changes, level additions/deletions, transfers
-
-### Database Changes:
-- Drop the old boolean toggle columns from `webhook_settings`
-- Simplify to: `id`, `webhook_type`, `webhook_url`, `enabled`, `custom_message_template`, `created_at`, `updated_at`
-- Seed default rows for each type
-
-### Template Variables:
-- `{user}` - Player username
-- `{levelName}` - Level name
-- `{levelRank}` - Level rank position
-- `{completionTime}` - Formatted completion time
-- `{arrow}` - Arrow emoji
-- `{action}` - "completed" or "verified"
-- `{oldRank}` - Previous rank (for rank changes)
-- `{newRank}` - New rank (for rank changes)
-- `{emoji}` - Event-type emoji
-- `{listType}` - "Main", "Extended", or "Extra"
-
-### Default Templates:
-- Completions: `{arrow}**{user}** {action} **#{levelRank} {levelName}** in **{completionTime}**`
-- Rank changes: `{emoji} **{levelName}** moved from #{oldRank} to #{newRank}`
-
-### Edge Function Changes:
-- Rewrite `discord-notify` to look up the appropriate webhook by type, apply the message template, and send
-- Remove hardcoded webhook URL
-- Rewrite `admin-notify` to use the `rank_changes` webhook entry
-- Or consolidate both into a single `discord-notify` function that handles all types
-
-### Admin Panel UI:
-- Show each webhook type as a card with: URL input, enabled toggle, message template textarea, and a variable legend
+**Fix:**
+- Add `overflow-y-auto` to the outer fixed container
+- Ensure `max-h-[90vh] overflow-y-auto` is on the inner card
+- Match the same modal pattern used by the main level edit modal (which works correctly)
 
 ---
 
-## Technical Implementation Order
+## 6. Prevent Resync from Overwriting Manual Edits
 
-### Phase 1: Database Migration
-```sql
--- 1. Re-rank extra levels to fix duplicates
--- 2. Add UNIQUE constraint on extended_levels.rank_position
--- 3. Update calculate_points_for_rank() for new tiers (returns 0 for rank > 100)
--- 4. Recalculate all level points and player total_points
--- 5. Restructure webhook_settings table
--- 6. Seed new webhook type rows
-```
+**Files:** `supabase/functions/resync-main-levels/index.ts`, `supabase/functions/resync-extra-levels/index.ts`
 
-### Phase 2: Config and Shared Code
-- Update `src/config/levels.ts` with new `getPointsForRank()`
+**Current bug:** The resync functions overwrite `name` and `author` fields whenever they differ from the API. If an admin manually sets a custom name or creator, the next resync reverts it.
 
-### Phase 3: Pages
-- Update `src/pages/Index.tsx` to filter levels to rank <= 100
-- Create `src/pages/ExtendedListPage.tsx` for levels rank > 100
-- Update `src/pages/ExtraListPage.tsx` (no changes needed, already separate)
-- Update `src/pages/GuidePage.tsx` with new descriptions and point tables
-- Update `src/pages/LeaderboardPage.tsx` if needed
+**Fix:** Add `name_override` and `author_override` boolean columns to `levels` and `extended_levels` tables. When an admin edits name/author in the admin panel, set the override flag to `true`. The resync functions will skip updating `name`/`author` when the override flag is set.
 
-### Phase 4: Admin Panel
-- Update `calculatePoints()` in `AdminPage.tsx`
-- Update webhook settings UI to show per-type cards with template editing
-- Add variable legend component
+Alternative simpler approach: Only update name/author if the current DB value is NULL or equals a previously known API value. Even simpler: just skip name/author updates entirely in resync - admins can manually trigger a "refresh from API" if needed.
 
-### Phase 5: Edge Functions
-- Rewrite `discord-notify` to use DB-driven webhook URLs and templates
-- Consolidate `admin-notify` into the same system
-
-### Phase 6: Routing and Navigation
-- Add `/extended-list` route in `App.tsx`
-- Add "Extended List" to `Navbar.tsx`
+**Chosen approach (simplest):** In the resync functions, only update `name` if the current DB `name` is NULL, and only update `author` if the current DB `author` is NULL. This prevents overwrites while still populating missing data.
 
 ---
 
-## Files to Create
-| File | Purpose |
-|------|---------|
-| `src/pages/ExtendedListPage.tsx` | New Extended List page (levels 101+) |
-| SQL migration | Rank fix, point system, webhook schema |
+## 7. Webhook Panel - More Admin Action Templates
+
+**Files:** `src/pages/AdminPage.tsx`, `supabase/functions/discord-notify/index.ts`, `supabase/functions/admin-notify/index.ts`
+
+**Current state:** The webhook panel has 4 types (main_completions, extended_completions, extra_completions, rank_changes). The `rank_changes` type handles all admin actions with one template.
+
+**Changes:**
+- Add more template variables for rank_changes: `{action}` (e.g., "added", "deleted", "transferred", "moved"), `{adminEmail}`, `{sourceList}`, `{targetList}`
+- Update the variable legend in the webhook settings UI to show all available variables for rank_changes
+- Add better default fallback messages for each event type in `discord-notify`
+- Ensure `admin-notify` passes the correct `webhook_type` and all variables
+- Add webhook invocations for level transfers between lists (Main <-> Extended, Main <-> Extra)
+- Update `sendAdminNotification` in AdminPage to pass `listType`, `action`, and other context
+
+---
+
+## 8. Remove Unnecessary Buttons in Admin Panel
+
+**File:** `src/pages/AdminPage.tsx`
+
+Clean up the admin panel:
+- Remove the standalone "Hardfix" button (`triggerHardfix` function) - its functionality is covered by "Sync Completions" button on the Extra tab
+- Remove the `hardfixing` state variable and related UI
+- Keep "Check Empty" (useful), "Resync All" (useful), "Sync Now" (useful), "Bulk Import" (useful)
+- Ensure "Check Verified Future" button works properly or remove if redundant
+
+---
+
+## 9. Data Tracking - Historical Main List Snapshots
+
+The site already has `level_rank_history` for tracking rank changes over time and `HistoricalListViewer` component. 
+
+**Enhancements:**
+- Ensure the `handle_level_rank_change` trigger properly logs every rank change to `level_rank_history`
+- The historical list viewer already works for viewing past states
+- No additional changes needed here, the system already tracks rank history
+
+---
+
+## 10. sync-completions Still Uses Hardcoded Discord URL
+
+**File:** `supabase/functions/sync-completions/index.ts` (line 10)
+
+The `sync-completions` function still has a hardcoded `DISCORD_WEBHOOK_URL` and calls Discord directly instead of using the template-driven webhook system.
+
+**Fix:** Replace the direct Discord call in `sendDiscordNotification()` with a call to `discord-notify` edge function (or inline the webhook lookup logic). This ensures all notifications respect the webhook settings and custom templates.
+
+---
+
+## Implementation Order
+
+1. **SQL Migration** - Fix `calculate_points_for_rank()`, re-rank extra levels, recalculate all points
+2. **Navbar** - Move Extended List to dropdown
+3. **Resync functions** - Prevent name/author overwrite
+4. **sync-completions** - Use webhook system instead of hardcoded URL
+5. **Admin Panel** - Extended list tab, fix extra edit modal, remove hardfix button, improve webhook variables
+6. **Webhook system** - Add more action types and variables
 
 ## Files to Modify
+
 | File | Changes |
 |------|---------|
-| `src/config/levels.ts` | New point tiers |
-| `src/pages/AdminPage.tsx` | calculatePoints(), webhook UI overhaul |
-| `src/pages/GuidePage.tsx` | Updated descriptions and point tables |
-| `src/pages/Index.tsx` | Filter to rank <= 100 |
-| `src/App.tsx` | Add /extended-list route |
-| `src/components/Navbar.tsx` | Add Extended List nav item |
-| `supabase/functions/discord-notify/index.ts` | Template-based messaging, DB-driven URLs |
-| `supabase/functions/admin-notify/index.ts` | Consolidate with new webhook system |
+| SQL migration | Fix point tiers, re-rank extra levels, recalculate points |
+| `src/components/Navbar.tsx` | Move Extended List to dropdown |
+| `src/pages/AdminPage.tsx` | Add Extended tab, fix edit modal, remove hardfix, webhook improvements |
+| `supabase/functions/resync-main-levels/index.ts` | Skip name/author if not NULL |
+| `supabase/functions/resync-extra-levels/index.ts` | Skip name/author if not NULL |
+| `supabase/functions/sync-completions/index.ts` | Use webhook system |
+| `supabase/functions/discord-notify/index.ts` | More action variables |
+| `supabase/functions/admin-notify/index.ts` | Pass more context variables |
 
