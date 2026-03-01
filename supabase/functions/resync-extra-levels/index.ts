@@ -59,11 +59,12 @@ serve(async (req) => {
         // Prepare updates
         const updates: Record<string, unknown> = {};
         
-        if (levelInfo.name && levelInfo.name !== level.name) {
+        // Only populate name/author if currently NULL (don't overwrite manual edits)
+        if (!level.name && levelInfo.name) {
           updates.name = levelInfo.name;
         }
         
-        if (levelInfo.author && levelInfo.author !== level.author) {
+        if (!level.author && levelInfo.author) {
           updates.author = levelInfo.author;
         }
 

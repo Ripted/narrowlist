@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
 
     } else if (webhook_type === 'rank_changes') {
       // Admin action notification
-      const { event_type, level_name, old_rank, new_rank, list_type, details } = body;
+      const { event_type, level_name, old_rank, new_rank, list_type, details, action, admin_email } = body;
 
       let emoji = '';
       if (event_type === 'rank_change') emoji = new_rank < old_rank ? '⬆️' : '⬇️';
@@ -135,18 +135,20 @@ Deno.serve(async (req) => {
       else if (event_type === 'level_deletion') emoji = '🗑️';
       else if (event_type === 'future_to_main') emoji = '🚀';
       else if (event_type === 'extra_level_added') emoji = '📦';
-      else if (event_type === 'level_to_extra') emoji = '📤';
+      else if (event_type === 'level_to_extra' || event_type === 'level_to_extended') emoji = '📤';
       else if (event_type === 'extra_to_main') emoji = '⬆️';
+      else if (event_type === 'transferred') emoji = '🔄';
 
-      const template = webhook.custom_message_template || '{emoji} **{levelName}** moved from #{oldRank} to #{newRank}';
+      const template = webhook.custom_message_template || '{emoji} **{levelName}** {action} #{newRank}';
 
-      // Build default message if template doesn't cover all cases
       const variables: Record<string, string> = {
         levelName: level_name || 'Unknown',
         oldRank: String(old_rank || ''),
         newRank: String(new_rank || ''),
         emoji: emoji,
         listType: list_type || 'Main',
+        action: action || event_type || 'updated',
+        adminEmail: admin_email || 'unknown',
       };
 
       message = applyTemplate(template, variables);
@@ -157,6 +159,12 @@ Deno.serve(async (req) => {
           message = `${emoji} **${level_name}** added at #${new_rank}`;
         } else if (event_type === 'level_deletion') {
           message = `${emoji} **${level_name}** removed from the list`;
+        } else if (event_type === 'extra_level_added') {
+          message = `${emoji} **${level_name}** added to the Extra List at #${new_rank}`;
+        } else if (event_type === 'level_to_extra' || event_type === 'level_to_extended') {
+          message = `${emoji} **${level_name}** transferred from ${list_type || 'Main'} List`;
+        } else if (event_type === 'extra_to_main') {
+          message = `${emoji} **${level_name}** transferred to Main List at #${new_rank}`;
         } else if (details) {
           message = details;
         }

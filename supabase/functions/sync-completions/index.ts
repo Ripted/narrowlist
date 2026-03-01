@@ -7,7 +7,7 @@ const corsHeaders = {
 
 const API_BASE = "https://api.narrowarrow.xyz";
 
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1454616761637933128/xq4O-w8IV4G1ZHU1-IUTV_G7WVl-z4z6cwaD51OK3dy2ZvcvJt44RmDP1JFvHOBqlsYf';
+// Discord notification now delegated to discord-notify edge function
 
 const ARROW_EMOJIS: Record<string, string> = {
   'narrow': '<:narrow:1454615571730534400>',
@@ -65,40 +65,25 @@ async function sendDiscordNotification(
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { data: existing } = await supabase
-      .from('discord_notifications')
-      .select('id')
-      .eq('completion_type', 'completion')
-      .eq('completion_id', String(completion.run_id))
-      .maybeSingle();
+    // Determine webhook type based on rank
+    const webhookType = completion.level_rank <= 100 ? 'main_completions' : 'extended_completions';
 
-    if (existing) return;
-
-    const arrowEmoji = getArrowEmoji(completion.arrow_name);
-    const action = completion.is_verifier ? 'verified' : 'completed';
-    const formattedTime = formatTime(completion.completion_time);
-    
-    const message = `${arrowEmoji}**${completion.username}** ${action} **#${completion.level_rank} ${completion.level_name || 'Unknown Level'}** in **${formattedTime}**`;
-
-    const discordResponse = await fetch(DISCORD_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: message }),
-    });
-
-    if (!discordResponse.ok) {
-      console.error('Discord webhook failed:', discordResponse.status);
-      return;
-    }
-
-    await supabase
-      .from('discord_notifications')
-      .insert({
-        completion_type: 'completion',
+    // Delegate to discord-notify edge function
+    await supabase.functions.invoke('discord-notify', {
+      body: {
+        webhook_type: webhookType,
+        completion_type: webhookType,
         completion_id: String(completion.run_id),
         profile_id: completion.profile_id,
         level_id: completion.level_db_id,
-      });
+        player_name: completion.username,
+        level_name: completion.level_name,
+        level_rank: completion.level_rank,
+        completion_time: completion.completion_time,
+        arrow_name: completion.arrow_name,
+        is_verifier: completion.is_verifier,
+      },
+    });
   } catch (error) {
     console.error('Error sending Discord notification:', error);
   }

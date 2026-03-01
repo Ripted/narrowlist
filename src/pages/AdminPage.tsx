@@ -235,7 +235,7 @@ export default function AdminPage() {
   const [resyncingExtraLevels, setResyncingExtraLevels] = useState(false);
   const [resyncingMainLevels, setResyncingMainLevels] = useState(false);
   const [resyncingFutureLevels, setResyncingFutureLevels] = useState(false);
-  const [hardfixing, setHardfixing] = useState(false);
+  // Removed: hardfixing state (hardfix button removed)
   
   // Submission review
   const [reviewingSubmission, setReviewingSubmission] = useState<LevelSubmission | null>(null);
@@ -434,7 +434,7 @@ export default function AdminPage() {
     setSavingWebhook(null);
   };
 
-  const sendAdminNotification = async (eventType: string, levelName: string, oldRank?: number, newRank?: number) => {
+  const sendAdminNotification = async (eventType: string, levelName: string, oldRank?: number, newRank?: number, listType?: string, action?: string) => {
     try {
       await supabase.functions.invoke("admin-notify", {
         body: {
@@ -443,6 +443,8 @@ export default function AdminPage() {
           level_name: levelName,
           old_rank: oldRank,
           new_rank: newRank,
+          list_type: listType || "Main",
+          action: action || eventType,
         },
       });
     } catch (error) {
@@ -584,24 +586,7 @@ export default function AdminPage() {
     }
   };
 
-  const triggerHardfix = async () => {
-    setHardfixing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("hardfix-resync");
-      if (error) throw error;
-      await logAction("Hardfix resync", `new extra completions: ${data?.newExtraCompletions || 0}, deleted profiles: ${data?.deletedEmptyProfiles || 0}`);
-      toast({
-        title: "Hardfix Complete",
-        description: `Synced ${data?.newExtraCompletions || 0} extra completions and removed ${data?.deletedEmptyProfiles || 0} duplicate profiles`,
-      });
-      fetchExtendedLevels();
-      fetchChangelog();
-    } catch (err: any) {
-      toast({ title: "Hardfix Failed", description: err.message || "Unknown error", variant: "destructive" });
-    } finally {
-      setHardfixing(false);
-    }
-  };
+  // Hardfix function removed - functionality covered by Sync Completions button
 
   const addExtendedLevel = async () => {
     if (!newExtendedLevelId.trim()) return;
@@ -651,7 +636,7 @@ export default function AdminPage() {
       await logAction("Added extra level", `${levelName} at rank #${targetRank}`);
       
       // Send webhook notification
-      await sendAdminNotification("extra_level_added", levelName, undefined, targetRank);
+      await sendAdminNotification("extra_level_added", levelName, undefined, targetRank, "Extra", "added");
       
       toast({ title: "Success", description: `Extra level added at rank #${targetRank}` });
       setNewExtendedLevelId("");
@@ -762,7 +747,7 @@ export default function AdminPage() {
       await logAction("Transferred to main list", `${levelName} moved to main list at rank #${targetRank}`);
       
       // Send webhook notification
-      await sendAdminNotification("extra_to_main", levelName, level.rank_position, targetRank);
+      await sendAdminNotification("extra_to_main", levelName, level.rank_position, targetRank, "Extra", "transferred to Main");
       
       toast({ title: "Success", description: `${levelName} moved to main list` });
       fetchLevels();
@@ -823,7 +808,7 @@ export default function AdminPage() {
       }
 
       await logAction("Transferred to extra list", `${level.name || level.level_id} moved to extra list at rank #${targetRank}`);
-      await sendAdminNotification("level_to_extended", level.name || level.level_id, level.rank_position, targetRank);
+      await sendAdminNotification("level_to_extended", level.name || level.level_id, level.rank_position, targetRank, "Main", "transferred to Extra");
       toast({ title: "Success", description: `${level.name || level.level_id} moved to extra list` });
       fetchLevels();
       fetchExtendedLevels();
@@ -1520,7 +1505,7 @@ export default function AdminPage() {
       toast({ title: "Success", description: `Level added at rank #${targetRank}` });
       
       // Send admin notification
-      await sendAdminNotification("level_addition", data.levelInfo?.name || newLevelId, undefined, targetRank);
+      await sendAdminNotification("level_addition", data.levelInfo?.name || newLevelId, undefined, targetRank, "Main", "added");
       
       setNewLevelId("");
       setNewLevelRank("");
@@ -1565,7 +1550,7 @@ export default function AdminPage() {
       toast({ title: "Success", description: `Future level added with estimated rank #${targetRank}` });
       
       // Send admin notification
-      await sendAdminNotification("future_level", data.levelInfo?.name || newFutureLevelId, undefined, targetRank);
+      await sendAdminNotification("future_level", data.levelInfo?.name || newFutureLevelId, undefined, targetRank, "Future", "added");
       
       setNewFutureLevelId("");
       setNewFutureLevelRank("");
@@ -1981,7 +1966,7 @@ export default function AdminPage() {
     await updateRanks(updatedLevels);
     
     // Send admin notification
-    await sendAdminNotification("rank_change", rankConfirmLevel.name || rankConfirmLevel.level_id, oldRank, pendingNewRank);
+    await sendAdminNotification("rank_change", rankConfirmLevel.name || rankConfirmLevel.level_id, oldRank, pendingNewRank, "Main", "moved");
     
     fetchChangelog();
   };
@@ -4264,6 +4249,10 @@ export default function AdminPage() {
                                     <span className="text-muted-foreground">Auto emoji based on event</span>
                                     <span className="font-mono text-primary">{'{listType}'}</span>
                                     <span className="text-muted-foreground">Main, Extended, or Extra</span>
+                                    <span className="font-mono text-primary">{'{action}'}</span>
+                                    <span className="text-muted-foreground">added, deleted, moved, transferred</span>
+                                    <span className="font-mono text-primary">{'{adminEmail}'}</span>
+                                    <span className="text-muted-foreground">Admin who performed action</span>
                                   </>
                                 )}
                               </div>
@@ -4844,8 +4833,8 @@ export default function AdminPage() {
 
       {/* Edit Extra Level Modal */}
       {editingExtendedLevel && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto space-y-4 my-4">
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <Edit2 className="w-5 h-5 text-primary" />
               Edit Extra Level
