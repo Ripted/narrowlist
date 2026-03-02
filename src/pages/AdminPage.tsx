@@ -323,7 +323,7 @@ export default function AdminPage() {
   const [editExtendedCreators, setEditExtendedCreators] = useState("");
   const [editExtendedRank, setEditExtendedRank] = useState("");
   const [editExtendedThumbnail, setEditExtendedThumbnail] = useState("");
-  const [editExtendedVerifier, setEditExtendedVerifier] = useState("");
+  const [editExtendedVerifier, setEditExtendedVerifier] = useState("none");
   const [editExtendedAlternativeIds, setEditExtendedAlternativeIds] = useState("");
   const [savingExtendedLevel, setSavingExtendedLevel] = useState(false);
   const [uploadingExtendedThumbnail, setUploadingExtendedThumbnail] = useState(false);
@@ -4558,8 +4558,8 @@ export default function AdminPage() {
 
       {/* Edit Modal - with scroll support for tags at bottom */}
       {editingLevel && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto space-y-4 my-4">
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={() => setEditingLevel(null)}>
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto space-y-4 my-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-xl font-bold">Edit Level</h2>
             
             <div className="aspect-video rounded-lg bg-secondary overflow-hidden relative group">
@@ -4721,8 +4721,8 @@ export default function AdminPage() {
 
       {/* Edit Future Level Modal */}
       {editingFutureLevel && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md space-y-4">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setEditingFutureLevel(null)}>
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto space-y-4 my-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <Edit2 className="w-5 h-5 text-primary" />
               Edit Future Level
@@ -4833,8 +4833,8 @@ export default function AdminPage() {
 
       {/* Edit Extra Level Modal */}
       {editingExtendedLevel && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto space-y-4 my-4">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={() => setEditingExtendedLevel(null)}>
+          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto space-y-4 my-4" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <Edit2 className="w-5 h-5 text-primary" />
               Edit Extra Level
