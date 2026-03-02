@@ -1653,7 +1653,7 @@ export default function AdminPage() {
     setEditExtendedCreators(level.creators?.join(", ") || "");
     setEditExtendedRank(String(level.rank_position));
     setEditExtendedThumbnail(level.thumbnail_url || "");
-    setEditExtendedVerifier(level.verifier_profile_id || "");
+    setEditExtendedVerifier(level.verifier_profile_id || "none");
     setEditExtendedAlternativeIds(level.alternative_ids?.join(", ") || "");
   };
 
@@ -1680,7 +1680,7 @@ export default function AdminPage() {
         creators: creatorsArray.length > 0 ? creatorsArray : null,
         rank_position: parseInt(editExtendedRank) || 1,
         thumbnail_url: editExtendedThumbnail || null,
-        verifier_profile_id: editExtendedVerifier || null,
+        verifier_profile_id: editExtendedVerifier === "none" ? null : editExtendedVerifier || null,
         alternative_ids: alternativeIdsArray.length > 0 ? alternativeIdsArray : null,
       })
       .eq("id", editingExtendedLevel.id);
@@ -4935,7 +4935,7 @@ export default function AdminPage() {
                     <SelectValue placeholder="Select verifier (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {allProfiles.map(profile => (
                       <SelectItem key={profile.id} value={profile.id}>
                         {profile.display_name || profile.username}
