@@ -2244,7 +2244,7 @@ export default function AdminPage() {
     setEditAuthor(level.author || "");
     setEditCreators(((level as any).creators || []).join(", "));
     setEditThumbnail(level.thumbnail_url || "");
-    setEditVerifier(level.verifier_profile_id || "");
+    setEditVerifier(level.verifier_profile_id || "none");
     setEditAlternativeIds((level.alternative_ids || []).join(", "));
   };
 
