@@ -994,6 +994,7 @@ export default function AdminPage() {
         try {
           await supabase.functions.invoke("discord-notify", {
             body: {
+              webhook_type: level.rank_position <= 100 ? "main_completions" : "extended_completions",
               completion_type: "manual_run",
               completion_id: insertedRun?.id || `run-${Date.now()}`,
               profile_id: profile.id,
