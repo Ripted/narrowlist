@@ -271,11 +271,22 @@ export default function ExtendedListPage() {
       const counts: Record<string, number> = {};
       const wrs: Record<string, WorldRecordInfo> = {};
       
-      for (const levelId of levelIds) {
-        try {
-          const response = await fetch(`https://api.narrowarrow.xyz/level-details/${levelId}?isCustomLevel=true`);
-          if (response.ok) {
+      // Batch in groups of 5 with delay to avoid rate limiting
+      const batchSize = 5;
+      for (let i = 0; i < levelIds.length; i += batchSize) {
+        const batch = levelIds.slice(i, i + batchSize);
+        const results = await Promise.allSettled(
+          batch.map(async (levelId) => {
+            const response = await fetch(`https://api.narrowarrow.xyz/level-details/${levelId}?isCustomLevel=true`);
+            if (!response.ok) return null;
             const data = await response.json();
+            return { levelId, data };
+          })
+        );
+        
+        for (const result of results) {
+          if (result.status === 'fulfilled' && result.value) {
+            const { levelId, data } = result.value;
             if (data?.levelInfo?.like_count !== undefined) {
               counts[levelId] = data.levelInfo.like_count;
             }
@@ -286,8 +297,11 @@ export default function ExtendedListPage() {
               };
             }
           }
-        } catch {
-          // Ignore errors for individual fetches
+        }
+        
+        // Delay between batches
+        if (i + batchSize < levelIds.length) {
+          await new Promise(r => setTimeout(r, 200));
         }
       }
       
