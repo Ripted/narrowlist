@@ -2273,6 +2273,7 @@ export default function AdminPage() {
         creators: creators,
         thumbnail_url: editThumbnail || null,
         alternative_ids: alternativeIds.length > 0 ? alternativeIds : [],
+        verifier_profile_id: editVerifier === "none" ? null : editVerifier || null,
       })
       .eq("id", editingLevel.id);
     
