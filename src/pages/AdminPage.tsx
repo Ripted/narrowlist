@@ -369,6 +369,7 @@ export default function AdminPage() {
   // Webhook settings
   const [webhookSettings, setWebhookSettings] = useState<WebhookSettings[]>([]);
   const [savingWebhook, setSavingWebhook] = useState<string | null>(null);
+  const [webhookLocalEdits, setWebhookLocalEdits] = useState<Record<string, { webhook_url?: string; custom_message_template?: string | null }>>({});
   
   // Rank confirmation dialog
   const [rankConfirmLevel, setRankConfirmLevel] = useState<Level | null>(null);
@@ -708,8 +709,23 @@ export default function AdminPage() {
 
       if (error) throw error;
 
+      // Re-rank remaining extended levels sequentially
+      const remaining = extendedLevels
+        .filter(l => l.id !== level.id)
+        .sort((a, b) => a.rank_position - b.rank_position);
+      
+      for (let i = 0; i < remaining.length; i++) {
+        const newRank = i + 1;
+        if (remaining[i].rank_position !== newRank) {
+          await supabase
+            .from("extended_levels")
+            .update({ rank_position: newRank })
+            .eq("id", remaining[i].id);
+        }
+      }
+
       await logAction("Deleted extra level", level.name || level.level_id);
-      toast({ title: "Deleted", description: "Extra level removed" });
+      toast({ title: "Deleted", description: "Extra level removed and ranks updated" });
       fetchExtendedLevels();
       fetchChangelog();
     } catch (error: any) {
@@ -978,6 +994,7 @@ export default function AdminPage() {
         try {
           await supabase.functions.invoke("discord-notify", {
             body: {
+              webhook_type: level.rank_position <= 100 ? "main_completions" : "extended_completions",
               completion_type: "manual_run",
               completion_id: insertedRun?.id || `run-${Date.now()}`,
               profile_id: profile.id,
@@ -2227,7 +2244,7 @@ export default function AdminPage() {
     setEditAuthor(level.author || "");
     setEditCreators(((level as any).creators || []).join(", "));
     setEditThumbnail(level.thumbnail_url || "");
-    setEditVerifier(level.verifier_profile_id || "");
+    setEditVerifier(level.verifier_profile_id || "none");
     setEditAlternativeIds((level.alternative_ids || []).join(", "));
   };
 
@@ -2256,6 +2273,7 @@ export default function AdminPage() {
         creators: creators,
         thumbnail_url: editThumbnail || null,
         alternative_ids: alternativeIds.length > 0 ? alternativeIds : [],
+        verifier_profile_id: editVerifier === "none" ? null : editVerifier || null,
       })
       .eq("id", editingLevel.id);
     
@@ -4204,8 +4222,11 @@ export default function AdminPage() {
                           <div>
                             <Label className="text-xs text-muted-foreground">Webhook URL</Label>
                             <Input
-                              value={webhook.webhook_url}
-                              onChange={(e) => updateWebhookSetting(webhook.id, { webhook_url: e.target.value })}
+                              value={webhookLocalEdits[webhook.id]?.webhook_url ?? webhook.webhook_url}
+                              onChange={(e) => setWebhookLocalEdits(prev => ({
+                                ...prev,
+                                [webhook.id]: { ...prev[webhook.id], webhook_url: e.target.value }
+                              }))}
                               className="mt-1 bg-background border-border text-xs font-mono"
                               placeholder="https://discord.com/api/webhooks/..."
                             />
@@ -4214,8 +4235,11 @@ export default function AdminPage() {
                           <div>
                             <Label className="text-xs text-muted-foreground">Message Template</Label>
                             <Textarea
-                              value={webhook.custom_message_template || ""}
-                              onChange={(e) => updateWebhookSetting(webhook.id, { custom_message_template: e.target.value || null })}
+                              value={webhookLocalEdits[webhook.id]?.custom_message_template ?? webhook.custom_message_template ?? ""}
+                              onChange={(e) => setWebhookLocalEdits(prev => ({
+                                ...prev,
+                                [webhook.id]: { ...prev[webhook.id], custom_message_template: e.target.value || null }
+                              }))}
                               className="mt-1 bg-background border-border text-xs font-mono min-h-[80px]"
                               placeholder="Enter a message template using variables below..."
                             />
@@ -4258,6 +4282,27 @@ export default function AdminPage() {
                               </div>
                             </div>
                           </div>
+
+                          {/* Save button for URL/template changes */}
+                          {webhookLocalEdits[webhook.id] && (
+                            <div className="flex justify-end pt-2">
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  const edits = webhookLocalEdits[webhook.id];
+                                  updateWebhookSetting(webhook.id, edits);
+                                  setWebhookLocalEdits(prev => {
+                                    const next = { ...prev };
+                                    delete next[webhook.id];
+                                    return next;
+                                  });
+                                }}
+                                disabled={savingWebhook === webhook.id}
+                              >
+                                {savingWebhook === webhook.id ? "Saving..." : "Save Changes"}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -4650,6 +4695,24 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   Completions on these levels will count as completions for the main level
                 </p>
+              </div>
+              
+              {/* Verifier */}
+              <div>
+                <Label>Verifier</Label>
+                <Select value={editVerifier} onValueChange={setEditVerifier}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border">
+                    <SelectValue placeholder="Select verifier..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No verifier</SelectItem>
+                    {allProfiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.display_name || profile.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               {/* Tags Editor */}
