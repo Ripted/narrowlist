@@ -1,152 +1,60 @@
 
 
-# Final Version Plan: Narrowlist Polishing and Bug Fixes
+# Bug Fix Plan
 
-## Overview
-This plan addresses all remaining issues to finalize the site: navigation changes, points system DB fix, admin panel improvements, resync overwrite protection, extended list admin tab, webhook template expansion, extra list rank deduplication, and data tracking.
+## Bugs Identified
 
----
+### 1. Webhook Settings Save on Every Keystroke
+**File:** `src/pages/AdminPage.tsx` (lines 4206-4211, 4216-4221)
+**Bug:** The webhook URL and template `onChange` handlers call `updateWebhookSetting()` on every keystroke, firing a Supabase update per character typed. This causes rapid API calls, poor UX, and potential data loss.
+**Fix:** Convert webhook settings to use local state per webhook card, with a dedicated "Save" button. Store edits locally, only persist on explicit save.
 
-## 1. Move Extended List to Dropdown Menu
+### 2. Main List Edit Modal Missing Verifier Field
+**File:** `src/pages/AdminPage.tsx` (lines 4560-4671)
+**Bug:** The main list edit modal lacks a Verifier dropdown selector. The extra list edit modal has one, but the main list does not. Also, `saveEditedLevel()` (line 2234) does not update `verifier_profile_id`.
+**Fix:** Add a Verifier `<Select>` field to the main list edit modal (matching the extra list pattern with `"none"` sentinel). Update `saveEditedLevel()` to include `verifier_profile_id` in the update payload.
 
-**File:** `src/components/Navbar.tsx`
+### 3. `resync-future-levels` Still Overwrites Manual Edits
+**File:** `supabase/functions/resync-future-levels/index.ts` (lines 59-65)
+**Bug:** Unlike `resync-main-levels` and `resync-extra-levels` which were already fixed to only update `name`/`author` when NULL, the future levels resync still overwrites any name/author that differs from the API.
+**Fix:** Apply the same pattern: only update `name` if `level.name` is NULL, only update `author` if `level.author` is NULL.
 
-Move "Extended List" from `mainNavItems` into the `moreNavItems` array, positioned above "Extra List". The navbar main links will show: Main List, Future List, Leaderboard. The dropdown "More" menu will show: Extended List, Extra List, Recent Runs, Compare Players, etc.
+### 4. `discord-notify` Missing `webhook_type` for Run Submissions
+**File:** `src/pages/AdminPage.tsx` (lines 978-991)
+**Bug:** When approving a run submission, the Discord notification call uses `completion_type: "manual_run"` but does not include `webhook_type`. The `discord-notify` function requires `webhook_type` to look up the correct webhook settings.
+**Fix:** Add `webhook_type: 'main_completions'` (or determine based on level rank) to the `discord-notify` invocation for run submission approvals.
 
----
+### 5. Extra List Rank Re-ranking Not Applied (UNIQUE constraint may be blocking)
+**Bug:** The previous migration attempted to re-rank `extended_levels`, but with a UNIQUE constraint on `rank_position`, sequential updates can conflict if intermediate values collide with existing values. The duplicate ranks may still exist.
+**Fix:** SQL migration that temporarily drops the UNIQUE constraint, re-ranks all levels, then re-adds the constraint.
 
-## 2. Fix Points System (DB Function Mismatch)
+### 6. `deleteExtendedLevel` Does Not Re-rank Remaining Levels
+**File:** `src/pages/AdminPage.tsx` (lines 702-718)
+**Bug:** When deleting an extra level, remaining levels are not re-ranked, creating gaps (e.g., deleting #3 leaves ranks 1, 2, 4, 5...). Main list `confirmDeleteLevel` does re-rank.
+**Fix:** After deleting, fetch remaining extended levels, re-rank them sequentially, and update the database.
 
-**Current bug:** The database function `calculate_points_for_rank()` still uses OLD tiers (#1=30, #3=20, #6-10=9, etc.) while the frontend `calculatePoints()` uses the CORRECT new tiers (#1=28, #3=21, #6-10=13, etc.). This means displayed points look correct, but actual stored points in the DB are wrong.
-
-**Fix:**
-- SQL migration to update `calculate_points_for_rank()` to match the new tiers:
-  - #1=28, #2=24, #3=21, #4=18, #5=16, #6-10=13, #11-20=10, #21-30=7, #31-50=4, #51-70=2, #71-100=1, 101+=0
-- Recalculate all level points: `UPDATE levels SET points = calculate_points_for_rank(rank_position)`
-- Recalculate all player total_points via `recalculate_player_points` for every profile
-
----
-
-## 3. Fix Extra List Duplicate Ranks (Manual Data Fix)
-
-**Current bug:** Multiple extra levels share ranks #2 (sixtuple ritf, ritf, matrix) and possibly others.
-
-**Fix:** SQL migration to re-rank all `extended_levels` sequentially by current `rank_position` then `created_at`, ensuring unique ranks. The UNIQUE constraint on `rank_position` should already exist from a previous migration, but we'll verify and re-apply if needed.
-
----
-
-## 4. Admin Panel - Extended List as Separate Tab
-
-**File:** `src/pages/AdminPage.tsx`
-
-Currently the `levels` tab in admin shows ALL levels from the `levels` table (both main list rank 1-100 and extended list rank 101+) but they're mixed together. 
-
-**Changes:**
-- Add a new "Extended" tab to the admin TabsList (between "Main" and "Future")
-- The "Main" tab filters to show only levels with `rank_position <= 100`
-- The "Extended" tab shows levels with `rank_position > 100`
-- The Extended tab should have the same controls: search, move up/down, edit, delete, transfer to Extra List
-- Moving levels between Main and Extended is just changing rank (e.g., moving last main list level to #101 makes it extended)
-- Add a "Move to Extended" button on main list items and "Move to Main" on extended items
-- Rank numbering is continuous (main list ends at #100, extended starts at #101)
-
----
-
-## 5. Fix Extra List Edit Modal (Black Screen Bug)
-
-**File:** `src/pages/AdminPage.tsx` (lines 4845-4986)
-
-The edit modal for extra levels uses a raw `div` with `fixed inset-0` backdrop but lacks `overflow-y-auto` on the outer container and potentially has z-index issues. 
-
-**Fix:**
-- Add `overflow-y-auto` to the outer fixed container
-- Ensure `max-h-[90vh] overflow-y-auto` is on the inner card
-- Match the same modal pattern used by the main level edit modal (which works correctly)
-
----
-
-## 6. Prevent Resync from Overwriting Manual Edits
-
-**Files:** `supabase/functions/resync-main-levels/index.ts`, `supabase/functions/resync-extra-levels/index.ts`
-
-**Current bug:** The resync functions overwrite `name` and `author` fields whenever they differ from the API. If an admin manually sets a custom name or creator, the next resync reverts it.
-
-**Fix:** Add `name_override` and `author_override` boolean columns to `levels` and `extended_levels` tables. When an admin edits name/author in the admin panel, set the override flag to `true`. The resync functions will skip updating `name`/`author` when the override flag is set.
-
-Alternative simpler approach: Only update name/author if the current DB value is NULL or equals a previously known API value. Even simpler: just skip name/author updates entirely in resync - admins can manually trigger a "refresh from API" if needed.
-
-**Chosen approach (simplest):** In the resync functions, only update `name` if the current DB `name` is NULL, and only update `author` if the current DB `author` is NULL. This prevents overwrites while still populating missing data.
-
----
-
-## 7. Webhook Panel - More Admin Action Templates
-
-**Files:** `src/pages/AdminPage.tsx`, `supabase/functions/discord-notify/index.ts`, `supabase/functions/admin-notify/index.ts`
-
-**Current state:** The webhook panel has 4 types (main_completions, extended_completions, extra_completions, rank_changes). The `rank_changes` type handles all admin actions with one template.
-
-**Changes:**
-- Add more template variables for rank_changes: `{action}` (e.g., "added", "deleted", "transferred", "moved"), `{adminEmail}`, `{sourceList}`, `{targetList}`
-- Update the variable legend in the webhook settings UI to show all available variables for rank_changes
-- Add better default fallback messages for each event type in `discord-notify`
-- Ensure `admin-notify` passes the correct `webhook_type` and all variables
-- Add webhook invocations for level transfers between lists (Main <-> Extended, Main <-> Extra)
-- Update `sendAdminNotification` in AdminPage to pass `listType`, `action`, and other context
-
----
-
-## 8. Remove Unnecessary Buttons in Admin Panel
-
-**File:** `src/pages/AdminPage.tsx`
-
-Clean up the admin panel:
-- Remove the standalone "Hardfix" button (`triggerHardfix` function) - its functionality is covered by "Sync Completions" button on the Extra tab
-- Remove the `hardfixing` state variable and related UI
-- Keep "Check Empty" (useful), "Resync All" (useful), "Sync Now" (useful), "Bulk Import" (useful)
-- Ensure "Check Verified Future" button works properly or remove if redundant
-
----
-
-## 9. Data Tracking - Historical Main List Snapshots
-
-The site already has `level_rank_history` for tracking rank changes over time and `HistoricalListViewer` component. 
-
-**Enhancements:**
-- Ensure the `handle_level_rank_change` trigger properly logs every rank change to `level_rank_history`
-- The historical list viewer already works for viewing past states
-- No additional changes needed here, the system already tracks rank history
-
----
-
-## 10. sync-completions Still Uses Hardcoded Discord URL
-
-**File:** `supabase/functions/sync-completions/index.ts` (line 10)
-
-The `sync-completions` function still has a hardcoded `DISCORD_WEBHOOK_URL` and calls Discord directly instead of using the template-driven webhook system.
-
-**Fix:** Replace the direct Discord call in `sendDiscordNotification()` with a call to `discord-notify` edge function (or inline the webhook lookup logic). This ensures all notifications respect the webhook settings and custom templates.
+### 7. Console Errors: "Error fetching level details: Load failed"
+**Bug:** The Index/Extra pages fire many parallel API calls to `api.narrowarrow.xyz` which fail (likely rate limiting or CORS). These are non-blocking but pollute the console.
+**Fix:** Add error handling/retry logic and rate limit the batch fetches in `ExtraListPage.tsx` and `useLevels.ts` using smaller batch sizes and delays.
 
 ---
 
 ## Implementation Order
 
-1. **SQL Migration** - Fix `calculate_points_for_rank()`, re-rank extra levels, recalculate all points
-2. **Navbar** - Move Extended List to dropdown
-3. **Resync functions** - Prevent name/author overwrite
-4. **sync-completions** - Use webhook system instead of hardcoded URL
-5. **Admin Panel** - Extended list tab, fix extra edit modal, remove hardfix button, improve webhook variables
-6. **Webhook system** - Add more action types and variables
+1. **SQL Migration** - Fix extra list duplicate ranks (drop constraint, re-rank, re-add)
+2. **Webhook UI** - Convert to local state with explicit Save button
+3. **Main List Edit Modal** - Add Verifier field and update save logic
+4. **Resync Future Levels** - Prevent name/author overwrite
+5. **Run Submission Webhook** - Add `webhook_type` to discord-notify call
+6. **Delete Extra Level** - Add re-ranking after deletion
+7. **Console Errors** - Add batch rate limiting for API calls
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| SQL migration | Fix point tiers, re-rank extra levels, recalculate points |
-| `src/components/Navbar.tsx` | Move Extended List to dropdown |
-| `src/pages/AdminPage.tsx` | Add Extended tab, fix edit modal, remove hardfix, webhook improvements |
-| `supabase/functions/resync-main-levels/index.ts` | Skip name/author if not NULL |
-| `supabase/functions/resync-extra-levels/index.ts` | Skip name/author if not NULL |
-| `supabase/functions/sync-completions/index.ts` | Use webhook system |
-| `supabase/functions/discord-notify/index.ts` | More action variables |
-| `supabase/functions/admin-notify/index.ts` | Pass more context variables |
+| SQL migration | Re-rank extended_levels safely |
+| `src/pages/AdminPage.tsx` | Webhook local state + save button, add verifier to main edit modal, fix run submission webhook call, re-rank after extra delete |
+| `supabase/functions/resync-future-levels/index.ts` | Only update name/author when NULL |
+| `src/pages/ExtraListPage.tsx` | Batch API calls with delays |
 
