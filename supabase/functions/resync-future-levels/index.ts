@@ -56,11 +56,12 @@ Deno.serve(async (req) => {
 
         const updates: Record<string, unknown> = {};
         
-        if (levelInfo.name && levelInfo.name !== level.name) {
+        // Only update name/author if currently NULL to preserve manual edits
+        if (!level.name && levelInfo.name) {
           updates.name = levelInfo.name;
         }
         
-        if (levelInfo.author && levelInfo.author !== level.author) {
+        if (!level.author && levelInfo.author) {
           updates.author = levelInfo.author;
         }
 
