@@ -4282,6 +4282,27 @@ export default function AdminPage() {
                               </div>
                             </div>
                           </div>
+
+                          {/* Save button for URL/template changes */}
+                          {webhookLocalEdits[webhook.id] && (
+                            <div className="flex justify-end pt-2">
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  const edits = webhookLocalEdits[webhook.id];
+                                  updateWebhookSetting(webhook.id, edits);
+                                  setWebhookLocalEdits(prev => {
+                                    const next = { ...prev };
+                                    delete next[webhook.id];
+                                    return next;
+                                  });
+                                }}
+                                disabled={savingWebhook === webhook.id}
+                              >
+                                {savingWebhook === webhook.id ? "Saving..." : "Save Changes"}
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
