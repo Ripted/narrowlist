@@ -709,8 +709,23 @@ export default function AdminPage() {
 
       if (error) throw error;
 
+      // Re-rank remaining extended levels sequentially
+      const remaining = extendedLevels
+        .filter(l => l.id !== level.id)
+        .sort((a, b) => a.rank_position - b.rank_position);
+      
+      for (let i = 0; i < remaining.length; i++) {
+        const newRank = i + 1;
+        if (remaining[i].rank_position !== newRank) {
+          await supabase
+            .from("extended_levels")
+            .update({ rank_position: newRank })
+            .eq("id", remaining[i].id);
+        }
+      }
+
       await logAction("Deleted extra level", level.name || level.level_id);
-      toast({ title: "Deleted", description: "Extra level removed" });
+      toast({ title: "Deleted", description: "Extra level removed and ranks updated" });
       fetchExtendedLevels();
       fetchChangelog();
     } catch (error: any) {
