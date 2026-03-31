@@ -4222,8 +4222,11 @@ export default function AdminPage() {
                           <div>
                             <Label className="text-xs text-muted-foreground">Webhook URL</Label>
                             <Input
-                              value={webhook.webhook_url}
-                              onChange={(e) => updateWebhookSetting(webhook.id, { webhook_url: e.target.value })}
+                              value={webhookLocalEdits[webhook.id]?.webhook_url ?? webhook.webhook_url}
+                              onChange={(e) => setWebhookLocalEdits(prev => ({
+                                ...prev,
+                                [webhook.id]: { ...prev[webhook.id], webhook_url: e.target.value }
+                              }))}
                               className="mt-1 bg-background border-border text-xs font-mono"
                               placeholder="https://discord.com/api/webhooks/..."
                             />
@@ -4232,8 +4235,11 @@ export default function AdminPage() {
                           <div>
                             <Label className="text-xs text-muted-foreground">Message Template</Label>
                             <Textarea
-                              value={webhook.custom_message_template || ""}
-                              onChange={(e) => updateWebhookSetting(webhook.id, { custom_message_template: e.target.value || null })}
+                              value={webhookLocalEdits[webhook.id]?.custom_message_template ?? webhook.custom_message_template ?? ""}
+                              onChange={(e) => setWebhookLocalEdits(prev => ({
+                                ...prev,
+                                [webhook.id]: { ...prev[webhook.id], custom_message_template: e.target.value || null }
+                              }))}
                               className="mt-1 bg-background border-border text-xs font-mono min-h-[80px]"
                               placeholder="Enter a message template using variables below..."
                             />
