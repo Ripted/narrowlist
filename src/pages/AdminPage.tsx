@@ -4670,6 +4670,24 @@ export default function AdminPage() {
                 </p>
               </div>
               
+              {/* Verifier */}
+              <div>
+                <Label>Verifier</Label>
+                <Select value={editVerifier} onValueChange={setEditVerifier}>
+                  <SelectTrigger className="mt-1 bg-secondary border-border">
+                    <SelectValue placeholder="Select verifier..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No verifier</SelectItem>
+                    {allProfiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.display_name || profile.username}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
               {/* Tags Editor */}
               <div className="border-t border-border pt-4">
                 <LevelTagAssigner levelId={editingLevel.id} levelType="main" />
