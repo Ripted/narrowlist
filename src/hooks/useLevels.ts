@@ -237,12 +237,17 @@ export function useLevel(levelId: string, isExtended?: boolean) {
       }
 
       if (details && dbData) {
+        const dbCreators = (dbData as any).creators as string[] | null;
+        const displayAuthor = dbCreators && dbCreators.length > 0
+          ? dbCreators.join(", ")
+          : dbData.name ? (dbData.author || details.levelInfo.author) : details.levelInfo.author;
+        
         setLevel({
           ...details,
           levelInfo: {
             ...details.levelInfo,
             name: dbData.name || details.levelInfo.name,
-            author: dbData.author || details.levelInfo.author,
+            author: displayAuthor,
           },
         });
         setRank(dbData.rank_position);
