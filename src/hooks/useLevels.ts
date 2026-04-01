@@ -188,7 +188,7 @@ export function useLevel(levelId: string, isExtended?: boolean) {
       // Try main levels table first
       const dbResult = await supabase
         .from("levels")
-        .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id, alternative_ids")
+        .select("id, rank_position, points, name, author, creators, thumbnail_url, verifier_profile_id, alternative_ids")
         .eq("level_id", levelId)
         .maybeSingle();
 
@@ -199,7 +199,7 @@ export function useLevel(levelId: string, isExtended?: boolean) {
       if (!dbData && isExtended !== false) {
         const extendedResult = await supabase
           .from("extended_levels")
-          .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id, alternative_ids")
+          .select("id, rank_position, points, name, author, creators, thumbnail_url, verifier_profile_id, alternative_ids")
           .eq("level_id", levelId)
           .maybeSingle();
         
