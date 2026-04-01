@@ -414,20 +414,22 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update verifier
-      const { data: manualVerifier } = await supabase
-        .from("manual_runs")
-        .select("profile_id")
-        .eq("level_id", level.id)
-        .eq("is_verifier", true)
-        .limit(1)
-        .maybeSingle();
+      // Update verifier only if not already manually set
+      if (!level.verifier_profile_id) {
+        const { data: manualVerifier } = await supabase
+          .from("manual_runs")
+          .select("profile_id")
+          .eq("level_id", level.id)
+          .eq("is_verifier", true)
+          .limit(1)
+          .maybeSingle();
 
-      const verifierProfileId = manualVerifier?.profile_id || oldestCompletion?.profile_id || null;
+        const verifierProfileId = manualVerifier?.profile_id || oldestCompletion?.profile_id || null;
 
-      if (verifierProfileId && verifierProfileId !== level.verifier_profile_id) {
-        await supabase.from("levels").update({ verifier_profile_id: verifierProfileId }).eq("id", level.id);
-        console.log(`Updated verifier for ${level.level_id}`);
+        if (verifierProfileId) {
+          await supabase.from("levels").update({ verifier_profile_id: verifierProfileId }).eq("id", level.id);
+          console.log(`Updated verifier for ${level.level_id}`);
+        }
       }
     }
 

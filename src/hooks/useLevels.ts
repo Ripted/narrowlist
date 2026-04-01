@@ -123,13 +123,19 @@ async function fetchLevelsData(): Promise<LevelWithRank[]> {
         ? profileIdCacheResult.get(r.dbLevel.verifier_profile_id)
         : null;
       
+      // Use creators array if available, otherwise fall back to DB author, then API author
+      const dbCreators = (r.dbLevel as any).creators as string[] | null;
+      const displayAuthor = dbCreators && dbCreators.length > 0
+        ? dbCreators.join(", ")
+        : r.dbLevel.author || r.details!.levelInfo.author;
+      
       return {
         ...r.details!,
         // Override with DB values if available
         levelInfo: {
           ...r.details!.levelInfo,
           name: r.dbLevel.name || r.details!.levelInfo.name,
-          author: r.dbLevel.author || r.details!.levelInfo.author,
+          author: displayAuthor,
         },
         rank: r.dbLevel.rank_position,
         points: r.dbLevel.points,
