@@ -105,15 +105,32 @@ async function fetchLevelsData(): Promise<LevelWithRank[]> {
     return [];
   }
 
-  // Fetch details from API for each level
-  const levelPromises = dbResult.data.map((dbLevel: DbLevel) =>
-    fetchLevelDetails(dbLevel.level_id).then((details) => ({
-      details,
-      dbLevel,
-    }))
-  );
-
-  const results = await Promise.all(levelPromises);
+  // Fetch details from API in batches to avoid rate limiting
+  const batchSize = 5;
+  const results: { details: LevelDetails | null; dbLevel: DbLevel }[] = [];
+  
+  for (let i = 0; i < dbResult.data.length; i += batchSize) {
+    const batch = dbResult.data.slice(i, i + batchSize);
+    const batchResults = await Promise.allSettled(
+      batch.map((dbLevel: DbLevel) =>
+        fetchLevelDetails(dbLevel.level_id).then((details) => ({
+          details,
+          dbLevel,
+        }))
+      )
+    );
+    
+    for (const result of batchResults) {
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+      }
+    }
+    
+    // Small delay between batches
+    if (i + batchSize < dbResult.data.length) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+  }
   
   const validLevels: LevelWithRank[] = results
     .filter((r) => r.details !== null)
