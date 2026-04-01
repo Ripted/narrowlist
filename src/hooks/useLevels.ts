@@ -105,15 +105,32 @@ async function fetchLevelsData(): Promise<LevelWithRank[]> {
     return [];
   }
 
-  // Fetch details from API for each level
-  const levelPromises = dbResult.data.map((dbLevel: DbLevel) =>
-    fetchLevelDetails(dbLevel.level_id).then((details) => ({
-      details,
-      dbLevel,
-    }))
-  );
-
-  const results = await Promise.all(levelPromises);
+  // Fetch details from API in batches to avoid rate limiting
+  const batchSize = 5;
+  const results: { details: LevelDetails | null; dbLevel: DbLevel }[] = [];
+  
+  for (let i = 0; i < dbResult.data.length; i += batchSize) {
+    const batch = dbResult.data.slice(i, i + batchSize);
+    const batchResults = await Promise.allSettled(
+      batch.map((dbLevel: DbLevel) =>
+        fetchLevelDetails(dbLevel.level_id).then((details) => ({
+          details,
+          dbLevel,
+        }))
+      )
+    );
+    
+    for (const result of batchResults) {
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+      }
+    }
+    
+    // Small delay between batches
+    if (i + batchSize < dbResult.data.length) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+  }
   
   const validLevels: LevelWithRank[] = results
     .filter((r) => r.details !== null)
@@ -123,13 +140,19 @@ async function fetchLevelsData(): Promise<LevelWithRank[]> {
         ? profileIdCacheResult.get(r.dbLevel.verifier_profile_id)
         : null;
       
+      // Use creators array if available, otherwise fall back to DB author, then API author
+      const dbCreators = (r.dbLevel as any).creators as string[] | null;
+      const displayAuthor = dbCreators && dbCreators.length > 0
+        ? dbCreators.join(", ")
+        : r.dbLevel.author || r.details!.levelInfo.author;
+      
       return {
         ...r.details!,
         // Override with DB values if available
         levelInfo: {
           ...r.details!.levelInfo,
           name: r.dbLevel.name || r.details!.levelInfo.name,
-          author: r.dbLevel.author || r.details!.levelInfo.author,
+          author: displayAuthor,
         },
         rank: r.dbLevel.rank_position,
         points: r.dbLevel.points,
@@ -182,7 +205,7 @@ export function useLevel(levelId: string, isExtended?: boolean) {
       // Try main levels table first
       const dbResult = await supabase
         .from("levels")
-        .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id, alternative_ids")
+        .select("id, rank_position, points, name, author, creators, thumbnail_url, verifier_profile_id, alternative_ids")
         .eq("level_id", levelId)
         .maybeSingle();
 
@@ -193,7 +216,7 @@ export function useLevel(levelId: string, isExtended?: boolean) {
       if (!dbData && isExtended !== false) {
         const extendedResult = await supabase
           .from("extended_levels")
-          .select("id, rank_position, points, name, author, thumbnail_url, verifier_profile_id, alternative_ids")
+          .select("id, rank_position, points, name, author, creators, thumbnail_url, verifier_profile_id, alternative_ids")
           .eq("level_id", levelId)
           .maybeSingle();
         
@@ -231,12 +254,17 @@ export function useLevel(levelId: string, isExtended?: boolean) {
       }
 
       if (details && dbData) {
+        const dbCreators = (dbData as any).creators as string[] | null;
+        const displayAuthor = dbCreators && dbCreators.length > 0
+          ? dbCreators.join(", ")
+          : dbData.name ? (dbData.author || details.levelInfo.author) : details.levelInfo.author;
+        
         setLevel({
           ...details,
           levelInfo: {
             ...details.levelInfo,
             name: dbData.name || details.levelInfo.name,
-            author: dbData.author || details.levelInfo.author,
+            author: displayAuthor,
           },
         });
         setRank(dbData.rank_position);

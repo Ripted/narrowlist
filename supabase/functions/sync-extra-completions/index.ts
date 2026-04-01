@@ -291,8 +291,8 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update verifier
-      if (oldestCompletion && oldestCompletion.profile_id !== level.verifier_profile_id) {
+      // Update verifier only if not already manually set
+      if (!level.verifier_profile_id && oldestCompletion) {
         await supabase.from("extended_levels")
           .update({ verifier_profile_id: oldestCompletion.profile_id })
           .eq("id", level.id);
