@@ -92,7 +92,7 @@ export type Database = {
           author: string | null
           creators: string[] | null
           deleted_at: string
-          deleted_by: string
+          deleted_by: string | null
           deleted_by_email: string
           id: string
           level_id: string
@@ -108,7 +108,7 @@ export type Database = {
           author?: string | null
           creators?: string[] | null
           deleted_at?: string
-          deleted_by: string
+          deleted_by?: string | null
           deleted_by_email: string
           id?: string
           level_id: string
@@ -124,7 +124,7 @@ export type Database = {
           author?: string | null
           creators?: string[] | null
           deleted_at?: string
-          deleted_by?: string
+          deleted_by?: string | null
           deleted_by_email?: string
           id?: string
           level_id?: string
