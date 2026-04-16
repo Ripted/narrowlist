@@ -4720,7 +4720,7 @@ export default function AdminPage() {
                   <Image className="w-8 h-8" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+              <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
                 <Button
                   variant="secondary"
                   size="sm"
@@ -4729,7 +4729,17 @@ export default function AdminPage() {
                   className="gap-2"
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                  Upload Image
+                  Upload
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handlePasteMainThumbnail}
+                  disabled={saving}
+                  className="gap-2"
+                >
+                  <Clipboard className="w-4 h-4" />
+                  Paste
                 </Button>
               </div>
             </div>
@@ -4906,7 +4916,7 @@ export default function AdminPage() {
                     <Image className="w-8 h-8" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -4915,7 +4925,17 @@ export default function AdminPage() {
                     className="gap-2"
                   >
                     {uploadingFutureThumbnail ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                    Upload Image
+                    Upload
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handlePasteFutureThumbnail}
+                    disabled={uploadingFutureThumbnail}
+                    className="gap-2"
+                  >
+                    <Clipboard className="w-4 h-4" />
+                    Paste
                   </Button>
                 </div>
               </div>
@@ -5018,7 +5038,7 @@ export default function AdminPage() {
                     <Image className="w-8 h-8" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -5027,7 +5047,17 @@ export default function AdminPage() {
                     className="gap-2"
                   >
                     {uploadingExtendedThumbnail ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                    Upload Image
+                    Upload
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handlePasteExtendedThumbnail}
+                    disabled={uploadingExtendedThumbnail}
+                    className="gap-2"
+                  >
+                    <Clipboard className="w-4 h-4" />
+                    Paste
                   </Button>
                 </div>
               </div>
