@@ -2201,6 +2201,104 @@ export default function AdminPage() {
     e.target.value = '';
   };
 
+  /**
+   * Reads an image from the user's clipboard and returns it as a File.
+   * Returns null and toasts if no image is found or clipboard is unavailable.
+   */
+  const readImageFromClipboard = async (): Promise<File | null> => {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      toast({
+        title: "Clipboard not supported",
+        description: "Your browser doesn't support reading images from the clipboard.",
+        variant: "destructive",
+      });
+      return null;
+    }
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find((t) => t.startsWith("image/"));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const ext = imageType.split("/")[1] || "png";
+          return new File([blob], `clipboard-${Date.now()}.${ext}`, { type: imageType });
+        }
+      }
+      toast({
+        title: "No image in clipboard",
+        description: "Copy an image first (e.g., screenshot), then click Paste.",
+        variant: "destructive",
+      });
+      return null;
+    } catch (err: any) {
+      toast({
+        title: "Clipboard access denied",
+        description: err?.message || "Allow clipboard permission and try again.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const handlePasteMainThumbnail = async () => {
+    if (!editingLevel) return;
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    setSaving(true);
+    const url = await uploadThumbnail(file, editingLevel.id);
+    if (url) {
+      setEditThumbnail(url);
+      toast({ title: "Pasted", description: "Thumbnail uploaded from clipboard" });
+    }
+    setSaving(false);
+  };
+
+  const handlePasteFutureThumbnail = async () => {
+    if (!editingFutureLevel) return;
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    setUploadingFutureThumbnail(true);
+    try {
+      const fileName = `future-${editingFutureLevel.id}-${Date.now()}.${file.name.split('.').pop()}`;
+      const { data, error } = await supabase.storage
+        .from('level-thumbnails')
+        .upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage
+        .from('level-thumbnails')
+        .getPublicUrl(data.path);
+      setEditFutureThumbnail(publicUrl);
+      toast({ title: "Pasted", description: "Thumbnail uploaded from clipboard" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingFutureThumbnail(false);
+    }
+  };
+
+  const handlePasteExtendedThumbnail = async () => {
+    if (!editingExtendedLevel) return;
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    setUploadingExtendedThumbnail(true);
+    try {
+      const fileName = `extended-${editingExtendedLevel.id}-${Date.now()}.${file.name.split('.').pop()}`;
+      const { data, error } = await supabase.storage
+        .from('level-thumbnails')
+        .upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage
+        .from('level-thumbnails')
+        .getPublicUrl(data.path);
+      setEditExtendedThumbnail(publicUrl);
+      toast({ title: "Pasted", description: "Thumbnail uploaded from clipboard" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingExtendedThumbnail(false);
+    }
+  };
+
   const handleDragStart = (index: number) => {
     setDraggedIndex(index);
   };
