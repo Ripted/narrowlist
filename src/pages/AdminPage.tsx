@@ -12,7 +12,7 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag
+  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag, Clipboard
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import { LevelTagAssigner } from "@/components/admin/LevelTagAssigner";
@@ -2199,6 +2199,104 @@ export default function AdminPage() {
     
     setSaving(false);
     e.target.value = '';
+  };
+
+  /**
+   * Reads an image from the user's clipboard and returns it as a File.
+   * Returns null and toasts if no image is found or clipboard is unavailable.
+   */
+  const readImageFromClipboard = async (): Promise<File | null> => {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      toast({
+        title: "Clipboard not supported",
+        description: "Your browser doesn't support reading images from the clipboard.",
+        variant: "destructive",
+      });
+      return null;
+    }
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find((t) => t.startsWith("image/"));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          const ext = imageType.split("/")[1] || "png";
+          return new File([blob], `clipboard-${Date.now()}.${ext}`, { type: imageType });
+        }
+      }
+      toast({
+        title: "No image in clipboard",
+        description: "Copy an image first (e.g., screenshot), then click Paste.",
+        variant: "destructive",
+      });
+      return null;
+    } catch (err: any) {
+      toast({
+        title: "Clipboard access denied",
+        description: err?.message || "Allow clipboard permission and try again.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const handlePasteMainThumbnail = async () => {
+    if (!editingLevel) return;
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    setSaving(true);
+    const url = await uploadThumbnail(file, editingLevel.id);
+    if (url) {
+      setEditThumbnail(url);
+      toast({ title: "Pasted", description: "Thumbnail uploaded from clipboard" });
+    }
+    setSaving(false);
+  };
+
+  const handlePasteFutureThumbnail = async () => {
+    if (!editingFutureLevel) return;
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    setUploadingFutureThumbnail(true);
+    try {
+      const fileName = `future-${editingFutureLevel.id}-${Date.now()}.${file.name.split('.').pop()}`;
+      const { data, error } = await supabase.storage
+        .from('level-thumbnails')
+        .upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage
+        .from('level-thumbnails')
+        .getPublicUrl(data.path);
+      setEditFutureThumbnail(publicUrl);
+      toast({ title: "Pasted", description: "Thumbnail uploaded from clipboard" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingFutureThumbnail(false);
+    }
+  };
+
+  const handlePasteExtendedThumbnail = async () => {
+    if (!editingExtendedLevel) return;
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    setUploadingExtendedThumbnail(true);
+    try {
+      const fileName = `extended-${editingExtendedLevel.id}-${Date.now()}.${file.name.split('.').pop()}`;
+      const { data, error } = await supabase.storage
+        .from('level-thumbnails')
+        .upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage
+        .from('level-thumbnails')
+        .getPublicUrl(data.path);
+      setEditExtendedThumbnail(publicUrl);
+      toast({ title: "Pasted", description: "Thumbnail uploaded from clipboard" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingExtendedThumbnail(false);
+    }
   };
 
   const handleDragStart = (index: number) => {
@@ -4622,7 +4720,7 @@ export default function AdminPage() {
                   <Image className="w-8 h-8" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+              <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
                 <Button
                   variant="secondary"
                   size="sm"
@@ -4631,7 +4729,17 @@ export default function AdminPage() {
                   className="gap-2"
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                  Upload Image
+                  Upload
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handlePasteMainThumbnail}
+                  disabled={saving}
+                  className="gap-2"
+                >
+                  <Clipboard className="w-4 h-4" />
+                  Paste
                 </Button>
               </div>
             </div>
@@ -4808,7 +4916,7 @@ export default function AdminPage() {
                     <Image className="w-8 h-8" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -4817,7 +4925,17 @@ export default function AdminPage() {
                     className="gap-2"
                   >
                     {uploadingFutureThumbnail ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                    Upload Image
+                    Upload
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handlePasteFutureThumbnail}
+                    disabled={uploadingFutureThumbnail}
+                    className="gap-2"
+                  >
+                    <Clipboard className="w-4 h-4" />
+                    Paste
                   </Button>
                 </div>
               </div>
@@ -4920,7 +5038,7 @@ export default function AdminPage() {
                     <Image className="w-8 h-8" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity">
                   <Button
                     variant="secondary"
                     size="sm"
@@ -4929,7 +5047,17 @@ export default function AdminPage() {
                     className="gap-2"
                   >
                     {uploadingExtendedThumbnail ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-                    Upload Image
+                    Upload
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handlePasteExtendedThumbnail}
+                    disabled={uploadingExtendedThumbnail}
+                    className="gap-2"
+                  >
+                    <Clipboard className="w-4 h-4" />
+                    Paste
                   </Button>
                 </div>
               </div>
