@@ -299,6 +299,7 @@ export default function AdminPage() {
   const [editThumbnail, setEditThumbnail] = useState("");
   const [editVerifier, setEditVerifier] = useState<string>("");
   const [editAlternativeIds, setEditAlternativeIds] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   
   // Delete confirmation
   const [deleteConfirmLevel, setDeleteConfirmLevel] = useState<Level | null>(null);
@@ -312,6 +313,7 @@ export default function AdminPage() {
   const [editFutureRank, setEditFutureRank] = useState("");
   const [editFuturePoints, setEditFuturePoints] = useState("");
   const [editFutureThumbnail, setEditFutureThumbnail] = useState("");
+  const [editFutureDescription, setEditFutureDescription] = useState("");
   const [savingFutureLevel, setSavingFutureLevel] = useState(false);
   const [uploadingFutureThumbnail, setUploadingFutureThumbnail] = useState(false);
   const editFutureThumbnailInputRef = useRef<HTMLInputElement>(null);
@@ -325,6 +327,7 @@ export default function AdminPage() {
   const [editExtendedThumbnail, setEditExtendedThumbnail] = useState("");
   const [editExtendedVerifier, setEditExtendedVerifier] = useState("none");
   const [editExtendedAlternativeIds, setEditExtendedAlternativeIds] = useState("");
+  const [editExtendedDescription, setEditExtendedDescription] = useState("");
   const [savingExtendedLevel, setSavingExtendedLevel] = useState(false);
   const [uploadingExtendedThumbnail, setUploadingExtendedThumbnail] = useState(false);
   const editExtendedThumbnailInputRef = useRef<HTMLInputElement>(null);
