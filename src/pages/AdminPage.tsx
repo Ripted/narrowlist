@@ -1607,6 +1607,7 @@ export default function AdminPage() {
     setEditFutureRank(String(level.rank_position));
     setEditFuturePoints(String(level.points));
     setEditFutureThumbnail(level.thumbnail_url || "");
+    setEditFutureDescription((level as any).description || "");
   };
 
   const saveEditedFutureLevel = async () => {
@@ -1621,7 +1622,8 @@ export default function AdminPage() {
         rank_position: parseInt(editFutureRank) || 1,
         points: parseInt(editFuturePoints) || calculatePoints(parseInt(editFutureRank) || 1),
         thumbnail_url: editFutureThumbnail || null,
-      })
+        description: editFutureDescription.trim() || null,
+      } as any)
       .eq("id", editingFutureLevel.id);
     
     if (error) {
@@ -1675,6 +1677,7 @@ export default function AdminPage() {
     setEditExtendedThumbnail(level.thumbnail_url || "");
     setEditExtendedVerifier(level.verifier_profile_id || "none");
     setEditExtendedAlternativeIds(level.alternative_ids?.join(", ") || "");
+    setEditExtendedDescription((level as any).description || "");
   };
 
   const saveEditedExtendedLevel = async () => {
@@ -1702,7 +1705,8 @@ export default function AdminPage() {
         thumbnail_url: editExtendedThumbnail || null,
         verifier_profile_id: editExtendedVerifier === "none" ? null : editExtendedVerifier || null,
         alternative_ids: alternativeIdsArray.length > 0 ? alternativeIdsArray : null,
-      })
+        description: editExtendedDescription.trim() || null,
+      } as any)
       .eq("id", editingExtendedLevel.id);
     
     if (error) {
@@ -2347,8 +2351,8 @@ export default function AdminPage() {
     setEditThumbnail(level.thumbnail_url || "");
     setEditVerifier(level.verifier_profile_id || "none");
     setEditAlternativeIds((level.alternative_ids || []).join(", "));
+    setEditDescription((level as any).description || "");
   };
-
   const saveEditedLevel = async () => {
     if (!editingLevel) return;
     
@@ -2375,7 +2379,8 @@ export default function AdminPage() {
         thumbnail_url: editThumbnail || null,
         alternative_ids: alternativeIds.length > 0 ? alternativeIds : [],
         verifier_profile_id: editVerifier === "none" ? null : editVerifier || null,
-      })
+        description: editDescription.trim() || null,
+      } as any)
       .eq("id", editingLevel.id);
     
     if (error) {
