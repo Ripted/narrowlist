@@ -185,6 +185,7 @@ export type Database = {
           author: string | null
           created_at: string
           creators: string[] | null
+          description: string | null
           id: string
           level_id: string
           name: string | null
@@ -199,6 +200,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           creators?: string[] | null
+          description?: string | null
           id?: string
           level_id: string
           name?: string | null
@@ -213,6 +215,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           creators?: string[] | null
+          description?: string | null
           id?: string
           level_id?: string
           name?: string | null
@@ -285,6 +288,7 @@ export type Database = {
           author: string | null
           created_at: string
           creators: string[] | null
+          description: string | null
           id: string
           level_id: string
           name: string | null
@@ -297,6 +301,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           creators?: string[] | null
+          description?: string | null
           id?: string
           level_id: string
           name?: string | null
@@ -309,6 +314,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           creators?: string[] | null
+          description?: string | null
           id?: string
           level_id?: string
           name?: string | null
@@ -391,6 +397,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      level_ratings: {
+        Row: {
+          created_at: string
+          decoration: number
+          design: number
+          enjoyment: number
+          gameplay: number
+          id: string
+          level_id: string
+          level_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decoration: number
+          design: number
+          enjoyment: number
+          gameplay: number
+          id?: string
+          level_id: string
+          level_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decoration?: number
+          design?: number
+          enjoyment?: number
+          gameplay?: number
+          id?: string
+          level_id?: string
+          level_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       level_submissions: {
         Row: {
@@ -497,6 +542,7 @@ export type Database = {
           author: string | null
           created_at: string
           creators: string[] | null
+          description: string | null
           id: string
           level_id: string
           name: string | null
@@ -511,6 +557,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           creators?: string[] | null
+          description?: string | null
           id?: string
           level_id: string
           name?: string | null
@@ -525,6 +572,7 @@ export type Database = {
           author?: string | null
           created_at?: string
           creators?: string[] | null
+          description?: string | null
           id?: string
           level_id?: string
           name?: string | null
@@ -936,6 +984,10 @@ export type Database = {
       recalculate_player_points: {
         Args: { player_profile_id: string }
         Returns: undefined
+      }
+      user_has_completed_level: {
+        Args: { _level_id: string; _level_type: string; _user_id: string }
+        Returns: boolean
       }
     }
     Enums: {

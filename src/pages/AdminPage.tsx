@@ -299,6 +299,7 @@ export default function AdminPage() {
   const [editThumbnail, setEditThumbnail] = useState("");
   const [editVerifier, setEditVerifier] = useState<string>("");
   const [editAlternativeIds, setEditAlternativeIds] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   
   // Delete confirmation
   const [deleteConfirmLevel, setDeleteConfirmLevel] = useState<Level | null>(null);
@@ -312,6 +313,7 @@ export default function AdminPage() {
   const [editFutureRank, setEditFutureRank] = useState("");
   const [editFuturePoints, setEditFuturePoints] = useState("");
   const [editFutureThumbnail, setEditFutureThumbnail] = useState("");
+  const [editFutureDescription, setEditFutureDescription] = useState("");
   const [savingFutureLevel, setSavingFutureLevel] = useState(false);
   const [uploadingFutureThumbnail, setUploadingFutureThumbnail] = useState(false);
   const editFutureThumbnailInputRef = useRef<HTMLInputElement>(null);
@@ -325,6 +327,7 @@ export default function AdminPage() {
   const [editExtendedThumbnail, setEditExtendedThumbnail] = useState("");
   const [editExtendedVerifier, setEditExtendedVerifier] = useState("none");
   const [editExtendedAlternativeIds, setEditExtendedAlternativeIds] = useState("");
+  const [editExtendedDescription, setEditExtendedDescription] = useState("");
   const [savingExtendedLevel, setSavingExtendedLevel] = useState(false);
   const [uploadingExtendedThumbnail, setUploadingExtendedThumbnail] = useState(false);
   const editExtendedThumbnailInputRef = useRef<HTMLInputElement>(null);
@@ -1604,6 +1607,7 @@ export default function AdminPage() {
     setEditFutureRank(String(level.rank_position));
     setEditFuturePoints(String(level.points));
     setEditFutureThumbnail(level.thumbnail_url || "");
+    setEditFutureDescription((level as any).description || "");
   };
 
   const saveEditedFutureLevel = async () => {
@@ -1618,7 +1622,8 @@ export default function AdminPage() {
         rank_position: parseInt(editFutureRank) || 1,
         points: parseInt(editFuturePoints) || calculatePoints(parseInt(editFutureRank) || 1),
         thumbnail_url: editFutureThumbnail || null,
-      })
+        description: editFutureDescription.trim() || null,
+      } as any)
       .eq("id", editingFutureLevel.id);
     
     if (error) {
@@ -1672,6 +1677,7 @@ export default function AdminPage() {
     setEditExtendedThumbnail(level.thumbnail_url || "");
     setEditExtendedVerifier(level.verifier_profile_id || "none");
     setEditExtendedAlternativeIds(level.alternative_ids?.join(", ") || "");
+    setEditExtendedDescription((level as any).description || "");
   };
 
   const saveEditedExtendedLevel = async () => {
@@ -1699,7 +1705,8 @@ export default function AdminPage() {
         thumbnail_url: editExtendedThumbnail || null,
         verifier_profile_id: editExtendedVerifier === "none" ? null : editExtendedVerifier || null,
         alternative_ids: alternativeIdsArray.length > 0 ? alternativeIdsArray : null,
-      })
+        description: editExtendedDescription.trim() || null,
+      } as any)
       .eq("id", editingExtendedLevel.id);
     
     if (error) {
@@ -2344,8 +2351,8 @@ export default function AdminPage() {
     setEditThumbnail(level.thumbnail_url || "");
     setEditVerifier(level.verifier_profile_id || "none");
     setEditAlternativeIds((level.alternative_ids || []).join(", "));
+    setEditDescription((level as any).description || "");
   };
-
   const saveEditedLevel = async () => {
     if (!editingLevel) return;
     
@@ -2372,7 +2379,8 @@ export default function AdminPage() {
         thumbnail_url: editThumbnail || null,
         alternative_ids: alternativeIds.length > 0 ? alternativeIds : [],
         verifier_profile_id: editVerifier === "none" ? null : editVerifier || null,
-      })
+        description: editDescription.trim() || null,
+      } as any)
       .eq("id", editingLevel.id);
     
     if (error) {
@@ -4804,6 +4812,21 @@ export default function AdminPage() {
                   Completions on these levels will count as completions for the main level
                 </p>
               </div>
+
+              <div>
+                <Label htmlFor="editDescription">Description</Label>
+                <Textarea
+                  id="editDescription"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  placeholder="Optional description shown on the level page (max 1000 chars)"
+                  maxLength={1000}
+                  className="mt-1 bg-secondary border-border min-h-[100px]"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {editDescription.length}/1000 characters
+                </p>
+              </div>
               
               {/* Verifier */}
               <div>
@@ -4950,6 +4973,21 @@ export default function AdminPage() {
                   className="mt-1 bg-secondary border-border"
                 />
               </div>
+
+              <div>
+                <Label htmlFor="editFutureDescription">Description</Label>
+                <Textarea
+                  id="editFutureDescription"
+                  value={editFutureDescription}
+                  onChange={(e) => setEditFutureDescription(e.target.value)}
+                  placeholder="Optional description shown on the level page (max 1000 chars)"
+                  maxLength={1000}
+                  className="mt-1 bg-secondary border-border min-h-[100px]"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {editFutureDescription.length}/1000 characters
+                </p>
+              </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -5082,6 +5120,21 @@ export default function AdminPage() {
                   onChange={(e) => setEditExtendedRank(e.target.value)}
                   className="mt-1 bg-secondary border-border"
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="editExtendedDescription">Description</Label>
+                <Textarea
+                  id="editExtendedDescription"
+                  value={editExtendedDescription}
+                  onChange={(e) => setEditExtendedDescription(e.target.value)}
+                  placeholder="Optional description shown on the level page (max 1000 chars)"
+                  maxLength={1000}
+                  className="mt-1 bg-secondary border-border min-h-[100px]"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {editExtendedDescription.length}/1000 characters
+                </p>
               </div>
               
               <div>
