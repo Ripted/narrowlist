@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers, TrendingUp } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers, TrendingUp, FileText } from "lucide-react";
 import { LevelFeedbackButton } from "@/components/LevelFeedbackButton";
 import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
 import { WatchlistButton } from "@/components/WatchlistButton";
 import { LevelTagsList } from "@/components/LevelTagBadge";
 import { useLevelTags } from "@/hooks/useLevelTags";
+import { LevelRatingPanel } from "@/components/LevelRatingPanel";
 
 interface DbProfile {
   id: string;
@@ -36,7 +37,7 @@ export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
   const searchParams = new URLSearchParams(window.location.search);
   const isExtended = searchParams.get('extended') === 'true';
-  const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId, verifierProfileId, alternativeIds, isFromExtendedList } = useLevel(levelId || "", isExtended);
+  const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId, verifierProfileId, alternativeIds, description, isFromExtendedList } = useLevel(levelId || "", isExtended);
   const { toast } = useToast();
   const [runDetails, setRunDetails] = useState<Map<number, RunDetails>>(new Map());
   const [loadingRuns, setLoadingRuns] = useState(false);
