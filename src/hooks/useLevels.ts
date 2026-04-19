@@ -189,6 +189,7 @@ export function useLevel(levelId: string, isExtended?: boolean) {
   const [levelDbId, setLevelDbId] = useState<string | null>(null);
   const [verifierProfileId, setVerifierProfileId] = useState<string | null>(null);
   const [alternativeIds, setAlternativeIds] = useState<string[]>([]);
+  const [description, setDescription] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFromExtendedList, setIsFromExtendedList] = useState(false);
 
@@ -205,7 +206,7 @@ export function useLevel(levelId: string, isExtended?: boolean) {
       // Try main levels table first
       const dbResult = await supabase
         .from("levels")
-        .select("id, rank_position, points, name, author, creators, thumbnail_url, verifier_profile_id, alternative_ids")
+        .select("id, rank_position, points, name, author, creators, thumbnail_url, verifier_profile_id, alternative_ids, description")
         .eq("level_id", levelId)
         .maybeSingle();
 
@@ -216,7 +217,7 @@ export function useLevel(levelId: string, isExtended?: boolean) {
       if (!dbData && isExtended !== false) {
         const extendedResult = await supabase
           .from("extended_levels")
-          .select("id, rank_position, points, name, author, creators, thumbnail_url, verifier_profile_id, alternative_ids")
+          .select("id, rank_position, points, name, author, creators, thumbnail_url, verifier_profile_id, alternative_ids, description")
           .eq("level_id", levelId)
           .maybeSingle();
         
@@ -272,8 +273,10 @@ export function useLevel(levelId: string, isExtended?: boolean) {
         setThumbnailUrl(dbData.thumbnail_url);
         setLevelDbId(dbData.id);
         setVerifierProfileId(dbData.verifier_profile_id);
+        setDescription((dbData as any).description ?? null);
       } else if (details) {
         setLevel(details);
+        setDescription(null);
       }
       
       setLeaderboard(combinedLeaderboard);
@@ -283,7 +286,7 @@ export function useLevel(levelId: string, isExtended?: boolean) {
     load();
   }, [levelId, isExtended]);
 
-  return { level, leaderboard, rank, points, thumbnailUrl, levelDbId, verifierProfileId, alternativeIds, loading, isFromExtendedList };
+  return { level, leaderboard, rank, points, thumbnailUrl, levelDbId, verifierProfileId, alternativeIds, description, loading, isFromExtendedList };
 }
 
 // Function to fetch player stats data
