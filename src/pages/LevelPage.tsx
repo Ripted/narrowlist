@@ -380,6 +380,19 @@ export default function LevelPage() {
           </div>
 
 
+          {/* Description */}
+          {description && (
+            <div className="rounded-lg bg-card border border-border p-4 mb-8">
+              <h3 className="font-display text-sm font-bold flex items-center gap-2 mb-3 text-muted-foreground">
+                <FileText className="w-4 h-4" />
+                Description
+              </h3>
+              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                {description}
+              </p>
+            </div>
+          )}
+
           {/* Alternative Level IDs Section */}
           {alternativeIds.length > 0 && (
             <div className="rounded-lg bg-card border border-border p-4 mb-8">
@@ -521,6 +534,16 @@ export default function LevelPage() {
               </div>
             )}
           </div>
+
+          {/* Community Ratings */}
+          {levelDbId && (
+            <div className="mt-8">
+              <LevelRatingPanel
+                levelDbId={levelDbId}
+                levelType={isFromExtendedList ? "extra" : "main"}
+              />
+            </div>
+          )}
 
           {/* Rank History Chart - moved below completions, hidden for Extra List levels */}
           {levelDbId && !isFromExtendedList && (
