@@ -361,8 +361,58 @@ export default function ExtendedListPage() {
         l.author?.toLowerCase().includes(q) ||
         l.creators?.some(c => c.toLowerCase().includes(q)) ||
         l.level_id.toLowerCase().includes(q)
-    );
-  }, [levels, searchQuery]);
+  const filteredLevels = useMemo(() => {
+    let result = levels;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (l) =>
+          l.name?.toLowerCase().includes(q) ||
+          l.author?.toLowerCase().includes(q) ||
+          l.creators?.some((c) => c.toLowerCase().includes(q)) ||
+          l.level_id.toLowerCase().includes(q)
+      );
+    }
+    const ratingKey: Record<string, "avg_overall" | "avg_enjoyment" | "avg_design" | "avg_decoration" | "avg_gameplay"> = {
+      rating_overall: "avg_overall",
+      rating_enjoyment: "avg_enjoyment",
+      rating_design: "avg_design",
+      rating_decoration: "avg_decoration",
+      rating_gameplay: "avg_gameplay",
+    };
+    const sorted = [...result];
+    if (sortKey === "rank") sorted.sort((a, b) => a.rank_position - b.rank_position);
+    else if (sortKey === "rank_desc") sorted.sort((a, b) => b.rank_position - a.rank_position);
+    else if (sortKey === "name") sorted.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    else if (sortKey === "points_desc") sorted.sort((a, b) => b.points - a.points);
+    else if (sortKey === "votes")
+      sorted.sort(
+        (a, b) =>
+          (ratingsAgg?.get(b.id)?.count || 0) - (ratingsAgg?.get(a.id)?.count || 0)
+      );
+    else if (sortKey === "difficulty_desc")
+      sorted.sort(
+        (a, b) =>
+          (difficultyAgg?.get(b.id)?.avg_difficulty ?? -Infinity) -
+          (difficultyAgg?.get(a.id)?.avg_difficulty ?? -Infinity)
+      );
+    else if (sortKey === "difficulty_asc")
+      sorted.sort(
+        (a, b) =>
+          (difficultyAgg?.get(a.id)?.avg_difficulty ?? Infinity) -
+          (difficultyAgg?.get(b.id)?.avg_difficulty ?? Infinity)
+      );
+    else {
+      const k = ratingKey[sortKey];
+      if (k)
+        sorted.sort(
+          (a, b) =>
+            (ratingsAgg?.get(b.id)?.[k] ?? -Infinity) -
+            (ratingsAgg?.get(a.id)?.[k] ?? -Infinity)
+        );
+    }
+    return sorted;
+  }, [levels, searchQuery, sortKey, ratingsAgg, difficultyAgg]);
 
   const totalPages = Math.ceil(filteredLevels.length / ITEMS_PER_PAGE);
   const paginatedLevels = useMemo(() => {
@@ -398,7 +448,20 @@ export default function ExtendedListPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as LevelSortKey)}>
+                <SelectTrigger className="h-9 w-auto min-w-[140px] gap-2 bg-secondary border-border">
+                  <ArrowUpDown className="w-4 h-4" />
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-popover">
+                  {SORT_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="relative flex-1 sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
