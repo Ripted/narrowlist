@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Medal, Search, Calendar, X, Hammer, Crown, Loader2, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useAllRatingsAggregate } from "@/hooks/useLevelAggregates";
 
 interface HistoricalPlayerStats {
   username: string;
