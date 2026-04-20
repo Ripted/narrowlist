@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Medal, Search, Calendar, X, Hammer, Crown, Loader2, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useAllRatingsAggregate } from "@/hooks/useLevelAggregates";
 
 interface HistoricalPlayerStats {
   username: string;
@@ -23,6 +24,9 @@ interface CreatorStats {
   author: string;
   levelCount: number;
   totalPoints: number;
+  creatorPoints: number;
+  ratedLevelCount: number;
+  avgRating: number;
   avatarUrl?: string;
   levels: {
     id: string;
@@ -48,6 +52,7 @@ export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState(initialTab);
   
   const { players, loading } = usePlayerLeaderboard();
+  const { data: ratingsAgg } = useAllRatingsAggregate();
   const [searchQuery, setSearchQuery] = useState("");
   const [historicalDate, setHistoricalDate] = useState<string | null>(null);
   const [historicalPlayers, setHistoricalPlayers] = useState<HistoricalPlayerStats[]>([]);
@@ -238,14 +243,13 @@ export default function LeaderboardPage() {
   }, [profiles]);
 
   // Creator stats calculation - handles both single author and multiple creators
-  // FIXED: Sort by level count, not total points
+  // Creator points = sum of (avg_overall_rating / 10) * level.points
+  // If no rating, contributes 0 — encourages quality over difficulty alone.
   const creatorStats = useMemo(() => {
     const statsMap = new Map<string, CreatorStats>();
     
     levels.forEach((level: any) => {
-      // Get all creators - from creators array or fall back to author field
       const creatorsList: string[] = [];
-      
       if (level.creators && level.creators.length > 0) {
         creatorsList.push(...level.creators);
       } else if (level.author) {
@@ -254,7 +258,11 @@ export default function LeaderboardPage() {
         creatorsList.push("Unknown");
       }
       
-      // Add this level to each creator's stats
+      const agg = ratingsAgg?.get(level.id);
+      const hasRating = !!agg && agg.count > 0;
+      const ratingMultiplier = hasRating ? agg!.avg_overall / 10 : 0;
+      const levelCreatorPoints = ratingMultiplier * (level.points || 0);
+      
       creatorsList.forEach((creator: string) => {
         const existing = statsMap.get(creator);
         const levelData = {
@@ -265,30 +273,42 @@ export default function LeaderboardPage() {
           points: level.points,
           thumbnail_url: level.thumbnail_url,
         };
-        
-        // Find matching profile for avatar
         const profileInfo = profileMap.get(creator.toLowerCase());
         
         if (existing) {
           existing.levelCount++;
           existing.totalPoints += level.points;
+          existing.creatorPoints += levelCreatorPoints;
+          if (hasRating) {
+            existing.ratedLevelCount++;
+            existing.avgRating += agg!.avg_overall;
+          }
           existing.levels.push(levelData);
         } else {
           statsMap.set(creator, {
             author: creator,
             levelCount: 1,
             totalPoints: level.points,
+            creatorPoints: levelCreatorPoints,
+            ratedLevelCount: hasRating ? 1 : 0,
+            avgRating: hasRating ? agg!.avg_overall : 0,
             avatarUrl: profileInfo?.avatarUrl,
             levels: [levelData],
           });
         }
       });
     });
+
+    // Finalize: avgRating becomes mean of rated levels
+    for (const c of statsMap.values()) {
+      if (c.ratedLevelCount > 0) c.avgRating = c.avgRating / c.ratedLevelCount;
+      c.creatorPoints = Math.round(c.creatorPoints * 10) / 10;
+    }
     
-    // Sort by level count (number of levels created), not by total points
+    // Sort by creator points (quality-weighted), tiebreak by level count
     return Array.from(statsMap.values())
-      .sort((a, b) => b.levelCount - a.levelCount);
-  }, [levels, profileMap]);
+      .sort((a, b) => b.creatorPoints - a.creatorPoints || b.levelCount - a.levelCount);
+  }, [levels, profileMap, ratingsAgg]);
 
   const filteredCreators = useMemo(() => {
     if (!searchQuery.trim()) return creatorStats;
@@ -638,11 +658,14 @@ export default function LeaderboardPage() {
             {/* Creators Tab */}
             <TabsContent value="creators" className="space-y-6 mt-0">
               {/* Stats */}
-              <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground flex-wrap">
                 <span className="bg-muted px-2 py-1 rounded font-mono">{creatorStats.length} Creators</span>
                 <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono flex items-center gap-1">
                   <Hammer className="w-3 h-3" />
-                  {creatorStats.reduce((sum, c) => sum + c.totalPoints, 0)} Creator Points
+                  {creatorStats.reduce((sum, c) => sum + c.creatorPoints, 0).toFixed(1)} Creator Points
+                </span>
+                <span className="text-muted-foreground/70 italic">
+                  Quality-weighted: sum of (avg rating ÷ 10) × level points
                 </span>
               </div>
 
@@ -685,9 +708,11 @@ export default function LeaderboardPage() {
                             <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{creator.author}</div>
                             <div className="font-mono text-sm text-accent flex items-center justify-center gap-1">
                               <Hammer className="w-3 h-3" />
-                              {creator.totalPoints}
+                              {creator.creatorPoints.toFixed(1)}
                             </div>
-                            <div className="text-xs text-muted-foreground">{creator.levelCount} levels</div>
+                            <div className="text-xs text-muted-foreground">
+                              {creator.levelCount} levels{creator.ratedLevelCount > 0 ? ` · ⭐ ${creator.avgRating.toFixed(1)}` : ""}
+                            </div>
                             <div className={`w-24 ${pedestal} ${rank === 1 ? "bg-gradient-to-t from-glow-gold/60 to-glow-gold/30" : rank === 2 ? "bg-gradient-to-t from-glow-silver/60 to-glow-silver/30" : "bg-gradient-to-t from-glow-bronze/60 to-glow-bronze/30"} rounded-t-lg mt-2`} />
                           </Link>
                         );
@@ -723,13 +748,19 @@ export default function LeaderboardPage() {
                             <div className="font-display font-semibold truncate">{creator.author}</div>
                             <div className="text-sm text-muted-foreground">
                               {creator.levelCount} level{creator.levelCount !== 1 ? 's' : ''}
+                              {creator.ratedLevelCount > 0 && (
+                                <span className="ml-2 inline-flex items-center gap-1 text-primary">
+                                  <Star className="w-3 h-3 fill-current" />
+                                  {creator.avgRating.toFixed(1)}
+                                </span>
+                              )}
                             </div>
                           </div>
                           
                           <div className="text-right">
                             <div className="font-mono font-bold text-accent flex items-center gap-1 justify-end">
                               <Hammer className="w-4 h-4" />
-                              {creator.totalPoints}
+                              {creator.creatorPoints.toFixed(1)}
                             </div>
                             <div className="text-xs text-muted-foreground">creator pts</div>
                           </div>

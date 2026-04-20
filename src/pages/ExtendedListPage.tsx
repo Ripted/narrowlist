@@ -201,6 +201,10 @@ const ExtendedListPage = () => {
                       isCompleted={completedLevelIds.has(level.levelInfo.level_id)}
                       showCompletionStatus={isLoggedIn}
                       tags={level.dbId ? (tagsByLevelId.get(level.dbId) || []).filter((t: any) => t.show_on_card) : []}
+                      avgRating={level.dbId ? ratingsAgg?.get(level.dbId)?.avg_overall : undefined}
+                      ratingCount={level.dbId ? ratingsAgg?.get(level.dbId)?.count : undefined}
+                      avgDifficulty={level.dbId ? difficultyAgg?.get(level.dbId)?.avg_difficulty : undefined}
+                      difficultyCount={level.dbId ? difficultyAgg?.get(level.dbId)?.count : undefined}
                     />
                   </div>
                 ))}
