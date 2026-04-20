@@ -2,11 +2,24 @@ import { useState, useMemo } from "react";
 import { useLevels } from "@/hooks/useLevels";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags } from "@/hooks/useLevelTags";
+import {
+  useAllRatingsAggregate,
+  useAllDifficultyAggregate,
+  SORT_OPTIONS,
+  LevelSortKey,
+} from "@/hooks/useLevelAggregates";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Target, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Target, Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -14,8 +27,11 @@ const ExtendedListPage = () => {
   const { levels, loading, error } = useLevels();
   const { completedLevelIds, isLoggedIn } = useUserCompletions();
   const { data: allTags = [] } = useAllLevelTags();
+  const { data: ratingsAgg } = useAllRatingsAggregate();
+  const { data: difficultyAgg } = useAllDifficultyAggregate();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortKey, setSortKey] = useState<LevelSortKey>("rank");
 
   // Only show levels ranked 101+
   const extendedLevels = useMemo(() => {
@@ -35,14 +51,55 @@ const ExtendedListPage = () => {
   }, [allTags]);
 
   const filteredLevels = useMemo(() => {
-    if (!searchQuery.trim()) return extendedLevels;
-    const query = searchQuery.toLowerCase();
-    return extendedLevels.filter(
-      (level) =>
-        level.levelInfo.name.toLowerCase().includes(query) ||
-        level.levelInfo.author.toLowerCase().includes(query)
-    );
-  }, [extendedLevels, searchQuery]);
+    let result = extendedLevels;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (level) =>
+          level.levelInfo.name.toLowerCase().includes(query) ||
+          level.levelInfo.author.toLowerCase().includes(query)
+      );
+    }
+    const ratingKey: Record<string, "avg_overall" | "avg_enjoyment" | "avg_design" | "avg_decoration" | "avg_gameplay"> = {
+      rating_overall: "avg_overall",
+      rating_enjoyment: "avg_enjoyment",
+      rating_design: "avg_design",
+      rating_decoration: "avg_decoration",
+      rating_gameplay: "avg_gameplay",
+    };
+    const sorted = [...result];
+    if (sortKey === "rank") sorted.sort((a, b) => a.rank - b.rank);
+    else if (sortKey === "rank_desc") sorted.sort((a, b) => b.rank - a.rank);
+    else if (sortKey === "name") sorted.sort((a, b) => a.levelInfo.name.localeCompare(b.levelInfo.name));
+    else if (sortKey === "points_desc") sorted.sort((a, b) => b.points - a.points);
+    else if (sortKey === "votes")
+      sorted.sort(
+        (a, b) =>
+          (ratingsAgg?.get(b.dbId || "")?.count || 0) - (ratingsAgg?.get(a.dbId || "")?.count || 0)
+      );
+    else if (sortKey === "difficulty_desc")
+      sorted.sort(
+        (a, b) =>
+          (difficultyAgg?.get(b.dbId || "")?.avg_difficulty ?? -Infinity) -
+          (difficultyAgg?.get(a.dbId || "")?.avg_difficulty ?? -Infinity)
+      );
+    else if (sortKey === "difficulty_asc")
+      sorted.sort(
+        (a, b) =>
+          (difficultyAgg?.get(a.dbId || "")?.avg_difficulty ?? Infinity) -
+          (difficultyAgg?.get(b.dbId || "")?.avg_difficulty ?? Infinity)
+      );
+    else {
+      const k = ratingKey[sortKey];
+      if (k)
+        sorted.sort(
+          (a, b) =>
+            (ratingsAgg?.get(b.dbId || "")?.[k] ?? -Infinity) -
+            (ratingsAgg?.get(a.dbId || "")?.[k] ?? -Infinity)
+        );
+    }
+    return sorted;
+  }, [extendedLevels, searchQuery, sortKey, ratingsAgg, difficultyAgg]);
 
   const totalPages = Math.ceil(filteredLevels.length / ITEMS_PER_PAGE);
   const paginatedLevels = useMemo(() => {
@@ -71,17 +128,32 @@ const ExtendedListPage = () => {
               </span>
             </div>
             
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search levels..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-9 bg-secondary border-border"
-              />
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              <Select value={sortKey} onValueChange={(v) => setSortKey(v as LevelSortKey)}>
+                <SelectTrigger className="h-9 w-auto min-w-[140px] gap-2 bg-secondary border-border">
+                  <ArrowUpDown className="w-4 h-4" />
+                  <SelectValue placeholder="Sort" />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-popover">
+                  {SORT_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="relative flex-1 sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search levels..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-9 bg-secondary border-border"
+                />
+              </div>
             </div>
           </div>
 

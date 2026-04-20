@@ -42,10 +42,10 @@ export function LevelRatingPanel({ levelDbId, levelType }: LevelRatingPanelProps
     [ratings, user]
   );
 
-  const [enjoyment, setEnjoyment] = useState(7);
-  const [design, setDesign] = useState(7);
-  const [decoration, setDecoration] = useState(7);
-  const [gameplay, setGameplay] = useState(7);
+  const [enjoyment, setEnjoyment] = useState(7.5);
+  const [design, setDesign] = useState(7.5);
+  const [decoration, setDecoration] = useState(7.5);
+  const [gameplay, setGameplay] = useState(7.5);
   const [showAll, setShowAll] = useState(false);
   const [usernames, setUsernames] = useState<Map<string, string>>(new Map());
 
@@ -187,12 +187,12 @@ export function LevelRatingPanel({ levelDbId, levelType }: LevelRatingPanelProps
                 <div key={c.key}>
                   <div className="flex items-center justify-between mb-1">
                     <Label className="text-sm">{c.label}</Label>
-                    <span className="font-mono font-medium text-sm text-primary">{value}/10</span>
+                    <span className="font-mono font-medium text-sm text-primary">{value.toFixed(1)}/10</span>
                   </div>
                   <Slider
                     min={1}
                     max={10}
-                    step={1}
+                    step={0.5}
                     value={[value]}
                     onValueChange={(v) => setter(v[0])}
                   />
@@ -257,11 +257,11 @@ export function LevelRatingPanel({ levelDbId, levelType }: LevelRatingPanelProps
                           )}
                         </div>
                         <div className="text-muted-foreground font-mono">
-                          E {r.enjoyment} · D {r.design} · Dc {r.decoration} · G {r.gameplay}
+                          E {Number(r.enjoyment).toFixed(1)} · D {Number(r.design).toFixed(1)} · Dc {Number(r.decoration).toFixed(1)} · G {Number(r.gameplay).toFixed(1)}
                         </div>
                       </div>
                       <div className="font-mono font-bold text-primary">
-                        {overall.toFixed(1)}
+                        {overall.toFixed(2)}
                       </div>
                       {isAdmin && (
                         <Button

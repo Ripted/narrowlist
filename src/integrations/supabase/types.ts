@@ -325,6 +325,36 @@ export type Database = {
         }
         Relationships: []
       }
+      level_difficulty_votes: {
+        Row: {
+          created_at: string
+          difficulty: number
+          id: string
+          level_id: string
+          level_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          difficulty: number
+          id?: string
+          level_id: string
+          level_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          difficulty?: number
+          id?: string
+          level_id?: string
+          level_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       level_feedback: {
         Row: {
           created_at: string
@@ -496,6 +526,41 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      level_tag_votes: {
+        Row: {
+          created_at: string
+          id: string
+          level_id: string
+          level_type: string
+          preset_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level_id: string
+          level_type: string
+          preset_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level_id?: string
+          level_type?: string
+          preset_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "level_tag_votes_preset_id_fkey"
+            columns: ["preset_id"]
+            isOneToOne: false
+            referencedRelation: "tag_presets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       level_tags: {
         Row: {
