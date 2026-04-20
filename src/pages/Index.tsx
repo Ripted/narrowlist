@@ -2,11 +2,24 @@ import { useState, useMemo } from "react";
 import { useLevels } from "@/hooks/useLevels";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags } from "@/hooks/useLevelTags";
+import {
+  useAllRatingsAggregate,
+  useAllDifficultyAggregate,
+  SORT_OPTIONS,
+  LevelSortKey,
+} from "@/hooks/useLevelAggregates";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Target, Search, Filter, History, Tag, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Target, Search, Filter, History, Tag, X, ArrowUpDown } from "lucide-react";
 import { HistoricalListViewer } from "@/components/HistoricalListViewer";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -24,11 +37,14 @@ const Index = () => {
   const { levels, loading, error } = useLevels();
   const { completedLevelIds, isLoggedIn } = useUserCompletions();
   const { data: allTags = [] } = useAllLevelTags();
+  const { data: ratingsAgg } = useAllRatingsAggregate();
+  const { data: difficultyAgg } = useAllDifficultyAggregate();
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyUncompleted, setShowOnlyUncompleted] = useState(false);
   const [historicalLevels, setHistoricalLevels] = useState<HistoricalLevel[] | null>(null);
   const [historicalDate, setHistoricalDate] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<LevelSortKey>("rank");
 
   const handleHistoricalData = (levels: HistoricalLevel[] | null, date: string | null) => {
     setHistoricalLevels(levels);
@@ -95,8 +111,50 @@ const Index = () => {
       result = result.filter(level => level.dbId && levelIdsWithTag.has(level.dbId));
     }
     
-    return result;
-  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTag, allTags]);
+    // Sort
+    const ratingKey: Record<string, "avg_overall" | "avg_enjoyment" | "avg_design" | "avg_decoration" | "avg_gameplay"> = {
+      rating_overall: "avg_overall",
+      rating_enjoyment: "avg_enjoyment",
+      rating_design: "avg_design",
+      rating_decoration: "avg_decoration",
+      rating_gameplay: "avg_gameplay",
+    };
+    const sorted = [...result];
+    if (sortKey === "rank") sorted.sort((a, b) => a.rank - b.rank);
+    else if (sortKey === "rank_desc") sorted.sort((a, b) => b.rank - a.rank);
+    else if (sortKey === "name")
+      sorted.sort((a, b) => a.levelInfo.name.localeCompare(b.levelInfo.name));
+    else if (sortKey === "points_desc") sorted.sort((a, b) => b.points - a.points);
+    else if (sortKey === "votes")
+      sorted.sort(
+        (a, b) =>
+          (ratingsAgg?.get(b.dbId || "")?.count || 0) -
+          (ratingsAgg?.get(a.dbId || "")?.count || 0)
+      );
+    else if (sortKey === "difficulty_desc")
+      sorted.sort(
+        (a, b) =>
+          (difficultyAgg?.get(b.dbId || "")?.avg_difficulty ?? -Infinity) -
+          (difficultyAgg?.get(a.dbId || "")?.avg_difficulty ?? -Infinity)
+      );
+    else if (sortKey === "difficulty_asc")
+      sorted.sort(
+        (a, b) =>
+          (difficultyAgg?.get(a.dbId || "")?.avg_difficulty ?? Infinity) -
+          (difficultyAgg?.get(b.dbId || "")?.avg_difficulty ?? Infinity)
+      );
+    else {
+      const k = ratingKey[sortKey];
+      if (k)
+        sorted.sort(
+          (a, b) =>
+            (ratingsAgg?.get(b.dbId || "")?.[k] ?? -Infinity) -
+            (ratingsAgg?.get(a.dbId || "")?.[k] ?? -Infinity)
+        );
+    }
+
+    return sorted;
+  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTag, allTags, sortKey, ratingsAgg, difficultyAgg]);
 
   const maxPoints = useMemo(() => {
     return levels.filter(l => l.rank <= 100).reduce((sum, level) => sum + (level.points || 0), 0);
