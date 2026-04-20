@@ -658,11 +658,14 @@ export default function LeaderboardPage() {
             {/* Creators Tab */}
             <TabsContent value="creators" className="space-y-6 mt-0">
               {/* Stats */}
-              <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground flex-wrap">
                 <span className="bg-muted px-2 py-1 rounded font-mono">{creatorStats.length} Creators</span>
                 <span className="bg-accent/10 text-accent px-2 py-1 rounded font-mono flex items-center gap-1">
                   <Hammer className="w-3 h-3" />
-                  {creatorStats.reduce((sum, c) => sum + c.totalPoints, 0)} Creator Points
+                  {creatorStats.reduce((sum, c) => sum + c.creatorPoints, 0).toFixed(1)} Creator Points
+                </span>
+                <span className="text-muted-foreground/70 italic">
+                  Quality-weighted: sum of (avg rating ÷ 10) × level points
                 </span>
               </div>
 
@@ -705,9 +708,11 @@ export default function LeaderboardPage() {
                             <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{creator.author}</div>
                             <div className="font-mono text-sm text-accent flex items-center justify-center gap-1">
                               <Hammer className="w-3 h-3" />
-                              {creator.totalPoints}
+                              {creator.creatorPoints.toFixed(1)}
                             </div>
-                            <div className="text-xs text-muted-foreground">{creator.levelCount} levels</div>
+                            <div className="text-xs text-muted-foreground">
+                              {creator.levelCount} levels{creator.ratedLevelCount > 0 ? ` · ⭐ ${creator.avgRating.toFixed(1)}` : ""}
+                            </div>
                             <div className={`w-24 ${pedestal} ${rank === 1 ? "bg-gradient-to-t from-glow-gold/60 to-glow-gold/30" : rank === 2 ? "bg-gradient-to-t from-glow-silver/60 to-glow-silver/30" : "bg-gradient-to-t from-glow-bronze/60 to-glow-bronze/30"} rounded-t-lg mt-2`} />
                           </Link>
                         );
@@ -743,13 +748,19 @@ export default function LeaderboardPage() {
                             <div className="font-display font-semibold truncate">{creator.author}</div>
                             <div className="text-sm text-muted-foreground">
                               {creator.levelCount} level{creator.levelCount !== 1 ? 's' : ''}
+                              {creator.ratedLevelCount > 0 && (
+                                <span className="ml-2 inline-flex items-center gap-1 text-primary">
+                                  <Star className="w-3 h-3 fill-current" />
+                                  {creator.avgRating.toFixed(1)}
+                                </span>
+                              )}
                             </div>
                           </div>
                           
                           <div className="text-right">
                             <div className="font-mono font-bold text-accent flex items-center gap-1 justify-end">
                               <Hammer className="w-4 h-4" />
-                              {creator.totalPoints}
+                              {creator.creatorPoints.toFixed(1)}
                             </div>
                             <div className="text-xs text-muted-foreground">creator pts</div>
                           </div>
