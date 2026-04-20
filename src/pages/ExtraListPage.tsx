@@ -60,7 +60,11 @@ function ExtendedLevelCard({
   worldRecord,
   isCompleted,
   showCompletionStatus,
-  tags = []
+  tags = [],
+  avgRating,
+  ratingCount,
+  avgDifficulty,
+  difficultyCount,
 }: { 
   level: ExtendedLevel; 
   verifierUsername?: string;
@@ -69,6 +73,10 @@ function ExtendedLevelCard({
   isCompleted?: boolean;
   showCompletionStatus?: boolean;
   tags?: LevelTag[];
+  avgRating?: number;
+  ratingCount?: number;
+  avgDifficulty?: number;
+  difficultyCount?: number;
 }) {
   const { toast } = useToast();
 
@@ -194,6 +202,24 @@ function ExtendedLevelCard({
           {/* Tags - emoji only with text on hover */}
           {cardTags.length > 0 && (
             <LevelTagsList tags={cardTags} variant="card" emojiOnly={true} />
+          )}
+
+          {/* Rating & Difficulty badges */}
+          {((avgRating !== undefined && (ratingCount ?? 0) > 0) || (avgDifficulty !== undefined && (difficultyCount ?? 0) > 0)) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {avgRating !== undefined && (ratingCount ?? 0) > 0 && (
+                <div className="flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium" title={`${ratingCount} rating${ratingCount === 1 ? "" : "s"}`}>
+                  <Star className="w-3 h-3 fill-current" />
+                  <span>{avgRating.toFixed(1)}</span>
+                </div>
+              )}
+              {avgDifficulty !== undefined && (difficultyCount ?? 0) > 0 && (
+                <div className="flex items-center gap-1 rounded-full bg-accent/10 text-accent px-2 py-0.5 text-xs font-medium" title={`${difficultyCount} difficulty vote${difficultyCount === 1 ? "" : "s"}`}>
+                  <Gauge className="w-3 h-3" />
+                  <span>D{avgDifficulty.toFixed(1)}</span>
+                </div>
+              )}
+            </div>
           )}
 
           <div className="flex items-center justify-between text-sm">
