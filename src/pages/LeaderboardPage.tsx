@@ -23,6 +23,9 @@ interface CreatorStats {
   author: string;
   levelCount: number;
   totalPoints: number;
+  creatorPoints: number;
+  ratedLevelCount: number;
+  avgRating: number;
   avatarUrl?: string;
   levels: {
     id: string;
