@@ -52,6 +52,7 @@ export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState(initialTab);
   
   const { players, loading } = usePlayerLeaderboard();
+  const { data: ratingsAgg } = useAllRatingsAggregate();
   const [searchQuery, setSearchQuery] = useState("");
   const [historicalDate, setHistoricalDate] = useState<string | null>(null);
   const [historicalPlayers, setHistoricalPlayers] = useState<HistoricalPlayerStats[]>([]);
