@@ -353,15 +353,6 @@ export default function ExtendedListPage() {
   }, [allTags]);
 
   const filteredLevels = useMemo(() => {
-    if (!searchQuery.trim()) return levels;
-    const q = searchQuery.toLowerCase();
-    return levels.filter(
-      (l) =>
-        l.name?.toLowerCase().includes(q) ||
-        l.author?.toLowerCase().includes(q) ||
-        l.creators?.some(c => c.toLowerCase().includes(q)) ||
-        l.level_id.toLowerCase().includes(q)
-  const filteredLevels = useMemo(() => {
     let result = levels;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
