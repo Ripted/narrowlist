@@ -242,14 +242,13 @@ export default function LeaderboardPage() {
   }, [profiles]);
 
   // Creator stats calculation - handles both single author and multiple creators
-  // FIXED: Sort by level count, not total points
+  // Creator points = sum of (avg_overall_rating / 10) * level.points
+  // If no rating, contributes 0 — encourages quality over difficulty alone.
   const creatorStats = useMemo(() => {
     const statsMap = new Map<string, CreatorStats>();
     
     levels.forEach((level: any) => {
-      // Get all creators - from creators array or fall back to author field
       const creatorsList: string[] = [];
-      
       if (level.creators && level.creators.length > 0) {
         creatorsList.push(...level.creators);
       } else if (level.author) {
@@ -258,7 +257,11 @@ export default function LeaderboardPage() {
         creatorsList.push("Unknown");
       }
       
-      // Add this level to each creator's stats
+      const agg = ratingsAgg?.get(level.id);
+      const hasRating = !!agg && agg.count > 0;
+      const ratingMultiplier = hasRating ? agg!.avg_overall / 10 : 0;
+      const levelCreatorPoints = ratingMultiplier * (level.points || 0);
+      
       creatorsList.forEach((creator: string) => {
         const existing = statsMap.get(creator);
         const levelData = {
@@ -269,30 +272,42 @@ export default function LeaderboardPage() {
           points: level.points,
           thumbnail_url: level.thumbnail_url,
         };
-        
-        // Find matching profile for avatar
         const profileInfo = profileMap.get(creator.toLowerCase());
         
         if (existing) {
           existing.levelCount++;
           existing.totalPoints += level.points;
+          existing.creatorPoints += levelCreatorPoints;
+          if (hasRating) {
+            existing.ratedLevelCount++;
+            existing.avgRating += agg!.avg_overall;
+          }
           existing.levels.push(levelData);
         } else {
           statsMap.set(creator, {
             author: creator,
             levelCount: 1,
             totalPoints: level.points,
+            creatorPoints: levelCreatorPoints,
+            ratedLevelCount: hasRating ? 1 : 0,
+            avgRating: hasRating ? agg!.avg_overall : 0,
             avatarUrl: profileInfo?.avatarUrl,
             levels: [levelData],
           });
         }
       });
     });
+
+    // Finalize: avgRating becomes mean of rated levels
+    for (const c of statsMap.values()) {
+      if (c.ratedLevelCount > 0) c.avgRating = c.avgRating / c.ratedLevelCount;
+      c.creatorPoints = Math.round(c.creatorPoints * 10) / 10;
+    }
     
-    // Sort by level count (number of levels created), not by total points
+    // Sort by creator points (quality-weighted), tiebreak by level count
     return Array.from(statsMap.values())
-      .sort((a, b) => b.levelCount - a.levelCount);
-  }, [levels, profileMap]);
+      .sort((a, b) => b.creatorPoints - a.creatorPoints || b.levelCount - a.levelCount);
+  }, [levels, profileMap, ratingsAgg]);
 
   const filteredCreators = useMemo(() => {
     if (!searchQuery.trim()) return creatorStats;
