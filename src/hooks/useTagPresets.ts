@@ -48,7 +48,7 @@ export function useTagPresets() {
   });
 
   const updatePreset = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; emoji?: string; text?: string; description?: string }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; emoji?: string; text?: string; description?: string | null }) => {
       const { error } = await supabase
         .from("tag_presets")
         .update(updates)
@@ -57,6 +57,7 @@ export function useTagPresets() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tag-presets"] });
+      toast({ title: "Saved", description: "Tag preset updated" });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
