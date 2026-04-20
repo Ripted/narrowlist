@@ -13,6 +13,7 @@ export function TagPresetsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editEmoji, setEditEmoji] = useState("");
   const [editText, setEditText] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   const handleAdd = () => {
     if (!newText.trim()) return;
@@ -32,12 +33,18 @@ export function TagPresetsManager() {
     setEditingId(preset.id);
     setEditEmoji(preset.emoji);
     setEditText(preset.text);
+    setEditDescription(preset.description || "");
   };
 
   const saveEdit = () => {
     if (!editingId || !editText.trim()) return;
     updatePreset.mutate(
-      { id: editingId, emoji: editEmoji || "🏷️", text: editText.trim() },
+      {
+        id: editingId,
+        emoji: editEmoji || "🏷️",
+        text: editText.trim(),
+        description: editDescription.trim() || null as any,
+      },
       { onSuccess: () => setEditingId(null) }
     );
   };
@@ -46,6 +53,7 @@ export function TagPresetsManager() {
     setEditingId(null);
     setEditEmoji("");
     setEditText("");
+    setEditDescription("");
   };
 
   if (isLoading) {
@@ -75,34 +83,45 @@ export function TagPresetsManager() {
               className="flex items-center gap-2 p-3 bg-secondary/50 rounded-lg border border-border"
             >
               {editingId === preset.id ? (
-                <>
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editEmoji}
+                      onChange={(e) => setEditEmoji(e.target.value)}
+                      className="w-14 h-8 text-center bg-card border-border"
+                      maxLength={4}
+                    />
+                    <Input
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      className="flex-1 h-8 bg-card border-border"
+                      placeholder="Tag name"
+                    />
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={saveEdit}>
+                      <Check className="w-4 h-4 text-primary" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={cancelEdit}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <Input
-                    value={editEmoji}
-                    onChange={(e) => setEditEmoji(e.target.value)}
-                    className="w-14 h-8 text-center bg-card border-border"
-                    maxLength={4}
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    placeholder="Description (optional)..."
+                    className="h-8 bg-card border-border text-xs"
                   />
-                  <Input
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    className="flex-1 h-8 bg-card border-border"
-                  />
-                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={saveEdit}>
-                    <Check className="w-4 h-4 text-primary" />
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={cancelEdit}>
-                    <X className="w-4 h-4" />
-                  </Button>
-                </>
+                </div>
               ) : (
                 <>
                   <span className="text-xl w-8 text-center">{preset.emoji}</span>
-                  <span className="flex-1 font-medium">{preset.text}</span>
-                  {preset.description && (
-                    <span className="text-xs text-muted-foreground max-w-[200px] truncate">
-                      {preset.description}
-                    </span>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{preset.text}</div>
+                    {preset.description && (
+                      <div className="text-xs text-muted-foreground truncate">
+                        {preset.description}
+                      </div>
+                    )}
+                  </div>
                   <Button
                     size="sm"
                     variant="ghost"
