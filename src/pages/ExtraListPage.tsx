@@ -5,11 +5,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Check, Clock } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Check, Clock, ArrowUpDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags, LevelTag } from "@/hooks/useLevelTags";
 import { LevelTagsList } from "@/components/LevelTagBadge";
+import {
+  useAllRatingsAggregate,
+  useAllDifficultyAggregate,
+  SORT_OPTIONS,
+  LevelSortKey,
+} from "@/hooks/useLevelAggregates";
 
 interface ExtendedLevel {
   id: string;
@@ -229,8 +242,11 @@ function ExtendedLevelCard({
 export default function ExtendedListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortKey, setSortKey] = useState<LevelSortKey>("rank");
   const { completedExtraLevelIds, isLoggedIn } = useUserCompletions();
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
+  const { data: ratingsAgg } = useAllRatingsAggregate();
+  const { data: difficultyAgg } = useAllDifficultyAggregate();
 
   // Fetch extended levels with verifier info
   const { data: levels = [], isLoading } = useQuery({
