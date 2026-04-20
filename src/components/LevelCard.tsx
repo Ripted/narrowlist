@@ -147,7 +147,7 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompl
           {((avgRating !== undefined && (ratingCount ?? 0) > 0) || (avgDifficulty !== undefined && (difficultyCount ?? 0) > 0)) && (
             <div className="flex items-center gap-2 flex-wrap">
               {avgRating !== undefined && (ratingCount ?? 0) > 0 && (
-                <div className="flex items-center gap-1 rounded-full bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 px-2 py-0.5 text-xs font-medium" title={`${ratingCount} rating${ratingCount === 1 ? "" : "s"}`}>
+                <div className="flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium" title={`${ratingCount} rating${ratingCount === 1 ? "" : "s"}`}>
                   <Star className="w-3 h-3 fill-current" />
                   <span>{avgRating.toFixed(1)}</span>
                 </div>
