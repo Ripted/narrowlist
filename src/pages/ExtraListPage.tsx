@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Check, Clock, ArrowUpDown } from "lucide-react";
+import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Check, Clock, ArrowUpDown, Star, Gauge } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags, LevelTag } from "@/hooks/useLevelTags";
@@ -537,6 +537,10 @@ export default function ExtendedListPage() {
                       isCompleted={completedExtraLevelIds.has(level.level_id)}
                       showCompletionStatus={isLoggedIn}
                       tags={tagsByLevelId.get(level.id) || []}
+                      avgRating={ratingsAgg?.get(level.id)?.avg_overall}
+                      ratingCount={ratingsAgg?.get(level.id)?.count}
+                      avgDifficulty={difficultyAgg?.get(level.id)?.avg_difficulty}
+                      difficultyCount={difficultyAgg?.get(level.id)?.count}
                     />
                   </div>
                 ))}
