@@ -609,7 +609,7 @@ export default function PlayerPage() {
                     <div className="text-[10px] sm:text-xs text-muted-foreground">Created</div>
                   </div>
                   <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
-                    <div className="flex items-center justify-center gap-1"><Hammer className="w-3 h-3 sm:w-4 sm:h-4 text-accent" /><span className="font-display text-xl sm:text-2xl font-bold text-accent">{createdLevelsTotalPoints.toLocaleString()}</span></div>
+                    <div className="flex items-center justify-center gap-1"><Hammer className="w-3 h-3 sm:w-4 sm:h-4 text-accent" /><span className="font-display text-xl sm:text-2xl font-bold text-accent">{Math.round(createdLevelsTotalPoints).toLocaleString()}</span></div>
                     <div className="text-[10px] sm:text-xs text-muted-foreground">Creator Points</div>
                   </div>
                 </div>
