@@ -543,6 +543,7 @@ export default function ExtendedListPage() {
                       ratingCount={ratingsAgg?.get(level.id)?.count}
                       avgDifficulty={difficultyAgg?.get(level.id)?.avg_difficulty}
                       difficultyCount={difficultyAgg?.get(level.id)?.count}
+                      victorCount={victorCounts?.get(level.id)}
                     />
                   </div>
                 ))}

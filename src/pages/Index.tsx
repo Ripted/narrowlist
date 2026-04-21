@@ -382,6 +382,7 @@ const Index = () => {
                     ratingCount={level.dbId ? ratingsAgg?.get(level.dbId)?.count : undefined}
                     avgDifficulty={level.dbId ? difficultyAgg?.get(level.dbId)?.avg_difficulty : undefined}
                     difficultyCount={level.dbId ? difficultyAgg?.get(level.dbId)?.count : undefined}
+                    victorCount={level.dbId ? victorCounts?.get(level.dbId) : undefined}
                   />
                 </div>
               ))}
