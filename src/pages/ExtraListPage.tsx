@@ -16,6 +16,7 @@ import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, C
 import { useToast } from "@/hooks/use-toast";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags, LevelTag } from "@/hooks/useLevelTags";
+import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import { LevelTagsList } from "@/components/LevelTagBadge";
 import {
   useAllRatingsAggregate,
@@ -273,6 +274,7 @@ export default function ExtendedListPage() {
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const { data: ratingsAgg } = useAllRatingsAggregate();
   const { data: difficultyAgg } = useAllDifficultyAggregate();
+  const { data: victorCounts } = useLevelCompletionCounts();
 
   // Fetch extended levels with verifier info
   const { data: levels = [], isLoading } = useQuery({
@@ -541,6 +543,7 @@ export default function ExtendedListPage() {
                       ratingCount={ratingsAgg?.get(level.id)?.count}
                       avgDifficulty={difficultyAgg?.get(level.id)?.avg_difficulty}
                       difficultyCount={difficultyAgg?.get(level.id)?.count}
+                      victorCount={victorCounts?.get(level.id)}
                     />
                   </div>
                 ))}

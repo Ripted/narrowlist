@@ -1,61 +1,92 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Clock, Search, Target, Play } from "lucide-react";
+import { Clock, Search } from "lucide-react";
+import { FutureLevelCard } from "@/components/FutureLevelCard";
+import { fetchLevelDetails } from "@/lib/api";
 
 interface FutureLevel {
   id: string;
   level_id: string;
   name: string | null;
   author: string | null;
+  creators: string[] | null;
   rank_position: number;
   points: number;
   thumbnail_url: string | null;
+  created_at: string;
 }
 
 export default function FutureListPage() {
   const [futureLevels, setFutureLevels] = useState<FutureLevel[]>([]);
+  const [likeCounts, setLikeCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function loadFutureLevels() {
       setLoading(true);
-      
       const { data, error } = await supabase
         .from("future_levels")
         .select("*")
         .order("rank_position", { ascending: true });
-      
+
       if (!error && data) {
-        setFutureLevels(data);
+        setFutureLevels(data as FutureLevel[]);
       }
       setLoading(false);
     }
-    
     loadFutureLevels();
   }, []);
 
+  // Throttled enrichment: batches of 5, 200ms delay
+  useEffect(() => {
+    if (futureLevels.length === 0) return;
+    let cancelled = false;
+
+    const enrich = async () => {
+      const counts = new Map<string, number>();
+      const BATCH = 5;
+      for (let i = 0; i < futureLevels.length; i += BATCH) {
+        if (cancelled) return;
+        const batch = futureLevels.slice(i, i + BATCH);
+        const results = await Promise.all(
+          batch.map((l) => fetchLevelDetails(l.level_id))
+        );
+        results.forEach((r, idx) => {
+          if (r?.levelInfo) counts.set(batch[idx].level_id, r.levelInfo.like_count);
+        });
+        if (!cancelled) setLikeCounts(new Map(counts));
+        if (i + BATCH < futureLevels.length) {
+          await new Promise((res) => setTimeout(res, 200));
+        }
+      }
+    };
+    enrich();
+    return () => {
+      cancelled = true;
+    };
+  }, [futureLevels]);
+
   const filteredLevels = useMemo(() => {
     if (!searchQuery.trim()) return futureLevels;
-    const query = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase();
     return futureLevels.filter(
-      (level) =>
-        (level.name?.toLowerCase().includes(query)) ||
-        (level.author?.toLowerCase().includes(query))
+      (l) =>
+        l.name?.toLowerCase().includes(q) ||
+        l.author?.toLowerCase().includes(q) ||
+        l.creators?.some((c) => c.toLowerCase().includes(q)) ||
+        l.level_id.toLowerCase().includes(q)
     );
   }, [futureLevels, searchQuery]);
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
       <div className="fixed inset-0 bg-grid-pattern bg-grid opacity-20 pointer-events-none" />
       <div className="fixed top-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
-      
+
       <main className="relative pt-24 pb-12">
         <section className="container mx-auto px-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -68,7 +99,6 @@ export default function FutureListPage() {
                 {futureLevels.length} Levels
               </span>
             </div>
-            
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -81,9 +111,9 @@ export default function FutureListPage() {
           </div>
 
           {loading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-20 rounded-lg bg-card border border-border animate-pulse" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="h-72 rounded-xl bg-card border border-border animate-pulse" />
               ))}
             </div>
           ) : filteredLevels.length === 0 ? (
@@ -99,54 +129,14 @@ export default function FutureListPage() {
               </p>
             </div>
           ) : (
-            <div className="rounded-lg bg-card border border-border overflow-hidden">
-              <div className="divide-y divide-border">
-                {filteredLevels.map((level) => (
-                  <div
-                    key={level.id}
-                    className="flex items-center gap-4 p-5 hover:bg-secondary/20 transition-colors"
-                  >
-                    <div className="w-16 text-center flex-shrink-0">
-                      <span className="font-display font-bold text-xl text-accent">
-                        ~#{level.rank_position}
-                      </span>
-                    </div>
-                    
-                    <div className="w-20 h-14 rounded bg-secondary overflow-hidden flex-shrink-0">
-                      {level.thumbnail_url ? (
-                        <img src={level.thumbnail_url} alt={level.name || "Level"} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Target className="w-5 h-5 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-foreground truncate text-lg">
-                        {level.name || "Unnamed Level"}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        By: {level.author || "Unknown"}
-                      </div>
-                    </div>
-                    
-                    <Button
-                      size="sm"
-                      variant="default"
-                      className="h-9 w-9 p-0"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        window.open(`https://narrowarrow.xyz/levelid=${level.level_id}`, "_blank");
-                      }}
-                      title="Play Level"
-                    >
-                      <Play className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredLevels.map((level) => (
+                <FutureLevelCard
+                  key={level.id}
+                  level={level}
+                  likeCount={likeCounts.get(level.level_id)}
+                />
+              ))}
             </div>
           )}
         </section>

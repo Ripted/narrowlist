@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useLevels } from "@/hooks/useLevels";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags } from "@/hooks/useLevelTags";
+import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import {
   useAllRatingsAggregate,
   useAllDifficultyAggregate,
@@ -29,6 +30,7 @@ const ExtendedListPage = () => {
   const { data: allTags = [] } = useAllLevelTags();
   const { data: ratingsAgg } = useAllRatingsAggregate();
   const { data: difficultyAgg } = useAllDifficultyAggregate();
+  const { data: victorCounts } = useLevelCompletionCounts();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortKey, setSortKey] = useState<LevelSortKey>("rank");
@@ -205,6 +207,7 @@ const ExtendedListPage = () => {
                       ratingCount={level.dbId ? ratingsAgg?.get(level.dbId)?.count : undefined}
                       avgDifficulty={level.dbId ? difficultyAgg?.get(level.dbId)?.avg_difficulty : undefined}
                       difficultyCount={level.dbId ? difficultyAgg?.get(level.dbId)?.count : undefined}
+                      victorCount={level.dbId ? victorCounts?.get(level.dbId) : undefined}
                     />
                   </div>
                 ))}

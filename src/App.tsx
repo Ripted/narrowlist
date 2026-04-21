@@ -21,6 +21,7 @@ import StatisticsPage from "./pages/StatisticsPage";
 import AuthPage from "./pages/AuthPage";
 import AdminPage from "./pages/AdminPage";
 import WatchlistPage from "./pages/WatchlistPage";
+import PacksPage from "./pages/PacksPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,8 @@ const App = () => (
               <Route path="/themes" element={<ThemesPage />} />
               <Route path="/statistics" element={<StatisticsPage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
+              <Route path="/packs" element={<PacksPage />} />
+              <Route path="/packs/:packId" element={<PacksPage />} />
               <Route path="/player/:username" element={<PlayerPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/admin" element={<AdminPage />} />

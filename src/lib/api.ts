@@ -58,6 +58,16 @@ export interface RunDetails {
   };
 }
 
+// Throttle repetitive network failure logs to keep the console readable.
+let lastNetworkErrorLog = 0;
+function logNetworkError(context: string, error: unknown) {
+  const now = Date.now();
+  if (now - lastNetworkErrorLog > 5000) {
+    lastNetworkErrorLog = now;
+    console.warn(`[api] ${context}:`, error instanceof Error ? error.message : error);
+  }
+}
+
 export async function fetchLevelDetails(levelId: string): Promise<LevelDetails | null> {
   try {
     const response = await fetch(
@@ -66,7 +76,7 @@ export async function fetchLevelDetails(levelId: string): Promise<LevelDetails |
     if (!response.ok) return null;
     return await response.json();
   } catch (error) {
-    console.error("Error fetching level details:", error);
+    logNetworkError("level-details", error);
     return null;
   }
 }
@@ -77,7 +87,7 @@ export async function fetchLeaderboard(levelId: string): Promise<LeaderboardEntr
     if (!response.ok) return [];
     return await response.json();
   } catch (error) {
-    console.error("Error fetching leaderboard:", error);
+    logNetworkError("leaderboard", error);
     return [];
   }
 }
@@ -88,7 +98,7 @@ export async function fetchRunDetails(runId: number): Promise<RunDetails | null>
     if (!response.ok) return null;
     return await response.json();
   } catch (error) {
-    console.error("Error fetching run details:", error);
+    logNetworkError("run-details", error);
     return null;
   }
 }
