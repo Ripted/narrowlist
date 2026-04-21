@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { usePlayerLeaderboard, useLevels } from "@/hooks/useLevels";
+import { useAllRatingsAggregate } from "@/hooks/useLevelAggregates";
 import { useAuth } from "@/hooks/useAuth";
 import { formatTime, formatDate } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
@@ -138,9 +139,17 @@ export default function PlayerPage() {
   });
   
   
+  const { data: ratingsAgg } = useAllRatingsAggregate();
+
   const createdLevelsTotalPoints = useMemo(() => {
-    return createdLevels.reduce((sum: number, l: any) => sum + l.points, 0);
-  }, [createdLevels]);
+    return createdLevels.reduce((sum: number, l: any) => {
+      const agg = ratingsAgg?.get(l.id);
+      if (agg && agg.count > 0) {
+        return sum + (agg.avg_overall / 10) * l.points;
+      }
+      return sum + l.points;
+    }, 0);
+  }, [createdLevels, ratingsAgg]);
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -246,10 +255,9 @@ export default function PlayerPage() {
 
   const isOwner = user && profileData?.user_id === user.id;
   const canEdit = isOwner || isAdmin;
-  // Allow claiming if: user is logged in, profile exists but not claimed, user doesn't own it, user doesn't already have a profile
-  // Also allow for special profiles (creator-only, extra-only) even if profileData is null (we'll create it during claim)
-  const canClaim = user && !isOwner && !userHasProfile && (
-    (profileData && !profileData.user_id) || 
+  // Allow claiming if profile is unclaimed/special. Logged-out users get redirected by handler.
+  const canClaim = !isOwner && !userHasProfile && (
+    (profileData && !profileData.user_id) ||
     (isSpecialProfile && !profileData)
   );
 
@@ -343,49 +351,24 @@ export default function PlayerPage() {
   }, [searchQuery]);
 
   const handleClaimProfile = async () => {
-    if (!user || !username) return;
+    if (!username) return;
+    if (!user) {
+      toast({ title: "Sign in required", description: "Please sign in to claim this profile" });
+      window.location.href = `/auth?redirect=/player/${username}`;
+      return;
+    }
     setClaiming(true);
     try {
-      let targetProfileId = profileData?.id;
-      
-      // If no profile exists (creator-only or extra-only without DB profile), create one first
-      if (!targetProfileId) {
-        const { data: newProfile, error: createError } = await supabase
-          .from("profiles")
-          .insert({ username: username, extra_points: 0 })
-          .select("id")
-          .single();
-        
-        if (createError) {
-          // Profile might exist with different case - try to find it
-          const { data: existingProfile } = await supabase
-            .from("profiles")
-            .select("id")
-            .ilike("username", username)
-            .maybeSingle();
-          
-          if (existingProfile) {
-            targetProfileId = existingProfile.id;
-          } else {
-            throw createError;
-          }
-        } else {
-          targetProfileId = newProfile.id;
-        }
-      }
-      
-      const { error } = await supabase
-        .from("profile_claim_requests")
-        .insert({ profile_id: targetProfileId, user_id: user.id, email: user.email || "" });
-      if (error) {
-        if (error.code === "23505") {
-          toast({ title: "Already Requested", description: "You've already submitted a claim", variant: "destructive" });
-        } else throw error;
-      } else {
-        toast({ title: "Claim Submitted", description: "An admin will review your request" });
-      }
+      const { error } = await supabase.rpc("claim_or_create_profile", { _username: username });
+      if (error) throw error;
+      toast({ title: "Claim Submitted", description: "An admin will review your request" });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      const msg = error?.message || "Failed to claim profile";
+      if (msg.toLowerCase().includes("already")) {
+        toast({ title: "Already requested", description: msg, variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      }
     } finally {
       setClaiming(false);
     }

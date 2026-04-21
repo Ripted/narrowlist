@@ -4435,6 +4435,10 @@ export default function AdminPage() {
               </div>
             </TabsContent>
 
+            <TabsContent value="packs" className="space-y-6">
+              <LevelPacksManager />
+            </TabsContent>
+
             <TabsContent value="changelog" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
                 <div className="p-4 border-b border-border bg-secondary/30">
