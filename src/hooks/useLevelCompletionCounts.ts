@@ -14,13 +14,10 @@ async function fetchCounts(): Promise<Map<string, number>> {
   ): Promise<{ profile_id: string; level_id: string }[]> => {
     const all: { profile_id: string; level_id: string }[] = [];
     let from = 0;
-    // Loop pages until no more rows
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      let query = supabase.from(table).select("profile_id, level_id");
-      if (listType && table === "manual_runs") {
-        query = query.eq("list_type", listType);
-      }
+      const baseQuery: any = supabase.from(table).select("profile_id, level_id");
+      const query = listType && table === "manual_runs" ? baseQuery.eq("list_type", listType) : baseQuery;
       const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
       if (error || !data || data.length === 0) break;
       all.push(...(data as { profile_id: string; level_id: string }[]));
