@@ -40,6 +40,7 @@ const Index = () => {
   const { data: allTags = [] } = useAllLevelTags();
   const { data: ratingsAgg } = useAllRatingsAggregate();
   const { data: difficultyAgg } = useAllDifficultyAggregate();
+  const { data: victorCounts } = useLevelCompletionCounts();
   const [searchQuery, setSearchQuery] = useState("");
   const [showOnlyUncompleted, setShowOnlyUncompleted] = useState(false);
   const [historicalLevels, setHistoricalLevels] = useState<HistoricalLevel[] | null>(null);

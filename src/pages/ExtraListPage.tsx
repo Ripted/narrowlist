@@ -274,6 +274,7 @@ export default function ExtendedListPage() {
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const { data: ratingsAgg } = useAllRatingsAggregate();
   const { data: difficultyAgg } = useAllDifficultyAggregate();
+  const { data: victorCounts } = useLevelCompletionCounts();
 
   // Fetch extended levels with verifier info
   const { data: levels = [], isLoading } = useQuery({

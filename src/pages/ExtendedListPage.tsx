@@ -30,6 +30,7 @@ const ExtendedListPage = () => {
   const { data: allTags = [] } = useAllLevelTags();
   const { data: ratingsAgg } = useAllRatingsAggregate();
   const { data: difficultyAgg } = useAllDifficultyAggregate();
+  const { data: victorCounts } = useLevelCompletionCounts();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortKey, setSortKey] = useState<LevelSortKey>("rank");
