@@ -1,60 +1,96 @@
 
+# Bug Fixes + Future List Redesign + Level Packs + Victor Counts
 
-# Bug Fix Plan
+## 1. Fix "Is this you?" RLS error (creator-only profiles)
 
-## Bugs Identified
+**Problem:** `handleClaimProfile` tries to `INSERT` into `profiles` with `{ username, extra_points: 0 }` but no `user_id`. The RLS policy `Users can insert own profile` requires `auth.uid() = user_id`, so insert fails for creator-only profiles where no profile row exists yet.
 
-### 1. Webhook Settings Save on Every Keystroke
-**File:** `src/pages/AdminPage.tsx` (lines 4206-4211, 4216-4221)
-**Bug:** The webhook URL and template `onChange` handlers call `updateWebhookSetting()` on every keystroke, firing a Supabase update per character typed. This causes rapid API calls, poor UX, and potential data loss.
-**Fix:** Convert webhook settings to use local state per webhook card, with a dedicated "Save" button. Store edits locally, only persist on explicit save.
+**Fix:** Move profile creation server-side via a new SECURITY DEFINER RPC `claim_or_create_profile(_username text)` that:
+- Looks up profile by username (case-insensitive)
+- If none exists, creates one with `user_id = NULL` (server bypasses RLS)
+- Inserts a row in `profile_claim_requests` for the calling user
+- Returns the profile id
 
-### 2. Main List Edit Modal Missing Verifier Field
-**File:** `src/pages/AdminPage.tsx` (lines 4560-4671)
-**Bug:** The main list edit modal lacks a Verifier dropdown selector. The extra list edit modal has one, but the main list does not. Also, `saveEditedLevel()` (line 2234) does not update `verifier_profile_id`.
-**Fix:** Add a Verifier `<Select>` field to the main list edit modal (matching the extra list pattern with `"none"` sentinel). Update `saveEditedLevel()` to include `verifier_profile_id` in the update payload.
+`PlayerPage.handleClaimProfile` calls the RPC instead of two separate inserts.
 
-### 3. `resync-future-levels` Still Overwrites Manual Edits
-**File:** `supabase/functions/resync-future-levels/index.ts` (lines 59-65)
-**Bug:** Unlike `resync-main-levels` and `resync-extra-levels` which were already fixed to only update `name`/`author` when NULL, the future levels resync still overwrites any name/author that differs from the API.
-**Fix:** Apply the same pattern: only update `name` if `level.name` is NULL, only update `author` if `level.author` is NULL.
+## 2. "Is this you?" for logged-out users
 
-### 4. `discord-notify` Missing `webhook_type` for Run Submissions
-**File:** `src/pages/AdminPage.tsx` (lines 978-991)
-**Bug:** When approving a run submission, the Discord notification call uses `completion_type: "manual_run"` but does not include `webhook_type`. The `discord-notify` function requires `webhook_type` to look up the correct webhook settings.
-**Fix:** Add `webhook_type: 'main_completions'` (or determine based on level rank) to the `discord-notify` invocation for run submission approvals.
+**Fix:** Update `canClaim` in `PlayerPage.tsx` so the button always renders for unclaimed/special profiles. When `!user`, change handler to redirect to `/auth?redirect=/player/{username}` and show a toast "Sign in to claim this profile".
 
-### 5. Extra List Rank Re-ranking Not Applied (UNIQUE constraint may be blocking)
-**Bug:** The previous migration attempted to re-rank `extended_levels`, but with a UNIQUE constraint on `rank_position`, sequential updates can conflict if intermediate values collide with existing values. The duplicate ranks may still exist.
-**Fix:** SQL migration that temporarily drops the UNIQUE constraint, re-ranks all levels, then re-adds the constraint.
+## 3. Show creator points on creator/player page
 
-### 6. `deleteExtendedLevel` Does Not Re-rank Remaining Levels
-**File:** `src/pages/AdminPage.tsx` (lines 702-718)
-**Bug:** When deleting an extra level, remaining levels are not re-ranked, creating gaps (e.g., deleting #3 leaves ranks 1, 2, 4, 5...). Main list `confirmDeleteLevel` does re-rank.
-**Fix:** After deleting, fetch remaining extended levels, re-rank them sequentially, and update the database.
+**Problem:** Creator points only appear in the Leaderboard's Creators tab via `useAllRatingsAggregate` formula `Σ (avg_rating / 10) × base_points`. Player page shows raw `createdLevelsTotalPoints` (sum of `points`).
 
-### 7. Console Errors: "Error fetching level details: Load failed"
-**Bug:** The Index/Extra pages fire many parallel API calls to `api.narrowarrow.xyz` which fail (likely rate limiting or CORS). These are non-blocking but pollute the console.
-**Fix:** Add error handling/retry logic and rate limit the batch fetches in `ExtraListPage.tsx` and `useLevels.ts` using smaller batch sizes and delays.
+**Fix:** In `PlayerPage.tsx`, import `useAllRatingsAggregate`, compute per-creator points using the same formula across `createdLevels`, and display as "Creator Points" with the rating-weighted value. Also show under stats when `player` exists (currently only shows when no player).
 
----
+## 4. Future List redesign with level cards
+
+**Fix:** Rewrite `FutureListPage.tsx` to use a card grid (matching Index/Main list layout) instead of a flat list. Each card shows:
+- Large thumbnail
+- Level name + author/creators
+- "~#rank" badge
+- Like count (fetched from external API via `fetchLevelDetails`, cached)
+- Created date (`created_at` from `future_levels`)
+- Play + copy ID buttons
+
+Use `LevelCard` component pattern, but with a `FutureLevelCard` variant that shows the date instead of points (future levels aren't ranked for points). Reuse the API-batched fetch pattern (5 at a time, 200ms delay) from existing list pages.
+
+## 5. New "Level Packs" admin tab
+
+**DB migration:**
+- Table `level_packs` (id, name text, description text, cover_url text, created_by uuid, created_at, updated_at)
+- Table `level_pack_items` (id, pack_id fk, level_id uuid, level_type text 'main'|'extended', display_order int)
+- RLS: public SELECT, admin-only ALL on both
+- Unique constraint on (pack_id, level_id, level_type)
+
+**UI:**
+- New `src/components/admin/LevelPacksManager.tsx` with create/edit/delete pack flow
+- Pack editor: name + description inputs, searchable level picker (main + extra), drag/reorder items, save
+- Add tab in `AdminPage.tsx` TabsList: `<TabsTrigger value="packs">Level Packs</TabsTrigger>`
+- Add `<TabsContent value="packs">` rendering the manager
+
+**Public page (lightweight):** new `/packs` route + `PacksPage.tsx` listing all packs as cards; clicking opens a detail view showing the levels in the pack. Add nav entry in Navbar "More" dropdown.
+
+## 6. Victor count on level cards
+
+**Approach:** Compute completion counts per level in a single aggregate query and pass into cards.
+
+**Hook:** New `src/hooks/useLevelCompletionCounts.ts` using React Query (5-min stale):
+- Fetches all rows from `completions` (level_id only) + `manual_runs` (level_id, list_type='main') + `extra_completions` + extra manual runs
+- Returns `Map<levelDbId, count>` deduplicated per profile per level
+
+**UI:** Add a small badge on `LevelCard.tsx` (and the Extra list custom card): `<Users icon /> {count}` with tooltip "Victors". Pass `victorCount` prop from `Index.tsx`, `ExtendedListPage.tsx`, `ExtraListPage.tsx`.
+
+## 7. Other bugs found during exploration
+
+- **Console spam**: `Error fetching level details: Failed to fetch` on Index — silence non-critical errors in the API batch fetch (already partially throttled per memory). Wrap in try/catch and only log once per batch failure.
+- **`profile_claim_requests` duplicate**: current code only catches `23505` after creating profile — if profile creation succeeds but claim fails, an orphan profile remains. The new RPC handles both atomically.
+
+## Technical Details
+
+| File | Change |
+|------|--------|
+| SQL migration | Add `level_packs`, `level_pack_items` tables + RLS; add `claim_or_create_profile` RPC |
+| `src/pages/PlayerPage.tsx` | Use new RPC for claim; logged-out claim → redirect to /auth; show rating-weighted creator points |
+| `src/pages/FutureListPage.tsx` | Rewrite with card grid + API enrichment for like counts |
+| `src/components/FutureLevelCard.tsx` | New card component for future levels |
+| `src/components/LevelCard.tsx` | Add `victorCount` prop + Users icon badge |
+| `src/pages/ExtraListPage.tsx` | Pass victor counts to its custom card |
+| `src/pages/Index.tsx`, `ExtendedListPage.tsx` | Pass victor counts |
+| `src/hooks/useLevelCompletionCounts.ts` | New aggregation hook |
+| `src/components/admin/LevelPacksManager.tsx` | New admin component |
+| `src/pages/AdminPage.tsx` | Add "Level Packs" tab + content |
+| `src/pages/PacksPage.tsx` | New public page |
+| `src/components/Navbar.tsx` | Add "Packs" link to More menu |
+| `src/App.tsx` | Add `/packs` route |
+| `src/lib/api.ts` (or fetch helper) | Suppress repetitive fetch error logs |
 
 ## Implementation Order
 
-1. **SQL Migration** - Fix extra list duplicate ranks (drop constraint, re-rank, re-add)
-2. **Webhook UI** - Convert to local state with explicit Save button
-3. **Main List Edit Modal** - Add Verifier field and update save logic
-4. **Resync Future Levels** - Prevent name/author overwrite
-5. **Run Submission Webhook** - Add `webhook_type` to discord-notify call
-6. **Delete Extra Level** - Add re-ranking after deletion
-7. **Console Errors** - Add batch rate limiting for API calls
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| SQL migration | Re-rank extended_levels safely |
-| `src/pages/AdminPage.tsx` | Webhook local state + save button, add verifier to main edit modal, fix run submission webhook call, re-rank after extra delete |
-| `supabase/functions/resync-future-levels/index.ts` | Only update name/author when NULL |
-| `src/pages/ExtraListPage.tsx` | Batch API calls with delays |
-
+1. SQL migration (tables + RPC)
+2. Fix RLS claim flow + logged-out claim handler
+3. Creator points on player page
+4. Victor count hook + LevelCard badge + integration into all list pages
+5. Future List redesign
+6. Level Packs admin manager + public page + nav
+7. Console error suppression
