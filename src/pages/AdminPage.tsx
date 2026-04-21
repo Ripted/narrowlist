@@ -12,12 +12,13 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag, Clipboard
+  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag, Clipboard, Package
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import { LevelTagAssigner } from "@/components/admin/LevelTagAssigner";
 import { BulkTagAssigner } from "@/components/admin/BulkTagAssigner";
 import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
+import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -2854,6 +2855,10 @@ export default function AdminPage() {
                 <TabsTrigger value="tags" className="text-xs sm:text-sm flex-shrink-0">
                   <Tag className="w-3 h-3 hidden sm:inline" />
                   Tag Presets
+                </TabsTrigger>
+                <TabsTrigger value="packs" className="text-xs sm:text-sm flex-shrink-0">
+                  <Package className="w-3 h-3 hidden sm:inline" />
+                  Packs
                 </TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
