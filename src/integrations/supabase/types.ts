@@ -396,6 +396,71 @@ export type Database = {
           },
         ]
       }
+      level_pack_items: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          level_id: string
+          level_type: string
+          pack_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          level_id: string
+          level_type: string
+          pack_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          level_id?: string
+          level_type?: string
+          pack_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "level_pack_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "level_packs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      level_packs: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       level_rank_history: {
         Row: {
           id: string
@@ -1031,6 +1096,7 @@ export type Database = {
         Args: { rank_position: number }
         Returns: number
       }
+      claim_or_create_profile: { Args: { _username: string }; Returns: string }
       cleanup_empty_unclaimed_profiles: { Args: never; Returns: number }
       cleanup_old_data: { Args: never; Returns: Json }
       has_role: {
