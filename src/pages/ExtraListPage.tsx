@@ -16,6 +16,7 @@ import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, C
 import { useToast } from "@/hooks/use-toast";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags, LevelTag } from "@/hooks/useLevelTags";
+import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import { LevelTagsList } from "@/components/LevelTagBadge";
 import {
   useAllRatingsAggregate,

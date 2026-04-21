@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useLevels } from "@/hooks/useLevels";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags } from "@/hooks/useLevelTags";
+import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import {
   useAllRatingsAggregate,
   useAllDifficultyAggregate,
