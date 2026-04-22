@@ -6,21 +6,16 @@ import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import {
   useAllRatingsAggregate,
   useAllDifficultyAggregate,
-  SORT_OPTIONS,
-  LevelSortKey,
+  LevelSortField,
+  SortDirection,
+  DEFAULT_SORT_DIRECTION,
 } from "@/hooks/useLevelAggregates";
+import { SortControls } from "@/components/SortControls";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Target, Search, Filter, History, Tag, X, ArrowUpDown } from "lucide-react";
+import { Target, Search, Filter, History, Tag, X } from "lucide-react";
 import { HistoricalListViewer } from "@/components/HistoricalListViewer";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
