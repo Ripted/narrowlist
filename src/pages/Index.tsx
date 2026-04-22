@@ -6,21 +6,16 @@ import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import {
   useAllRatingsAggregate,
   useAllDifficultyAggregate,
-  SORT_OPTIONS,
-  LevelSortKey,
+  LevelSortField,
+  SortDirection,
+  DEFAULT_SORT_DIRECTION,
 } from "@/hooks/useLevelAggregates";
+import { SortControls } from "@/components/SortControls";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Target, Search, Filter, History, Tag, X, ArrowUpDown } from "lucide-react";
+import { Target, Search, Filter, History, Tag, X } from "lucide-react";
 import { HistoricalListViewer } from "@/components/HistoricalListViewer";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -46,7 +41,8 @@ const Index = () => {
   const [historicalLevels, setHistoricalLevels] = useState<HistoricalLevel[] | null>(null);
   const [historicalDate, setHistoricalDate] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<LevelSortKey>("rank");
+  const [sortField, setSortField] = useState<LevelSortField>("rank");
+  const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION.rank);
 
   const handleHistoricalData = (levels: HistoricalLevel[] | null, date: string | null) => {
     setHistoricalLevels(levels);
@@ -121,42 +117,44 @@ const Index = () => {
       rating_decoration: "avg_decoration",
       rating_gameplay: "avg_gameplay",
     };
+    const dirMul = sortDirection === "asc" ? 1 : -1;
     const sorted = [...result];
-    if (sortKey === "rank") sorted.sort((a, b) => a.rank - b.rank);
-    else if (sortKey === "rank_desc") sorted.sort((a, b) => b.rank - a.rank);
-    else if (sortKey === "name")
-      sorted.sort((a, b) => a.levelInfo.name.localeCompare(b.levelInfo.name));
-    else if (sortKey === "points_desc") sorted.sort((a, b) => b.points - a.points);
-    else if (sortKey === "votes")
+    if (sortField === "rank") sorted.sort((a, b) => (a.rank - b.rank) * dirMul);
+    else if (sortField === "name")
+      sorted.sort((a, b) => a.levelInfo.name.localeCompare(b.levelInfo.name) * dirMul);
+    else if (sortField === "points") sorted.sort((a, b) => (a.points - b.points) * dirMul);
+    else if (sortField === "votes")
       sorted.sort(
         (a, b) =>
-          (ratingsAgg?.get(b.dbId || "")?.count || 0) -
-          (ratingsAgg?.get(a.dbId || "")?.count || 0)
+          ((ratingsAgg?.get(a.dbId || "")?.count || 0) -
+            (ratingsAgg?.get(b.dbId || "")?.count || 0)) * dirMul
       );
-    else if (sortKey === "difficulty_desc")
+    else if (sortField === "completions")
       sorted.sort(
         (a, b) =>
-          (difficultyAgg?.get(b.dbId || "")?.avg_difficulty ?? -Infinity) -
-          (difficultyAgg?.get(a.dbId || "")?.avg_difficulty ?? -Infinity)
+          ((victorCounts?.get(a.dbId || "") || 0) -
+            (victorCounts?.get(b.dbId || "") || 0)) * dirMul
       );
-    else if (sortKey === "difficulty_asc")
-      sorted.sort(
-        (a, b) =>
-          (difficultyAgg?.get(a.dbId || "")?.avg_difficulty ?? Infinity) -
-          (difficultyAgg?.get(b.dbId || "")?.avg_difficulty ?? Infinity)
-      );
+    else if (sortField === "difficulty")
+      sorted.sort((a, b) => {
+        const av = difficultyAgg?.get(a.dbId || "")?.avg_difficulty;
+        const bv = difficultyAgg?.get(b.dbId || "")?.avg_difficulty;
+        const aFallback = sortDirection === "asc" ? Infinity : -Infinity;
+        return ((av ?? aFallback) - (bv ?? aFallback)) * dirMul;
+      });
     else {
-      const k = ratingKey[sortKey];
+      const k = ratingKey[sortField];
       if (k)
-        sorted.sort(
-          (a, b) =>
-            (ratingsAgg?.get(b.dbId || "")?.[k] ?? -Infinity) -
-            (ratingsAgg?.get(a.dbId || "")?.[k] ?? -Infinity)
-        );
+        sorted.sort((a, b) => {
+          const av = ratingsAgg?.get(a.dbId || "")?.[k];
+          const bv = ratingsAgg?.get(b.dbId || "")?.[k];
+          const aFallback = sortDirection === "asc" ? Infinity : -Infinity;
+          return ((av ?? aFallback) - (bv ?? aFallback)) * dirMul;
+        });
     }
 
     return sorted;
-  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTag, allTags, sortKey, ratingsAgg, difficultyAgg]);
+  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTag, allTags, sortField, sortDirection, ratingsAgg, difficultyAgg, victorCounts]);
 
   const maxPoints = useMemo(() => {
     return levels.filter(l => l.rank <= 100).reduce((sum, level) => sum + (level.points || 0), 0);
@@ -209,19 +207,14 @@ const Index = () => {
                 </Button>
               )}
               {!historicalLevels && (
-                <Select value={sortKey} onValueChange={(v) => setSortKey(v as LevelSortKey)}>
-                  <SelectTrigger className="h-9 w-auto min-w-[140px] gap-2 bg-secondary border-border">
-                    <ArrowUpDown className="w-4 h-4" />
-                    <SelectValue placeholder="Sort" />
-                  </SelectTrigger>
-                  <SelectContent className="z-50 bg-popover">
-                    {SORT_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SortControls
+                  field={sortField}
+                  direction={sortDirection}
+                  onChange={(f, d) => {
+                    setSortField(f);
+                    setSortDirection(d);
+                  }}
+                />
               )}
               <div className="relative flex-1 sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

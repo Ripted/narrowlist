@@ -98,31 +98,49 @@ export function useAllDifficultyAggregate() {
   });
 }
 
-export type LevelSortKey =
+/**
+ * One field per sortable property. Direction is controlled separately.
+ */
+export type LevelSortField =
   | "rank"
-  | "rank_desc"
   | "name"
-  | "points_desc"
+  | "points"
   | "rating_overall"
   | "rating_enjoyment"
   | "rating_design"
   | "rating_decoration"
   | "rating_gameplay"
-  | "difficulty_desc"
-  | "difficulty_asc"
-  | "votes";
+  | "difficulty"
+  | "votes"
+  | "completions";
 
-export const SORT_OPTIONS: { value: LevelSortKey; label: string }[] = [
-  { value: "rank", label: "Rank (lowest first)" },
-  { value: "rank_desc", label: "Rank (highest first)" },
-  { value: "name", label: "Name (A–Z)" },
-  { value: "points_desc", label: "Points (high → low)" },
+export type SortDirection = "asc" | "desc";
+
+export const SORT_FIELD_OPTIONS: { value: LevelSortField; label: string }[] = [
+  { value: "rank", label: "Rank" },
+  { value: "name", label: "Name" },
+  { value: "points", label: "Points" },
   { value: "rating_overall", label: "Overall rating" },
   { value: "rating_enjoyment", label: "Enjoyment" },
   { value: "rating_design", label: "Design" },
   { value: "rating_decoration", label: "Decoration" },
   { value: "rating_gameplay", label: "Gameplay" },
-  { value: "difficulty_desc", label: "Community difficulty (high → low)" },
-  { value: "difficulty_asc", label: "Community difficulty (low → high)" },
+  { value: "difficulty", label: "Difficulty" },
   { value: "votes", label: "Most rated" },
+  { value: "completions", label: "Most completions" },
 ];
+
+/** Default sort direction for each field (the "natural" direction). */
+export const DEFAULT_SORT_DIRECTION: Record<LevelSortField, SortDirection> = {
+  rank: "asc",
+  name: "asc",
+  points: "desc",
+  rating_overall: "desc",
+  rating_enjoyment: "desc",
+  rating_design: "desc",
+  rating_decoration: "desc",
+  rating_gameplay: "desc",
+  difficulty: "desc",
+  votes: "desc",
+  completions: "desc",
+};
