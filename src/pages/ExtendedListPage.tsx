@@ -6,21 +6,16 @@ import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import {
   useAllRatingsAggregate,
   useAllDifficultyAggregate,
-  SORT_OPTIONS,
-  LevelSortKey,
+  LevelSortField,
+  SortDirection,
+  DEFAULT_SORT_DIRECTION,
 } from "@/hooks/useLevelAggregates";
+import { SortControls } from "@/components/SortControls";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Target, Search, ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Target, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 const ITEMS_PER_PAGE = 25;
 
