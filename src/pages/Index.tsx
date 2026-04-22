@@ -207,19 +207,14 @@ const Index = () => {
                 </Button>
               )}
               {!historicalLevels && (
-                <Select value={sortKey} onValueChange={(v) => setSortKey(v as LevelSortKey)}>
-                  <SelectTrigger className="h-9 w-auto min-w-[140px] gap-2 bg-secondary border-border">
-                    <ArrowUpDown className="w-4 h-4" />
-                    <SelectValue placeholder="Sort" />
-                  </SelectTrigger>
-                  <SelectContent className="z-50 bg-popover">
-                    {SORT_OPTIONS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SortControls
+                  field={sortField}
+                  direction={sortDirection}
+                  onChange={(f, d) => {
+                    setSortField(f);
+                    setSortDirection(d);
+                  }}
+                />
               )}
               <div className="relative flex-1 sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
