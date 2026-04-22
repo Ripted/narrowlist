@@ -5,24 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Check, Clock, ArrowUpDown, Star, Gauge } from "lucide-react";
+import { Search, List, ChevronLeft, ChevronRight, Loader2, Trophy, User, Play, Copy, Shield, Heart, Check, Clock, Star, Gauge, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags, LevelTag } from "@/hooks/useLevelTags";
 import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import { LevelTagsList } from "@/components/LevelTagBadge";
+import { SortControls } from "@/components/SortControls";
 import {
   useAllRatingsAggregate,
   useAllDifficultyAggregate,
-  SORT_OPTIONS,
-  LevelSortKey,
+  LevelSortField,
+  SortDirection,
+  DEFAULT_SORT_DIRECTION,
 } from "@/hooks/useLevelAggregates";
 
 interface ExtendedLevel {
