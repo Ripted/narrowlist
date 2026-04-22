@@ -41,7 +41,8 @@ const Index = () => {
   const [historicalLevels, setHistoricalLevels] = useState<HistoricalLevel[] | null>(null);
   const [historicalDate, setHistoricalDate] = useState<string | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<LevelSortKey>("rank");
+  const [sortField, setSortField] = useState<LevelSortField>("rank");
+  const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION.rank);
 
   const handleHistoricalData = (levels: HistoricalLevel[] | null, date: string | null) => {
     setHistoricalLevels(levels);
