@@ -61,6 +61,7 @@ function ExtendedLevelCard({
   ratingCount,
   avgDifficulty,
   difficultyCount,
+  victorCount,
 }: { 
   level: ExtendedLevel; 
   verifierUsername?: string;
@@ -73,6 +74,7 @@ function ExtendedLevelCard({
   ratingCount?: number;
   avgDifficulty?: number;
   difficultyCount?: number;
+  victorCount?: number;
 }) {
   const { toast } = useToast();
 
@@ -219,15 +221,21 @@ function ExtendedLevelCard({
           )}
 
           <div className="flex items-center justify-between text-sm">
-            {/* Like count */}
-            {likeCount !== undefined && likeCount > 0 ? (
-              <div className="flex items-center gap-1 text-muted-foreground">
-                <Heart className="w-3 h-3 text-destructive" />
-                <span>{likeCount}</span>
-              </div>
-            ) : (
-              <div />
-            )}
+            {/* Like + victor counts */}
+            <div className="flex items-center gap-3 text-muted-foreground">
+              {likeCount !== undefined && likeCount > 0 && (
+                <div className="flex items-center gap-1" title="Likes">
+                  <Heart className="w-3 h-3 text-destructive" />
+                  <span>{likeCount}</span>
+                </div>
+              )}
+              {victorCount !== undefined && victorCount > 0 && (
+                <div className="flex items-center gap-1" title={`${victorCount} victor${victorCount === 1 ? "" : "s"}`}>
+                  <Users className="w-3 h-3 text-primary" />
+                  <span>{victorCount}</span>
+                </div>
+              )}
+            </div>
 
             {/* World Record */}
             {worldRecord && (
@@ -264,7 +272,8 @@ function ExtendedLevelCard({
 export default function ExtendedListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortKey, setSortKey] = useState<LevelSortKey>("rank");
+  const [sortField, setSortField] = useState<LevelSortField>("rank");
+  const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION.rank);
   const { completedExtraLevelIds, isLoggedIn } = useUserCompletions();
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const { data: ratingsAgg } = useAllRatingsAggregate();
