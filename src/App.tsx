@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import Index from "./pages/Index";
-import HubPage from "./pages/HubPage";
 import LevelPage from "./pages/LevelPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import PlayerPage from "./pages/PlayerPage";
@@ -36,8 +35,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<HubPage />} />
-              <Route path="/main-list" element={<Index />} />
+              <Route path="/" element={<Index />} />
               <Route path="/level/:levelId" element={<LevelPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/future-list" element={<FutureListPage />} />
