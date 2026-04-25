@@ -22,6 +22,7 @@ import AuthPage from "./pages/AuthPage";
 import AdminPage from "./pages/AdminPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import PacksPage from "./pages/PacksPage";
+import HubPage from "./pages/HubPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/hub" element={<HubPage />} />
               <Route path="/level/:levelId" element={<LevelPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/future-list" element={<FutureListPage />} />

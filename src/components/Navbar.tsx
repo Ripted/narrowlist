@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen, Palette, Bookmark, BarChart3, Package } from "lucide-react";
+import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen, Palette, Bookmark, BarChart3, Package, LayoutGrid } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import logoImg from "@/assets/logo.png";
 
@@ -57,6 +57,7 @@ export function Navbar() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const mainNavItems = [
+    { path: "/hub", label: "Explore", icon: LayoutGrid },
     { path: "/", label: "Main List", icon: List },
     { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
