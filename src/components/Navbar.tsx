@@ -57,7 +57,8 @@ export function Navbar() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const mainNavItems = [
-    { path: "/", label: "Main List", icon: List },
+    { path: "/", label: "Home", icon: Menu },
+    { path: "/main-list", label: "Main List", icon: List },
     { path: "/future-list", label: "Future List", icon: Clock },
     { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
