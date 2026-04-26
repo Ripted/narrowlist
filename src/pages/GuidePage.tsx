@@ -102,14 +102,14 @@ export default function GuidePage() {
                 title="1. Browse the Lists"
                 description="Explore the Main List to see all ranked levels by difficulty."
                 action="View Main List"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/main")}
               />
               <InteractiveCard
                 icon={Play}
                 title="2. Complete a Level"
                 description="Beat any level in Narrow Arrow that's on our lists."
                 action="See What's Ranked"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/main")}
               />
               <InteractiveCard
                 icon={Clock}
@@ -139,7 +139,7 @@ export default function GuidePage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-3">
-                  <Button onClick={() => navigate("/")} className="gap-2">
+                  <Button onClick={() => navigate("/main")} className="gap-2">
                     <List className="w-4 h-4" />
                     Main List
                   </Button>
@@ -171,7 +171,7 @@ export default function GuidePage() {
                 icon={List}
                 title="Main List"
                 description="The top 100 hardest levels in Narrow Arrow. Each level awards points based on its ranking position."
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/main")}
               />
               <FeatureCard 
                 icon={Target}
@@ -260,7 +260,7 @@ export default function GuidePage() {
                     <PointsRow rank="#101+ (Extended)" points={0} />
                   </div>
                   <Button 
-                    onClick={() => navigate("/")} 
+                    onClick={() => navigate("/main")} 
                     variant="outline" 
                     className="w-full mt-4 gap-2"
                   >
