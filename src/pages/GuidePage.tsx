@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   BookOpen, Trophy, List, Clock, Users, Send, GitCompare, 
   HelpCircle, Star, Heart, Zap, ChevronRight, ArrowRight,
-  Play, UserPlus, MapPin, Medal, Target, Eye, ListPlus
+  Play, UserPlus, MapPin, Medal, Target, Eye, ListPlus,
+  MessageCircle, Tag, Package, Shield, Award, Bookmark, Activity, Palette
 } from "lucide-react";
 import {
   Accordion,
