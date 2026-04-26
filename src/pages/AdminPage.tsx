@@ -2354,6 +2354,147 @@ export default function AdminPage() {
     setDragOverIndex(null);
   };
 
+  // ===== Future-list inline rank/thumbnail/drag handlers =====
+  const updateFutureRanks = async (updated: FutureLevel[]) => {
+    setSavingFuture(true);
+    for (const f of updated) {
+      await supabase
+        .from("future_levels")
+        .update({ rank_position: f.rank_position })
+        .eq("id", f.id);
+    }
+    setSavingFuture(false);
+    toast({ title: "Saved", description: "Future rankings updated" });
+  };
+
+  const moveFutureLevel = async (index: number, direction: "up" | "down") => {
+    const arr = [...filteredFutureLevels];
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= arr.length) return;
+    [arr[index], arr[target]] = [arr[target], arr[index]];
+    const updated = arr.map((f, i) => ({ ...f, rank_position: i + 1 }));
+    setFutureLevels(prev => {
+      const map = new Map(updated.map(u => [u.id, u.rank_position]));
+      return prev
+        .map(f => (map.has(f.id) ? { ...f, rank_position: map.get(f.id)! } : f))
+        .sort((a, b) => a.rank_position - b.rank_position);
+    });
+    await updateFutureRanks(updated);
+  };
+
+  const startFutureRankEdit = (level: FutureLevel) => {
+    setFutureRankInputId(level.id);
+    setFutureRankInputValue(String(level.rank_position));
+  };
+
+  const confirmFutureRankChange = async () => {
+    if (!futureRankInputId) return;
+    const newRank = parseInt(futureRankInputValue);
+    if (isNaN(newRank) || newRank < 1) {
+      toast({ title: "Invalid rank", description: "Enter a positive number", variant: "destructive" });
+      return;
+    }
+    const sorted = [...futureLevels].sort((a, b) => a.rank_position - b.rank_position);
+    const currentIndex = sorted.findIndex(f => f.id === futureRankInputId);
+    if (currentIndex === -1) return;
+    const targetIndex = Math.min(newRank - 1, sorted.length - 1);
+    if (currentIndex === targetIndex) {
+      setFutureRankInputId(null);
+      return;
+    }
+    const [item] = sorted.splice(currentIndex, 1);
+    sorted.splice(targetIndex, 0, item);
+    const updated = sorted.map((f, i) => ({ ...f, rank_position: i + 1 }));
+    setFutureLevels(updated);
+    setFutureRankInputId(null);
+    await updateFutureRanks(updated);
+  };
+
+  const startFutureThumbnailEdit = (level: FutureLevel) => {
+    setFutureThumbnailEditId(level.id);
+    setFutureThumbnailInputValue(level.thumbnail_url || "");
+  };
+
+  const confirmFutureThumbnailChange = async () => {
+    if (!futureThumbnailEditId) return;
+    setSavingFuture(true);
+    const { error } = await supabase
+      .from("future_levels")
+      .update({ thumbnail_url: futureThumbnailInputValue || null })
+      .eq("id", futureThumbnailEditId);
+    if (error) {
+      toast({ title: "Error", description: "Failed to update thumbnail", variant: "destructive" });
+    } else {
+      setFutureLevels(prev =>
+        prev.map(f =>
+          f.id === futureThumbnailEditId ? { ...f, thumbnail_url: futureThumbnailInputValue || null } : f
+        )
+      );
+      toast({ title: "Success", description: "Thumbnail updated" });
+    }
+    setFutureThumbnailEditId(null);
+    setSavingFuture(false);
+  };
+
+  const handleQuickFutureThumbnailUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    levelId: string
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFutureRowThumbnail(levelId);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `future-${levelId}-${Date.now()}.${fileExt}`;
+      const { data, error } = await supabase.storage
+        .from("level-thumbnails")
+        .upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage
+        .from("level-thumbnails")
+        .getPublicUrl(data.path);
+      const { error: updateError } = await supabase
+        .from("future_levels")
+        .update({ thumbnail_url: publicUrl })
+        .eq("id", levelId);
+      if (updateError) throw updateError;
+      setFutureLevels(prev =>
+        prev.map(f => (f.id === levelId ? { ...f, thumbnail_url: publicUrl } : f))
+      );
+      toast({ title: "Success", description: "Thumbnail uploaded" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingFutureRowThumbnail(null);
+      e.target.value = "";
+    }
+  };
+
+  const handleFutureDragStart = (index: number) => setFutureDraggedIndex(index);
+  const handleFutureDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setFutureDragOverIndex(index);
+  };
+  const handleFutureDrop = async (targetIndex: number) => {
+    if (futureDraggedIndex === null || futureDraggedIndex === targetIndex) {
+      setFutureDraggedIndex(null);
+      setFutureDragOverIndex(null);
+      return;
+    }
+    const sorted = [...futureLevels].sort((a, b) => a.rank_position - b.rank_position);
+    const [item] = sorted.splice(futureDraggedIndex, 1);
+    sorted.splice(targetIndex, 0, item);
+    const updated = sorted.map((f, i) => ({ ...f, rank_position: i + 1 }));
+    setFutureLevels(updated);
+    setFutureDraggedIndex(null);
+    setFutureDragOverIndex(null);
+    await updateFutureRanks(updated);
+  };
+  const handleFutureDragEnd = () => {
+    setFutureDraggedIndex(null);
+    setFutureDragOverIndex(null);
+  };
+
   const openEditModal = (level: Level) => {
     setEditingLevel(level);
     setEditName(level.name || "");
