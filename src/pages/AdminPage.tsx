@@ -350,6 +350,16 @@ export default function AdminPage() {
   // Drag and drop
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Future list inline editing & drag state
+  const [futureRankInputId, setFutureRankInputId] = useState<string | null>(null);
+  const [futureRankInputValue, setFutureRankInputValue] = useState("");
+  const [futureThumbnailEditId, setFutureThumbnailEditId] = useState<string | null>(null);
+  const [futureThumbnailInputValue, setFutureThumbnailInputValue] = useState("");
+  const [uploadingFutureRowThumbnail, setUploadingFutureRowThumbnail] = useState<string | null>(null);
+  const [futureDraggedIndex, setFutureDraggedIndex] = useState<number | null>(null);
+  const [futureDragOverIndex, setFutureDragOverIndex] = useState<number | null>(null);
+  const [savingFuture, setSavingFuture] = useState(false);
   
   // Claim requests
   const [claimRequests, setClaimRequests] = useState<ClaimRequest[]>([]);
