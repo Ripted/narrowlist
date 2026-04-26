@@ -115,7 +115,7 @@ export default function WatchlistPage() {
       
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-4">
-          <Link to="/">
+          <Link to="/main">
             <Button variant="ghost" size="sm" className="mb-6 gap-2 text-muted-foreground hover:text-foreground">
               <ArrowLeft className="w-4 h-4" />
               Back to Levels
@@ -134,7 +134,7 @@ export default function WatchlistPage() {
               <p className="text-muted-foreground mb-6">
                 Bookmark levels you want to complete from the level pages
               </p>
-              <Link to="/">
+              <Link to="/main">
                 <Button>Browse Levels</Button>
               </Link>
             </div>
