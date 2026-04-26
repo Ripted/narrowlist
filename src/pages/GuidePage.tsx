@@ -76,7 +76,7 @@ export default function GuidePage() {
 
         {/* Interactive Tab Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-12">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8">
             <TabsTrigger value="getting-started" className="gap-2">
               <Play className="w-4 h-4" />
               <span className="hidden sm:inline">Get Started</span>
@@ -88,6 +88,10 @@ export default function GuidePage() {
             <TabsTrigger value="points" className="gap-2">
               <Trophy className="w-4 h-4" />
               <span className="hidden sm:inline">Points</span>
+            </TabsTrigger>
+            <TabsTrigger value="community" className="gap-2">
+              <MessageCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">Community</span>
             </TabsTrigger>
             <TabsTrigger value="faq" className="gap-2">
               <HelpCircle className="w-4 h-4" />
