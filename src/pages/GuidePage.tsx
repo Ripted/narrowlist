@@ -359,6 +359,105 @@ export default function GuidePage() {
             </Card>
           </TabsContent>
 
+          {/* Community Tab */}
+          <TabsContent value="community" className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card className="border-[#5865F2]/30 bg-gradient-to-br from-[#5865F2]/10 to-[#5865F2]/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-[#5865F2]" />
+                    Narrow Arrow Discord
+                  </CardTitle>
+                  <CardDescription>
+                    The official community for the game itself. Chat with players, get game updates and find people to play with.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <a
+                    href="https://discord.gg/HZbg89FREr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="w-full gap-2 bg-[#5865F2] hover:bg-[#4752C4] text-white">
+                      <MessageCircle className="w-4 h-4" />
+                      Join Narrow Arrow
+                    </Button>
+                  </a>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-accent/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-primary" />
+                    Narrow List Discord
+                  </CardTitle>
+                  <CardDescription>
+                    The home of Narrowlist. Discuss rankings, submit runs, suggest levels and follow site updates.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <a
+                    href="https://discord.gg/3PdgPKqUCP"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="w-full gap-2">
+                      <MessageCircle className="w-4 h-4" />
+                      Join Narrow List
+                    </Button>
+                  </a>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  How to participate
+                </CardTitle>
+                <CardDescription>
+                  There's more to the community than just beating levels.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <CommunityRow
+                    icon={Send}
+                    title="Submit levels & runs"
+                    description="Suggest levels for the list or send proof of your manual completions."
+                  />
+                  <CommunityRow
+                    icon={Award}
+                    title="Rate & vote on difficulty"
+                    description="Once you complete a level you can rate enjoyment, gameplay, design and difficulty."
+                  />
+                  <CommunityRow
+                    icon={Tag}
+                    title="Tag levels"
+                    description="Help describe levels (e.g. spam, memory, tech) so others can find their favorite styles."
+                  />
+                  <CommunityRow
+                    icon={Activity}
+                    title="Follow recent runs"
+                    description="Watch the activity feed in real-time and cheer on top performances."
+                  />
+                  <CommunityRow
+                    icon={Bookmark}
+                    title="Build a watchlist"
+                    description="Bookmark levels you want to attempt next so you don't lose track of them."
+                  />
+                  <CommunityRow
+                    icon={Shield}
+                    title="Report issues"
+                    description="Spotted a wrong rank, duplicate run or broken thumbnail? Ping an admin on Discord."
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* FAQ Tab */}
           <TabsContent value="faq" className="space-y-6">
             <Accordion type="single" collapsible className="w-full">
