@@ -232,6 +232,36 @@ export default function GuidePage() {
                 description="See the latest completions from all players in real-time."
                 onClick={() => navigate("/recent")}
               />
+              <FeatureCard
+                icon={Package}
+                title="Level Packs"
+                description="Curated collections of levels grouped by theme, difficulty or creator."
+                onClick={() => navigate("/packs")}
+              />
+              <FeatureCard
+                icon={Bookmark}
+                title="Watchlist"
+                description="Bookmark levels you want to come back to. Available once you sign in."
+                onClick={() => navigate("/watchlist")}
+              />
+              <FeatureCard
+                icon={Tag}
+                title="Tags & Filters"
+                description="Filter the main list by any combination of community tags to find your style."
+                onClick={() => navigate("/main")}
+              />
+              <FeatureCard
+                icon={Award}
+                title="Ratings & Difficulty"
+                description="Vote on enjoyment, gameplay, design, decoration and difficulty of completed levels."
+                onClick={() => navigate("/main")}
+              />
+              <FeatureCard
+                icon={Palette}
+                title="Themes"
+                description="Switch between 60+ visual themes to make Narrowlist yours."
+                onClick={() => navigate("/themes")}
+              />
             </div>
           </TabsContent>
 
