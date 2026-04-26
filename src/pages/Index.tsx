@@ -53,8 +53,8 @@ const Index = () => {
     setHistoricalDate(date);
   };
 
-  // Calculate top 5 most used tags
-  const topTags = useMemo(() => {
+  // Calculate all unique tags with counts (alphabetical for consistent UI)
+  const allTagOptions = useMemo(() => {
     const tagCounts = new Map<string, { emoji: string; text: string; count: number }>();
     allTags.forEach(tag => {
       const key = `${tag.emoji}|${tag.text}`;
@@ -64,9 +64,7 @@ const Index = () => {
         tagCounts.set(key, { emoji: tag.emoji, text: tag.text, count: 1 });
       }
     });
-    return Array.from(tagCounts.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+    return Array.from(tagCounts.values()).sort((a, b) => b.count - a.count);
   }, [allTags]);
 
   // Group tags by level_id for display on cards
