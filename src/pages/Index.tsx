@@ -167,7 +167,7 @@ const Index = () => {
     }
 
     return sorted;
-  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTag, allTags, sortField, sortDirection, ratingsAgg, difficultyAgg, victorCounts]);
+  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTags, tagMatchMode, allTags, sortField, sortDirection, ratingsAgg, difficultyAgg, victorCounts]);
 
   const maxPoints = useMemo(() => {
     return levels.filter(l => l.rank <= 100).reduce((sum, level) => sum + (level.points || 0), 0);
