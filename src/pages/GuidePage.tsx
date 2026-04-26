@@ -750,3 +750,22 @@ function ProfileLink({ username, displayName, avatarUrl, role }: {
     </Link>
   );
 }
+
+// Community Row Component
+function CommunityRow({ icon: Icon, title, description }: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50">
+      <div className="p-2 rounded-md bg-primary/10 text-primary flex-shrink-0">
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="min-w-0">
+        <div className="font-medium text-sm text-foreground">{title}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
+      </div>
+    </div>
+  );
+}
