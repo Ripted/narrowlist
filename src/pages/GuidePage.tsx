@@ -572,6 +572,64 @@ export default function GuidePage() {
                   </p>
                 </AccordionContent>
               </AccordionItem>
+
+              <AccordionItem value="item-8">
+                <AccordionTrigger className="text-left">
+                  How do creator points work?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  <p>
+                    Creator points are calculated from the average rating each of your levels receives,
+                    multiplied by the level's base points and a quality factor. The leaderboard ranks
+                    creators by total accumulated quality-weighted points across all of their levels.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-9">
+                <AccordionTrigger className="text-left">
+                  How do I rate or vote on the difficulty of a level?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  <p>
+                    Open the level page after you've completed it. You'll see panels to rate
+                    enjoyment, gameplay, design and decoration, and to vote on the difficulty (D-rating).
+                    Only completed levels are eligible to keep ratings honest.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-10">
+                <AccordionTrigger className="text-left">
+                  What's a Level Pack?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  <p>
+                    Level Packs are admin-curated collections of levels grouped together — for example,
+                    by creator, theme, or difficulty step-up. You can browse them on the Packs page.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-11">
+                <AccordionTrigger className="text-left">
+                  Where can I get help or report a bug?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground space-y-2">
+                  <p>
+                    Join the Narrow List Discord — it's the fastest way to reach the admin team for help,
+                    bug reports, or rank discussions.
+                  </p>
+                  <a
+                    href="https://discord.gg/3PdgPKqUCP"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    Open Narrow List Discord →
+                  </a>
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </TabsContent>
         </Tabs>
