@@ -100,15 +100,26 @@ const Index = () => {
       );
     }
 
-    // Filter by selected tag
-    if (selectedTag) {
-      const levelIdsWithTag = new Set(
-        allTags
-          .filter(tag => `${tag.emoji}|${tag.text}` === selectedTag)
-          .map(tag => tag.level_id)
-      );
-      // Tags reference the database UUID id (dbId in our level objects)
-      result = result.filter(level => level.dbId && levelIdsWithTag.has(level.dbId));
+    // Filter by selected tags (multi)
+    if (selectedTags.size > 0) {
+      // Build map: levelDbId -> set of tagKeys present
+      const levelTagMap = new Map<string, Set<string>>();
+      allTags.forEach(tag => {
+        const key = `${tag.emoji}|${tag.text}`;
+        if (!selectedTags.has(key)) return;
+        if (!levelTagMap.has(tag.level_id)) levelTagMap.set(tag.level_id, new Set());
+        levelTagMap.get(tag.level_id)!.add(key);
+      });
+      result = result.filter(level => {
+        if (!level.dbId) return false;
+        const present = levelTagMap.get(level.dbId);
+        if (!present) return false;
+        if (tagMatchMode === "all") {
+          for (const t of selectedTags) if (!present.has(t)) return false;
+          return true;
+        }
+        return present.size > 0;
+      });
     }
     
     // Sort
