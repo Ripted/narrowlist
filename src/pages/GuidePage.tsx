@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   BookOpen, Trophy, List, Clock, Users, Send, GitCompare, 
   HelpCircle, Star, Heart, Zap, ChevronRight, ArrowRight,
-  Play, UserPlus, MapPin, Medal, Target, Eye, ListPlus
+  Play, UserPlus, MapPin, Medal, Target, Eye, ListPlus,
+  MessageCircle, Tag, Package, Shield, Award, Bookmark, Activity, Palette
 } from "lucide-react";
 import {
   Accordion,
@@ -75,7 +76,7 @@ export default function GuidePage() {
 
         {/* Interactive Tab Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-12">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 mb-8">
             <TabsTrigger value="getting-started" className="gap-2">
               <Play className="w-4 h-4" />
               <span className="hidden sm:inline">Get Started</span>
@@ -87,6 +88,10 @@ export default function GuidePage() {
             <TabsTrigger value="points" className="gap-2">
               <Trophy className="w-4 h-4" />
               <span className="hidden sm:inline">Points</span>
+            </TabsTrigger>
+            <TabsTrigger value="community" className="gap-2">
+              <MessageCircle className="w-4 h-4" />
+              <span className="hidden sm:inline">Community</span>
             </TabsTrigger>
             <TabsTrigger value="faq" className="gap-2">
               <HelpCircle className="w-4 h-4" />
@@ -102,14 +107,14 @@ export default function GuidePage() {
                 title="1. Browse the Lists"
                 description="Explore the Main List to see all ranked levels by difficulty."
                 action="View Main List"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/main")}
               />
               <InteractiveCard
                 icon={Play}
                 title="2. Complete a Level"
                 description="Beat any level in Narrow Arrow that's on our lists."
                 action="See What's Ranked"
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/main")}
               />
               <InteractiveCard
                 icon={Clock}
@@ -139,7 +144,7 @@ export default function GuidePage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-3">
-                  <Button onClick={() => navigate("/")} className="gap-2">
+                  <Button onClick={() => navigate("/main")} className="gap-2">
                     <List className="w-4 h-4" />
                     Main List
                   </Button>
@@ -171,7 +176,7 @@ export default function GuidePage() {
                 icon={List}
                 title="Main List"
                 description="The top 100 hardest levels in Narrow Arrow. Each level awards points based on its ranking position."
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/main")}
               />
               <FeatureCard 
                 icon={Target}
@@ -227,6 +232,36 @@ export default function GuidePage() {
                 description="See the latest completions from all players in real-time."
                 onClick={() => navigate("/recent")}
               />
+              <FeatureCard
+                icon={Package}
+                title="Level Packs"
+                description="Curated collections of levels grouped by theme, difficulty or creator."
+                onClick={() => navigate("/packs")}
+              />
+              <FeatureCard
+                icon={Bookmark}
+                title="Watchlist"
+                description="Bookmark levels you want to come back to. Available once you sign in."
+                onClick={() => navigate("/watchlist")}
+              />
+              <FeatureCard
+                icon={Tag}
+                title="Tags & Filters"
+                description="Filter the main list by any combination of community tags to find your style."
+                onClick={() => navigate("/main")}
+              />
+              <FeatureCard
+                icon={Award}
+                title="Ratings & Difficulty"
+                description="Vote on enjoyment, gameplay, design, decoration and difficulty of completed levels."
+                onClick={() => navigate("/main")}
+              />
+              <FeatureCard
+                icon={Palette}
+                title="Themes"
+                description="Switch between 60+ visual themes to make Narrowlist yours."
+                onClick={() => navigate("/themes")}
+              />
             </div>
           </TabsContent>
 
@@ -260,7 +295,7 @@ export default function GuidePage() {
                     <PointsRow rank="#101+ (Extended)" points={0} />
                   </div>
                   <Button 
-                    onClick={() => navigate("/")} 
+                    onClick={() => navigate("/main")} 
                     variant="outline" 
                     className="w-full mt-4 gap-2"
                   >
@@ -319,6 +354,105 @@ export default function GuidePage() {
                       <strong>Future List</strong>: Upcoming levels not yet ranked.
                     </p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Community Tab */}
+          <TabsContent value="community" className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <Card className="border-[#5865F2]/30 bg-gradient-to-br from-[#5865F2]/10 to-[#5865F2]/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-[#5865F2]" />
+                    Narrow Arrow Discord
+                  </CardTitle>
+                  <CardDescription>
+                    The official community for the game itself. Chat with players, get game updates and find people to play with.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <a
+                    href="https://discord.gg/HZbg89FREr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="w-full gap-2 bg-[#5865F2] hover:bg-[#4752C4] text-white">
+                      <MessageCircle className="w-4 h-4" />
+                      Join Narrow Arrow
+                    </Button>
+                  </a>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-accent/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-primary" />
+                    Narrow List Discord
+                  </CardTitle>
+                  <CardDescription>
+                    The home of Narrowlist. Discuss rankings, submit runs, suggest levels and follow site updates.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <a
+                    href="https://discord.gg/3PdgPKqUCP"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="w-full gap-2">
+                      <MessageCircle className="w-4 h-4" />
+                      Join Narrow List
+                    </Button>
+                  </a>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  How to participate
+                </CardTitle>
+                <CardDescription>
+                  There's more to the community than just beating levels.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <CommunityRow
+                    icon={Send}
+                    title="Submit levels & runs"
+                    description="Suggest levels for the list or send proof of your manual completions."
+                  />
+                  <CommunityRow
+                    icon={Award}
+                    title="Rate & vote on difficulty"
+                    description="Once you complete a level you can rate enjoyment, gameplay, design and difficulty."
+                  />
+                  <CommunityRow
+                    icon={Tag}
+                    title="Tag levels"
+                    description="Help describe levels (e.g. spam, memory, tech) so others can find their favorite styles."
+                  />
+                  <CommunityRow
+                    icon={Activity}
+                    title="Follow recent runs"
+                    description="Watch the activity feed in real-time and cheer on top performances."
+                  />
+                  <CommunityRow
+                    icon={Bookmark}
+                    title="Build a watchlist"
+                    description="Bookmark levels you want to attempt next so you don't lose track of them."
+                  />
+                  <CommunityRow
+                    icon={Shield}
+                    title="Report issues"
+                    description="Spotted a wrong rank, duplicate run or broken thumbnail? Ping an admin on Discord."
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -436,6 +570,64 @@ export default function GuidePage() {
                     your completions will automatically be merged to your existing profile during the next sync. 
                     If you notice any issues, contact an admin.
                   </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-8">
+                <AccordionTrigger className="text-left">
+                  How do creator points work?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  <p>
+                    Creator points are calculated from the average rating each of your levels receives,
+                    multiplied by the level's base points and a quality factor. The leaderboard ranks
+                    creators by total accumulated quality-weighted points across all of their levels.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-9">
+                <AccordionTrigger className="text-left">
+                  How do I rate or vote on the difficulty of a level?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  <p>
+                    Open the level page after you've completed it. You'll see panels to rate
+                    enjoyment, gameplay, design and decoration, and to vote on the difficulty (D-rating).
+                    Only completed levels are eligible to keep ratings honest.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-10">
+                <AccordionTrigger className="text-left">
+                  What's a Level Pack?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  <p>
+                    Level Packs are admin-curated collections of levels grouped together — for example,
+                    by creator, theme, or difficulty step-up. You can browse them on the Packs page.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="item-11">
+                <AccordionTrigger className="text-left">
+                  Where can I get help or report a bug?
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground space-y-2">
+                  <p>
+                    Join the Narrow List Discord — it's the fastest way to reach the admin team for help,
+                    bug reports, or rank discussions.
+                  </p>
+                  <a
+                    href="https://discord.gg/3PdgPKqUCP"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline inline-flex items-center gap-1"
+                  >
+                    Open Narrow List Discord →
+                  </a>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -614,5 +806,24 @@ function ProfileLink({ username, displayName, avatarUrl, role }: {
         <div className="text-xs text-muted-foreground">{role}</div>
       </div>
     </Link>
+  );
+}
+
+// Community Row Component
+function CommunityRow({ icon: Icon, title, description }: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg bg-secondary/30 border border-border/50">
+      <div className="p-2 rounded-md bg-primary/10 text-primary flex-shrink-0">
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="min-w-0">
+        <div className="font-medium text-sm text-foreground">{title}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
+      </div>
+    </div>
   );
 }

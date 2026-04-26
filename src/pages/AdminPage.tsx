@@ -350,6 +350,16 @@ export default function AdminPage() {
   // Drag and drop
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // Future list inline editing & drag state
+  const [futureRankInputId, setFutureRankInputId] = useState<string | null>(null);
+  const [futureRankInputValue, setFutureRankInputValue] = useState("");
+  const [futureThumbnailEditId, setFutureThumbnailEditId] = useState<string | null>(null);
+  const [futureThumbnailInputValue, setFutureThumbnailInputValue] = useState("");
+  const [uploadingFutureRowThumbnail, setUploadingFutureRowThumbnail] = useState<string | null>(null);
+  const [futureDraggedIndex, setFutureDraggedIndex] = useState<number | null>(null);
+  const [futureDragOverIndex, setFutureDragOverIndex] = useState<number | null>(null);
+  const [savingFuture, setSavingFuture] = useState(false);
   
   // Claim requests
   const [claimRequests, setClaimRequests] = useState<ClaimRequest[]>([]);
@@ -2344,6 +2354,147 @@ export default function AdminPage() {
     setDragOverIndex(null);
   };
 
+  // ===== Future-list inline rank/thumbnail/drag handlers =====
+  const updateFutureRanks = async (updated: FutureLevel[]) => {
+    setSavingFuture(true);
+    for (const f of updated) {
+      await supabase
+        .from("future_levels")
+        .update({ rank_position: f.rank_position })
+        .eq("id", f.id);
+    }
+    setSavingFuture(false);
+    toast({ title: "Saved", description: "Future rankings updated" });
+  };
+
+  const moveFutureLevel = async (index: number, direction: "up" | "down") => {
+    const arr = [...filteredFutureLevels];
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= arr.length) return;
+    [arr[index], arr[target]] = [arr[target], arr[index]];
+    const updated = arr.map((f, i) => ({ ...f, rank_position: i + 1 }));
+    setFutureLevels(prev => {
+      const map = new Map(updated.map(u => [u.id, u.rank_position]));
+      return prev
+        .map(f => (map.has(f.id) ? { ...f, rank_position: map.get(f.id)! } : f))
+        .sort((a, b) => a.rank_position - b.rank_position);
+    });
+    await updateFutureRanks(updated);
+  };
+
+  const startFutureRankEdit = (level: FutureLevel) => {
+    setFutureRankInputId(level.id);
+    setFutureRankInputValue(String(level.rank_position));
+  };
+
+  const confirmFutureRankChange = async () => {
+    if (!futureRankInputId) return;
+    const newRank = parseInt(futureRankInputValue);
+    if (isNaN(newRank) || newRank < 1) {
+      toast({ title: "Invalid rank", description: "Enter a positive number", variant: "destructive" });
+      return;
+    }
+    const sorted = [...futureLevels].sort((a, b) => a.rank_position - b.rank_position);
+    const currentIndex = sorted.findIndex(f => f.id === futureRankInputId);
+    if (currentIndex === -1) return;
+    const targetIndex = Math.min(newRank - 1, sorted.length - 1);
+    if (currentIndex === targetIndex) {
+      setFutureRankInputId(null);
+      return;
+    }
+    const [item] = sorted.splice(currentIndex, 1);
+    sorted.splice(targetIndex, 0, item);
+    const updated = sorted.map((f, i) => ({ ...f, rank_position: i + 1 }));
+    setFutureLevels(updated);
+    setFutureRankInputId(null);
+    await updateFutureRanks(updated);
+  };
+
+  const startFutureThumbnailEdit = (level: FutureLevel) => {
+    setFutureThumbnailEditId(level.id);
+    setFutureThumbnailInputValue(level.thumbnail_url || "");
+  };
+
+  const confirmFutureThumbnailChange = async () => {
+    if (!futureThumbnailEditId) return;
+    setSavingFuture(true);
+    const { error } = await supabase
+      .from("future_levels")
+      .update({ thumbnail_url: futureThumbnailInputValue || null })
+      .eq("id", futureThumbnailEditId);
+    if (error) {
+      toast({ title: "Error", description: "Failed to update thumbnail", variant: "destructive" });
+    } else {
+      setFutureLevels(prev =>
+        prev.map(f =>
+          f.id === futureThumbnailEditId ? { ...f, thumbnail_url: futureThumbnailInputValue || null } : f
+        )
+      );
+      toast({ title: "Success", description: "Thumbnail updated" });
+    }
+    setFutureThumbnailEditId(null);
+    setSavingFuture(false);
+  };
+
+  const handleQuickFutureThumbnailUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    levelId: string
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFutureRowThumbnail(levelId);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `future-${levelId}-${Date.now()}.${fileExt}`;
+      const { data, error } = await supabase.storage
+        .from("level-thumbnails")
+        .upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage
+        .from("level-thumbnails")
+        .getPublicUrl(data.path);
+      const { error: updateError } = await supabase
+        .from("future_levels")
+        .update({ thumbnail_url: publicUrl })
+        .eq("id", levelId);
+      if (updateError) throw updateError;
+      setFutureLevels(prev =>
+        prev.map(f => (f.id === levelId ? { ...f, thumbnail_url: publicUrl } : f))
+      );
+      toast({ title: "Success", description: "Thumbnail uploaded" });
+    } catch (error: any) {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingFutureRowThumbnail(null);
+      e.target.value = "";
+    }
+  };
+
+  const handleFutureDragStart = (index: number) => setFutureDraggedIndex(index);
+  const handleFutureDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setFutureDragOverIndex(index);
+  };
+  const handleFutureDrop = async (targetIndex: number) => {
+    if (futureDraggedIndex === null || futureDraggedIndex === targetIndex) {
+      setFutureDraggedIndex(null);
+      setFutureDragOverIndex(null);
+      return;
+    }
+    const sorted = [...futureLevels].sort((a, b) => a.rank_position - b.rank_position);
+    const [item] = sorted.splice(futureDraggedIndex, 1);
+    sorted.splice(targetIndex, 0, item);
+    const updated = sorted.map((f, i) => ({ ...f, rank_position: i + 1 }));
+    setFutureLevels(updated);
+    setFutureDraggedIndex(null);
+    setFutureDragOverIndex(null);
+    await updateFutureRanks(updated);
+  };
+  const handleFutureDragEnd = () => {
+    setFutureDraggedIndex(null);
+    setFutureDragOverIndex(null);
+  };
+
   const openEditModal = (level: Level) => {
     setEditingLevel(level);
     setEditName(level.name || "");
@@ -3712,46 +3863,163 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-border">
-                    {filteredFutureLevels.map((level) => (
-                      <div key={level.id} className="flex items-center gap-3 p-4">
-                        <div className="w-12 h-12 flex-shrink-0 rounded-lg bg-secondary overflow-hidden">
-                          {level.thumbnail_url ? (
-                            <img src={level.thumbnail_url} alt={level.name || "Level"} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Image className="w-4 h-4 text-muted-foreground" />
+                    {filteredFutureLevels.map((level, index) => (
+                      <div
+                        key={level.id}
+                        draggable
+                        onDragStart={() => handleFutureDragStart(index)}
+                        onDragOver={(e) => handleFutureDragOver(e, index)}
+                        onDrop={() => handleFutureDrop(index)}
+                        onDragEnd={handleFutureDragEnd}
+                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
+                          ${futureDraggedIndex === index ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
+                          ${futureDragOverIndex === index && futureDraggedIndex !== index ? "border-t-2 border-primary" : ""}
+                        `}
+                      >
+                        <div className="flex-shrink-0 text-muted-foreground hidden sm:block">
+                          <GripVertical className="w-5 h-5" />
+                        </div>
+
+                        <div className="w-12 md:w-16 flex-shrink-0">
+                          {futureRankInputId === level.id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min={1}
+                                value={futureRankInputValue}
+                                onChange={(e) => setFutureRankInputValue(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && confirmFutureRankChange()}
+                                className="w-12 h-8 text-center p-1 bg-secondary"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmFutureRankChange}>
+                                <Check className="w-3 h-3 text-green-500" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setFutureRankInputId(null)}>
+                                <X className="w-3 h-3 text-destructive" />
+                              </Button>
                             </div>
+                          ) : (
+                            <button
+                              onClick={() => startFutureRankEdit(level)}
+                              className="font-display font-bold text-lg text-foreground hover:text-primary transition-colors"
+                              title="Click to change rank"
+                            >
+                              ~#{level.rank_position}
+                            </button>
                           )}
                         </div>
-                        <div className="w-16 flex-shrink-0">
-                          <span className="font-display font-bold text-lg text-primary">
-                            ~#{level.rank_position}
-                          </span>
-                          <div className="text-xs text-muted-foreground">{level.points} pts</div>
+
+                        <div className="w-16 md:w-20 h-10 md:h-12 rounded bg-secondary overflow-hidden flex-shrink-0 relative group">
+                          {uploadingFutureRowThumbnail === level.id ? (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            </div>
+                          ) : futureThumbnailEditId === level.id ? (
+                            <div className="absolute inset-0 bg-card p-1 flex items-center gap-1 z-10">
+                              <Input
+                                type="text"
+                                placeholder="URL..."
+                                value={futureThumbnailInputValue}
+                                onChange={(e) => setFutureThumbnailInputValue(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && confirmFutureThumbnailChange()}
+                                className="h-full text-xs p-1 bg-secondary flex-1"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmFutureThumbnailChange}>
+                                <Check className="w-3 h-3 text-green-500" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setFutureThumbnailEditId(null)}>
+                                <X className="w-3 h-3 text-destructive" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                id={`future-thumb-upload-${level.id}`}
+                                onChange={(e) => handleQuickFutureThumbnailUpload(e, level.id)}
+                              />
+                              <div className="w-full h-full relative">
+                                {level.thumbnail_url ? (
+                                  <img
+                                    src={level.thumbnail_url}
+                                    alt={level.name || "Level"}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Image className="w-4 h-4 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                                  <button
+                                    onClick={() => document.getElementById(`future-thumb-upload-${level.id}`)?.click()}
+                                    className="p-1 rounded bg-primary/80 hover:bg-primary"
+                                    title="Upload image"
+                                  >
+                                    <ImagePlus className="w-3 h-3 text-primary-foreground" />
+                                  </button>
+                                  <button
+                                    onClick={() => startFutureThumbnailEdit(level)}
+                                    className="p-1 rounded bg-secondary/80 hover:bg-secondary"
+                                    title="Enter URL"
+                                  >
+                                    <Edit2 className="w-3 h-3 text-foreground" />
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
+
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-foreground truncate">
+                          <div className="font-medium text-foreground truncate text-sm md:text-base">
                             {level.name || "Unnamed Level"}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            By: {level.author || "Unknown"}
+                          <div className="text-xs text-muted-foreground truncate">
+                            {level.author || "Unknown"} • {level.points} pts
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+
+                        <div className="flex items-center gap-1">
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => moveFutureLevel(index, "up")}
+                            disabled={index === 0 || savingFuture}
+                            className="h-8 w-8 hidden sm:flex"
+                            title="Move up"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => moveFutureLevel(index, "down")}
+                            disabled={index === filteredFutureLevels.length - 1 || savingFuture}
+                            className="h-8 w-8 hidden sm:flex"
+                            title="Move down"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => openEditFutureLevel(level)}
-                            className="gap-1"
+                            className="h-8 w-8"
+                            title="Edit details"
                           >
                             <Edit2 className="w-4 h-4" />
-                            Edit Info
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setDeleteConfirmFutureLevel(level)}
                             className="h-8 w-8 text-destructive hover:text-destructive"
+                            title="Remove level"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>

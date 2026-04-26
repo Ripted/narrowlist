@@ -15,9 +15,11 @@ import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Target, Search, Filter, History, Tag, X } from "lucide-react";
+import { Target, Search, Filter, History, Tag, X, ChevronDown } from "lucide-react";
 import { HistoricalListViewer } from "@/components/HistoricalListViewer";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface HistoricalLevel {
   id: string;
@@ -40,7 +42,8 @@ const Index = () => {
   const [showOnlyUncompleted, setShowOnlyUncompleted] = useState(false);
   const [historicalLevels, setHistoricalLevels] = useState<HistoricalLevel[] | null>(null);
   const [historicalDate, setHistoricalDate] = useState<string | null>(null);
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [tagMatchMode, setTagMatchMode] = useState<"any" | "all">("any");
   const [sortField, setSortField] = useState<LevelSortField>("rank");
   const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION.rank);
 
@@ -49,8 +52,8 @@ const Index = () => {
     setHistoricalDate(date);
   };
 
-  // Calculate top 5 most used tags
-  const topTags = useMemo(() => {
+  // Calculate all unique tags with counts (alphabetical for consistent UI)
+  const allTagOptions = useMemo(() => {
     const tagCounts = new Map<string, { emoji: string; text: string; count: number }>();
     allTags.forEach(tag => {
       const key = `${tag.emoji}|${tag.text}`;
@@ -60,9 +63,7 @@ const Index = () => {
         tagCounts.set(key, { emoji: tag.emoji, text: tag.text, count: 1 });
       }
     });
-    return Array.from(tagCounts.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+    return Array.from(tagCounts.values()).sort((a, b) => b.count - a.count);
   }, [allTags]);
 
   // Group tags by level_id for display on cards
@@ -98,15 +99,26 @@ const Index = () => {
       );
     }
 
-    // Filter by selected tag
-    if (selectedTag) {
-      const levelIdsWithTag = new Set(
-        allTags
-          .filter(tag => `${tag.emoji}|${tag.text}` === selectedTag)
-          .map(tag => tag.level_id)
-      );
-      // Tags reference the database UUID id (dbId in our level objects)
-      result = result.filter(level => level.dbId && levelIdsWithTag.has(level.dbId));
+    // Filter by selected tags (multi)
+    if (selectedTags.size > 0) {
+      // Build map: levelDbId -> set of tagKeys present
+      const levelTagMap = new Map<string, Set<string>>();
+      allTags.forEach(tag => {
+        const key = `${tag.emoji}|${tag.text}`;
+        if (!selectedTags.has(key)) return;
+        if (!levelTagMap.has(tag.level_id)) levelTagMap.set(tag.level_id, new Set());
+        levelTagMap.get(tag.level_id)!.add(key);
+      });
+      result = result.filter(level => {
+        if (!level.dbId) return false;
+        const present = levelTagMap.get(level.dbId);
+        if (!present) return false;
+        if (tagMatchMode === "all") {
+          for (const t of selectedTags) if (!present.has(t)) return false;
+          return true;
+        }
+        return present.size > 0;
+      });
     }
     
     // Sort
@@ -154,7 +166,7 @@ const Index = () => {
     }
 
     return sorted;
-  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTag, allTags, sortField, sortDirection, ratingsAgg, difficultyAgg, victorCounts]);
+  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedLevelIds, selectedTags, tagMatchMode, allTags, sortField, sortDirection, ratingsAgg, difficultyAgg, victorCounts]);
 
   const maxPoints = useMemo(() => {
     return levels.filter(l => l.rank <= 100).reduce((sum, level) => sum + (level.points || 0), 0);
@@ -229,46 +241,108 @@ const Index = () => {
           </div>
 
           {/* Tag Filters */}
-          {!historicalLevels && topTags.length > 0 && (
+          {!historicalLevels && allTagOptions.length > 0 && (
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Tag className="w-3 h-3" />
-                Filter by tag:
+                Tags:
               </span>
-              <TooltipProvider>
-                {topTags.map((tag) => {
-                  const tagKey = `${tag.emoji}|${tag.text}`;
-                  const isSelected = selectedTag === tagKey;
-                  return (
-                    <Tooltip key={tagKey}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={isSelected ? "default" : "outline"}
-                          size="sm"
-                          className="h-7 px-2 text-sm"
-                          onClick={() => setSelectedTag(isSelected ? null : tagKey)}
-                        >
-                          {tag.emoji}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{tag.emoji} {tag.text} ({tag.count})</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                })}
-              </TooltipProvider>
-              {selectedTag && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 gap-1"
-                  onClick={() => setSelectedTag(null)}
-                >
-                  <X className="w-3 h-3" />
-                  Clear
-                </Button>
-              )}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 px-2 gap-1 text-xs">
+                    {selectedTags.size > 0 ? `${selectedTags.size} selected` : "Choose tags"}
+                    <ChevronDown className="w-3 h-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-72 p-0 bg-popover border-border">
+                  <div className="p-3 border-b border-border flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium">Filter by tags</span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant={tagMatchMode === "any" ? "default" : "outline"}
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => setTagMatchMode("any")}
+                      >
+                        Any
+                      </Button>
+                      <Button
+                        variant={tagMatchMode === "all" ? "default" : "outline"}
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => setTagMatchMode("all")}
+                      >
+                        All
+                      </Button>
+                    </div>
+                  </div>
+                  <ScrollArea className="max-h-72">
+                    <div className="p-2 space-y-0.5">
+                      {allTagOptions.map((tag) => {
+                        const tagKey = `${tag.emoji}|${tag.text}`;
+                        const checked = selectedTags.has(tagKey);
+                        return (
+                          <label
+                            key={tagKey}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-secondary cursor-pointer text-sm"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setSelectedTags(prev => {
+                                  const next = new Set(prev);
+                                  if (v) next.add(tagKey); else next.delete(tagKey);
+                                  return next;
+                                });
+                              }}
+                            />
+                            <span className="flex-1 truncate">
+                              {tag.emoji} {tag.text}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{tag.count}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                  {selectedTags.size > 0 && (
+                    <div className="p-2 border-t border-border">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-7 gap-1 text-xs"
+                        onClick={() => setSelectedTags(new Set())}
+                      >
+                        <X className="w-3 h-3" />
+                        Clear all
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+              {/* Selected tag chips */}
+              {Array.from(selectedTags).map((tagKey) => {
+                const opt = allTagOptions.find(t => `${t.emoji}|${t.text}` === tagKey);
+                if (!opt) return null;
+                return (
+                  <Button
+                    key={tagKey}
+                    variant="default"
+                    size="sm"
+                    className="h-7 px-2 gap-1 text-xs"
+                    onClick={() =>
+                      setSelectedTags(prev => {
+                        const next = new Set(prev);
+                        next.delete(tagKey);
+                        return next;
+                      })
+                    }
+                  >
+                    {opt.emoji} {opt.text}
+                    <X className="w-3 h-3" />
+                  </Button>
+                );
+              })}
             </div>
           )}
 
