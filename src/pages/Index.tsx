@@ -15,9 +15,12 @@ import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Target, Search, Filter, History, Tag, X } from "lucide-react";
+import { Target, Search, Filter, History, Tag, X, ChevronDown } from "lucide-react";
 import { HistoricalListViewer } from "@/components/HistoricalListViewer";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface HistoricalLevel {
   id: string;
