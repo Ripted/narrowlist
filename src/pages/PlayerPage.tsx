@@ -418,7 +418,46 @@ export default function PlayerPage() {
     }
   };
 
-  const saveCountry = async (code: string | null) => {
+  const [editingSocials, setEditingSocials] = useState(false);
+  const [discordUrl, setDiscordUrl] = useState("");
+  const [tiktokUrl, setTiktokUrl] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [savingSocials, setSavingSocials] = useState(false);
+
+  useEffect(() => {
+    if (profileData) {
+      setDiscordUrl(profileData.discord_url || "");
+      setTiktokUrl(profileData.tiktok_url || "");
+      setYoutubeUrl(profileData.youtube_url || "");
+    }
+  }, [profileData?.id]);
+
+  const validateUrl = (u: string) => !u || /^https?:\/\/.+/i.test(u);
+
+  const saveSocials = async () => {
+    if (!profileData) return;
+    if (![discordUrl, tiktokUrl, youtubeUrl].every(validateUrl)) {
+      toast({ title: "Invalid URL", description: "Links must start with http:// or https://", variant: "destructive" });
+      return;
+    }
+    setSavingSocials(true);
+    try {
+      const payload = {
+        discord_url: discordUrl.trim() || null,
+        tiktok_url: tiktokUrl.trim() || null,
+        youtube_url: youtubeUrl.trim() || null,
+      };
+      const { error } = await supabase.from("profiles").update(payload).eq("id", profileData.id);
+      if (error) throw error;
+      setProfileData({ ...profileData, ...payload });
+      setEditingSocials(false);
+      toast({ title: "Success", description: "Socials updated" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingSocials(false);
+    }
+  };
     if (!profileData) return;
     setSavingCountry(true);
     try {
