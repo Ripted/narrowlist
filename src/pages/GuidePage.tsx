@@ -363,6 +363,71 @@ export default function GuidePage() {
             </Card>
           </TabsContent>
 
+          {/* Difficulty Tab */}
+          <TabsContent value="difficulty" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-primary" />
+                  Difficulty Rating System
+                </CardTitle>
+                <CardDescription>
+                  Community-driven difficulty scores from D0 (easiest) to D8 (hardest), in 0.1 increments.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Every level on the Main, Extended and Extra lists can receive a difficulty
+                  vote. Each vote is a single number from <span className="text-foreground font-mono">0.0</span> to
+                  <span className="text-foreground font-mono"> 8.0</span>. The displayed difficulty is the
+                  <span className="text-foreground font-medium"> average of all votes</span>.
+                </p>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                    <div className="font-display text-lg font-bold text-emerald-400">D0 – D2</div>
+                    <div className="text-xs text-muted-foreground mt-1">Beginner / Easy levels</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <div className="font-display text-lg font-bold text-amber-400">D3 – D5</div>
+                    <div className="text-xs text-muted-foreground mt-1">Intermediate to Hard</div>
+                  </div>
+                  <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                    <div className="font-display text-lg font-bold text-red-400">D6 – D8</div>
+                    <div className="text-xs text-muted-foreground mt-1">Expert / Extreme</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-primary" />
+                  Who Can Vote?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <p>• Players who have <span className="text-foreground font-medium">completed</span> the level (manual or synced run).</p>
+                <p>• <span className="text-foreground font-medium">Admins</span> can vote on any level and adjust ratings.</p>
+                <p>• Each user's vote can be updated or removed at any time.</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-primary" />
+                  Where It Shows
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-muted-foreground">
+                <p>• On every level page in the <span className="text-foreground">Difficulty</span> panel.</p>
+                <p>• Sortable on the Main, Extended and Extra list pages.</p>
+                <p>• Aggregated on the Statistics page (Hardest Levels).</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Community Tab */}
           <TabsContent value="community" className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
