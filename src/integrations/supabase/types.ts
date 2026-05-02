@@ -836,13 +836,16 @@ export type Database = {
           bio: string | null
           country_code: string | null
           created_at: string
+          discord_url: string | null
           display_name: string | null
           extra_points: number
           id: string
+          tiktok_url: string | null
           total_points: number | null
           updated_at: string
           user_id: string | null
           username: string
+          youtube_url: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -850,13 +853,16 @@ export type Database = {
           bio?: string | null
           country_code?: string | null
           created_at?: string
+          discord_url?: string | null
           display_name?: string | null
           extra_points?: number
           id?: string
+          tiktok_url?: string | null
           total_points?: number | null
           updated_at?: string
           user_id?: string | null
           username: string
+          youtube_url?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -864,13 +870,16 @@ export type Database = {
           bio?: string | null
           country_code?: string | null
           created_at?: string
+          discord_url?: string | null
           display_name?: string | null
           extra_points?: number
           id?: string
+          tiktok_url?: string | null
           total_points?: number | null
           updated_at?: string
           user_id?: string | null
           username?: string
+          youtube_url?: string | null
         }
         Relationships: []
       }
