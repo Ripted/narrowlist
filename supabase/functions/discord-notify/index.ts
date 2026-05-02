@@ -139,8 +139,6 @@ Deno.serve(async (req) => {
       else if (event_type === 'extra_to_main') emoji = '⬆️';
       else if (event_type === 'transferred') emoji = '🔄';
 
-      const template = webhook.custom_message_template || '{emoji} **{levelName}** {action} #{newRank}';
-
       const variables: Record<string, string> = {
         levelName: level_name || 'Unknown',
         oldRank: String(old_rank || ''),
@@ -151,23 +149,32 @@ Deno.serve(async (req) => {
         adminEmail: admin_email || 'unknown',
       };
 
-      message = applyTemplate(template, variables);
+      // Build per-event-type messages. Bypass custom template for events
+      // that lack an oldRank (additions/deletions/transfers) so we never
+      // render garbage like "moved from # to #7".
+      const hasBothRanks = old_rank && new_rank;
 
-      // For events without ranks, fall back to a descriptive message
-      if (!old_rank && !new_rank && !webhook.custom_message_template) {
-        if (event_type === 'level_addition') {
-          message = `${emoji} **${level_name}** added at #${new_rank}`;
-        } else if (event_type === 'level_deletion') {
-          message = `${emoji} **${level_name}** removed from the list`;
-        } else if (event_type === 'extra_level_added') {
-          message = `${emoji} **${level_name}** added to the Extra List at #${new_rank}`;
-        } else if (event_type === 'level_to_extra' || event_type === 'level_to_extended') {
-          message = `${emoji} **${level_name}** transferred from ${list_type || 'Main'} List`;
-        } else if (event_type === 'extra_to_main') {
-          message = `${emoji} **${level_name}** transferred to Main List at #${new_rank}`;
-        } else if (details) {
-          message = details;
-        }
+      if (event_type === 'level_addition') {
+        message = `${emoji} **${level_name}** added to ${list_type || 'Main'} List at #${new_rank}`;
+      } else if (event_type === 'level_deletion') {
+        message = `${emoji} **${level_name}** removed from ${list_type || 'Main'} List`;
+      } else if (event_type === 'extra_level_added') {
+        message = `${emoji} **${level_name}** added to the Extra List at #${new_rank}`;
+      } else if (event_type === 'future_to_main') {
+        message = `${emoji} **${level_name}** moved from Future List to Main List at #${new_rank}`;
+      } else if (event_type === 'extra_to_main') {
+        message = `${emoji} **${level_name}** transferred from Extra List to Main List at #${new_rank}`;
+      } else if (event_type === 'level_to_extra' || event_type === 'level_to_extended') {
+        message = `${emoji} **${level_name}** transferred from ${list_type || 'Main'} List to ${event_type === 'level_to_extra' ? 'Extra' : 'Extended'} List`;
+      } else if (event_type === 'rank_change' && hasBothRanks) {
+        const template = webhook.custom_message_template || '{emoji} **{levelName}** moved from #{oldRank} to #{newRank} on {listType} List';
+        message = applyTemplate(template, variables);
+      } else if (webhook.custom_message_template && hasBothRanks) {
+        message = applyTemplate(webhook.custom_message_template, variables);
+      } else if (details) {
+        message = details;
+      } else {
+        message = `${emoji} **${level_name}** ${action || event_type || 'updated'}`;
       }
 
       const discordResponse = await fetch(webhook.webhook_url, {
