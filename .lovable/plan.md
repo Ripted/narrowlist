@@ -1,96 +1,96 @@
+# Update Plan: Webhook Fix + Statistics + Guide + Socials + Submission + Manual Run Video
 
-# Bug Fixes + Future List Redesign + Level Packs + Victor Counts
+## 1. Fix "Level added" Discord webhook message
 
-## 1. Fix "Is this you?" RLS error (creator-only profiles)
+**Bug:** When a level is added, webhook says `Main: Watch your chain react moved from # to #7`. This happens because the default template renders `{action} #{newRank}` with `action="added"` — but admins with a custom template (`... {action} from #{oldRank} to #{newRank}`) get garbage when `oldRank` is undefined.
 
-**Problem:** `handleClaimProfile` tries to `INSERT` into `profiles` with `{ username, extra_points: 0 }` but no `user_id`. The RLS policy `Users can insert own profile` requires `auth.uid() = user_id`, so insert fails for creator-only profiles where no profile row exists yet.
+**Fix in `supabase/functions/discord-notify/index.ts` (rank_changes branch):**
+- Build the message based on `event_type` FIRST, *before* falling back to the custom template.
+- Use event-specific defaults that always render correctly:
+  - `level_addition` → `✨ **{name}** added to {list} List at #{newRank}`
+  - `rank_change` → `{emoji} **{name}** moved from #{oldRank} to #{newRank} on {list} List`
+  - `level_deletion` → `🗑️ **{name}** removed from {list} List`
+  - `future_to_main` / `extra_to_main` / `level_to_extra` → already-good messages
+- For custom templates: only apply when the event has both ranks, OR substitute empty rank tokens with cleaner fallbacks (e.g. strip ` from #` when `oldRank` empty).
+- Simpler: detect `level_addition` and bypass `applyTemplate`, always sending the dedicated "added at #X" line.
 
-**Fix:** Move profile creation server-side via a new SECURITY DEFINER RPC `claim_or_create_profile(_username text)` that:
-- Looks up profile by username (case-insensitive)
-- If none exists, creates one with `user_id = NULL` (server bypasses RLS)
-- Inserts a row in `profile_claim_requests` for the calling user
-- Returns the profile id
+## 2. Statistics Page enhancements
 
-`PlayerPage.handleClaimProfile` calls the RPC instead of two separate inserts.
+**File:** `src/pages/StatisticsPage.tsx`
 
-## 2. "Is this you?" for logged-out users
+Add new sections (read-only aggregations from existing tables):
+- **Most Completed Levels** (top 10) — counts from `completions` + `manual_runs` (main) and `extra_completions` + manual_runs (extra).
+- **Hardest Levels** — top 10 by average difficulty (`level_difficulty_votes`), min 3 votes.
+- **Highest Rated Levels** — top 10 by overall rating (avg of enjoyment/design/decoration/gameplay), min 3 ratings.
+- **Top Verifiers** — count of levels where a profile is `verifier_profile_id`.
+- **Most Active Players (last 30 days)** — completions count grouped by profile in last 30d.
+- **Country Distribution** — players grouped by `country_code`.
+- **Recent Records broken** — show recent fastest times.
 
-**Fix:** Update `canClaim` in `PlayerPage.tsx` so the button always renders for unclaimed/special profiles. When `!user`, change handler to redirect to `/auth?redirect=/player/{username}` and show a toast "Sign in to claim this profile".
+Use existing React Query patterns; cap to top 10; small cards.
 
-## 3. Show creator points on creator/player page
+## 3. Guide Page: Difficulty system section
 
-**Problem:** Creator points only appear in the Leaderboard's Creators tab via `useAllRatingsAggregate` formula `Σ (avg_rating / 10) × base_points`. Player page shows raw `createdLevelsTotalPoints` (sum of `points`).
+**File:** `src/pages/GuidePage.tsx`
 
-**Fix:** In `PlayerPage.tsx`, import `useAllRatingsAggregate`, compute per-creator points using the same formula across `createdLevels`, and display as "Creator Points" with the rating-weighted value. Also show under stats when `player` exists (currently only shows when no player).
+Add a new tab or section explaining:
+- The D0–D8 scale (0.1 increments)
+- How votes are aggregated (average)
+- Who can vote (only completers + admins)
+- Where it's displayed (level page, sortable on lists)
+- Visual scale breakdown (e.g. D0–D2 beginner, D3–D5 intermediate, D6–D8 expert)
 
-## 4. Future List redesign with level cards
+## 4. Player profile socials (Discord / TikTok / YouTube)
 
-**Fix:** Rewrite `FutureListPage.tsx` to use a card grid (matching Index/Main list layout) instead of a flat list. Each card shows:
-- Large thumbnail
-- Level name + author/creators
-- "~#rank" badge
-- Like count (fetched from external API via `fetchLevelDetails`, cached)
-- Created date (`created_at` from `future_levels`)
-- Play + copy ID buttons
-
-Use `LevelCard` component pattern, but with a `FutureLevelCard` variant that shows the date instead of points (future levels aren't ranked for points). Reuse the API-batched fetch pattern (5 at a time, 200ms delay) from existing list pages.
-
-## 5. New "Level Packs" admin tab
-
-**DB migration:**
-- Table `level_packs` (id, name text, description text, cover_url text, created_by uuid, created_at, updated_at)
-- Table `level_pack_items` (id, pack_id fk, level_id uuid, level_type text 'main'|'extended', display_order int)
-- RLS: public SELECT, admin-only ALL on both
-- Unique constraint on (pack_id, level_id, level_type)
+**Schema migration:**
+```sql
+ALTER TABLE public.profiles
+  ADD COLUMN discord_url text,
+  ADD COLUMN tiktok_url text,
+  ADD COLUMN youtube_url text;
+```
+All optional. Existing RLS already allows owners to update their profile.
 
 **UI:**
-- New `src/components/admin/LevelPacksManager.tsx` with create/edit/delete pack flow
-- Pack editor: name + description inputs, searchable level picker (main + extra), drag/reorder items, save
-- Add tab in `AdminPage.tsx` TabsList: `<TabsTrigger value="packs">Level Packs</TabsTrigger>`
-- Add `<TabsContent value="packs">` rendering the manager
+- `src/pages/PlayerPage.tsx` — show social icons (linkified) under the profile header when present.
+- Add edit fields (only visible when `profile.user_id === auth.user.id`):
+  - Either inline edit pencil, or in an "Edit profile" modal/section.
+  - Validate URLs (basic `https?://` check + length cap 500).
+  - Save via `supabase.from('profiles').update({...}).eq('id', profile.id)`.
+- Use lucide icons: `MessageCircle` (Discord), custom or `Music2` (TikTok), `Youtube`.
 
-**Public page (lightweight):** new `/packs` route + `PacksPage.tsx` listing all packs as cards; clicking opens a detail view showing the levels in the pack. Add nav entry in Navbar "More" dropdown.
+## 5. Submission target list
 
-## 6. Victor count on level cards
+Already implemented — verified in `SubmitLevelPage.tsx` (lines 618–633). **No changes needed.** Will mention in update log that it's already live.
 
-**Approach:** Compute completion counts per level in a single aggregate query and pass into cards.
+## 6. Manual runs: video URL OR screenshot URL
 
-**Hook:** New `src/hooks/useLevelCompletionCounts.ts` using React Query (5-min stale):
-- Fetches all rows from `completions` (level_id only) + `manual_runs` (level_id, list_type='main') + `extra_completions` + extra manual runs
-- Returns `Map<levelDbId, count>` deduplicated per profile per level
+**File:** `src/pages/AdminPage.tsx` (manual run dialog around lines 2700–2800)
 
-**UI:** Add a small badge on `LevelCard.tsx` (and the Extra list custom card): `<Users icon /> {count}` with tooltip "Victors". Pass `victorCount` prop from `Index.tsx`, `ExtendedListPage.tsx`, `ExtraListPage.tsx`.
+The DB column is `proof_url` (single text). Reuse it — accept either an image URL or a video URL (YouTube, Twitch, Streamable, direct mp4, etc.). Changes:
+- Rename label from "Proof Screenshot" → "Proof (Screenshot or Video URL)".
+- Add a small note: "Paste an image URL, video URL (YouTube/Twitch/Streamable/MP4), or upload a screenshot."
+- In the review/display areas, detect type by extension/host and render `<video>` or YouTube embed when applicable, otherwise the existing image preview / link.
+- Helper `isVideoUrl(url)` covering: `.mp4 .webm .mov`, `youtube.com|youtu.be`, `twitch.tv`, `streamable.com`.
 
-## 7. Other bugs found during exploration
+No schema change.
 
-- **Console spam**: `Error fetching level details: Failed to fetch` on Index — silence non-critical errors in the API batch fetch (already partially throttled per memory). Wrap in try/catch and only log once per batch failure.
-- **`profile_claim_requests` duplicate**: current code only catches `23505` after creating profile — if profile creation succeeds but claim fails, an orphan profile remains. The new RPC handles both atomically.
-
-## Technical Details
+## Files to change
 
 | File | Change |
 |------|--------|
-| SQL migration | Add `level_packs`, `level_pack_items` tables + RLS; add `claim_or_create_profile` RPC |
-| `src/pages/PlayerPage.tsx` | Use new RPC for claim; logged-out claim → redirect to /auth; show rating-weighted creator points |
-| `src/pages/FutureListPage.tsx` | Rewrite with card grid + API enrichment for like counts |
-| `src/components/FutureLevelCard.tsx` | New card component for future levels |
-| `src/components/LevelCard.tsx` | Add `victorCount` prop + Users icon badge |
-| `src/pages/ExtraListPage.tsx` | Pass victor counts to its custom card |
-| `src/pages/Index.tsx`, `ExtendedListPage.tsx` | Pass victor counts |
-| `src/hooks/useLevelCompletionCounts.ts` | New aggregation hook |
-| `src/components/admin/LevelPacksManager.tsx` | New admin component |
-| `src/pages/AdminPage.tsx` | Add "Level Packs" tab + content |
-| `src/pages/PacksPage.tsx` | New public page |
-| `src/components/Navbar.tsx` | Add "Packs" link to More menu |
-| `src/App.tsx` | Add `/packs` route |
-| `src/lib/api.ts` (or fetch helper) | Suppress repetitive fetch error logs |
+| `supabase/functions/discord-notify/index.ts` | Per-event-type message builder; "added" never shows "moved from #" |
+| `src/pages/StatisticsPage.tsx` | Add 5–6 new stat cards/sections |
+| `src/pages/GuidePage.tsx` | New "Difficulty" section/tab |
+| `supabase/migrations/...` | Add `discord_url`, `tiktok_url`, `youtube_url` to `profiles` |
+| `src/pages/PlayerPage.tsx` | Display + edit socials (owner-only) |
+| `src/pages/AdminPage.tsx` | Manual-run proof: accept video URLs, render embeds |
 
-## Implementation Order
+## Implementation order
 
-1. SQL migration (tables + RPC)
-2. Fix RLS claim flow + logged-out claim handler
-3. Creator points on player page
-4. Victor count hook + LevelCard badge + integration into all list pages
-5. Future List redesign
-6. Level Packs admin manager + public page + nav
-7. Console error suppression
+1. Migration (profile socials)
+2. Discord webhook fix + redeploy `discord-notify`
+3. Manual-run video support
+4. Player socials UI
+5. Statistics expansions
+6. Guide difficulty section
