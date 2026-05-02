@@ -372,7 +372,165 @@ export default function StatisticsPage() {
     },
   });
 
-  // Level distribution data for pie chart
+  // ===== Additional stats =====
+
+  // Hardest levels: top 10 by avg difficulty (min 3 votes)
+  const { data: hardestLevels = [] } = useQuery({
+    queryKey: ["stats-hardest-levels"],
+    queryFn: async () => {
+      const [{ data: votes }, { data: mains }, { data: extras }] = await Promise.all([
+        supabase.from("level_difficulty_votes").select("level_id, difficulty"),
+        supabase.from("levels").select("id, name, rank_position"),
+        supabase.from("extended_levels").select("id, name, rank_position"),
+      ]);
+      const nameMap = new Map<string, { name: string; rank: number; type: string }>();
+      mains?.forEach(l => nameMap.set(l.id, { name: l.name || "Unknown", rank: l.rank_position, type: "Main" }));
+      extras?.forEach(l => nameMap.set(l.id, { name: l.name || "Unknown", rank: l.rank_position, type: "Extra" }));
+      const grouped: Record<string, number[]> = {};
+      votes?.forEach(v => {
+        if (!grouped[v.level_id]) grouped[v.level_id] = [];
+        grouped[v.level_id].push(Number(v.difficulty));
+      });
+      return Object.entries(grouped)
+        .filter(([, arr]) => arr.length >= 3)
+        .map(([id, arr]) => ({
+          id,
+          info: nameMap.get(id),
+          avg: arr.reduce((a, b) => a + b, 0) / arr.length,
+          votes: arr.length,
+        }))
+        .filter(r => r.info)
+        .sort((a, b) => b.avg - a.avg)
+        .slice(0, 10);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Highest rated levels: top 10 by avg overall rating (min 3 ratings)
+  const { data: highestRatedLevels = [] } = useQuery({
+    queryKey: ["stats-highest-rated"],
+    queryFn: async () => {
+      const [{ data: ratings }, { data: mains }, { data: extras }] = await Promise.all([
+        supabase.from("level_ratings").select("level_id, enjoyment, design, decoration, gameplay"),
+        supabase.from("levels").select("id, name, rank_position"),
+        supabase.from("extended_levels").select("id, name, rank_position"),
+      ]);
+      const nameMap = new Map<string, { name: string; rank: number; type: string }>();
+      mains?.forEach(l => nameMap.set(l.id, { name: l.name || "Unknown", rank: l.rank_position, type: "Main" }));
+      extras?.forEach(l => nameMap.set(l.id, { name: l.name || "Unknown", rank: l.rank_position, type: "Extra" }));
+      const grouped: Record<string, number[]> = {};
+      ratings?.forEach(r => {
+        const overall = (Number(r.enjoyment) + Number(r.design) + Number(r.decoration) + Number(r.gameplay)) / 4;
+        if (!grouped[r.level_id]) grouped[r.level_id] = [];
+        grouped[r.level_id].push(overall);
+      });
+      return Object.entries(grouped)
+        .filter(([, arr]) => arr.length >= 3)
+        .map(([id, arr]) => ({
+          id,
+          info: nameMap.get(id),
+          avg: arr.reduce((a, b) => a + b, 0) / arr.length,
+          count: arr.length,
+        }))
+        .filter(r => r.info)
+        .sort((a, b) => b.avg - a.avg)
+        .slice(0, 10);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Top verifiers
+  const { data: topVerifiers = [] } = useQuery({
+    queryKey: ["stats-top-verifiers"],
+    queryFn: async () => {
+      const [{ data: mains }, { data: extras }, { data: profiles }] = await Promise.all([
+        supabase.from("levels").select("verifier_profile_id"),
+        supabase.from("extended_levels").select("verifier_profile_id"),
+        supabase.from("profiles").select("id, username, display_name, avatar_url"),
+      ]);
+      const counts: Record<string, number> = {};
+      [...(mains || []), ...(extras || [])].forEach(l => {
+        if (l.verifier_profile_id) counts[l.verifier_profile_id] = (counts[l.verifier_profile_id] || 0) + 1;
+      });
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      return Object.entries(counts)
+        .map(([id, count]) => ({ profile: profileMap.get(id), count }))
+        .filter(x => x.profile)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Most active players (last 30 days)
+  const { data: mostActivePlayers = [] } = useQuery({
+    queryKey: ["stats-most-active"],
+    queryFn: async () => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+      const [{ data: comps }, { data: profiles }] = await Promise.all([
+        supabase.from("completions").select("profile_id, completed_at").gte("completed_at", cutoff.toISOString()),
+        supabase.from("profiles").select("id, username, display_name, avatar_url"),
+      ]);
+      const counts: Record<string, number> = {};
+      comps?.forEach(c => { counts[c.profile_id] = (counts[c.profile_id] || 0) + 1; });
+      const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+      return Object.entries(counts)
+        .map(([id, count]) => ({ profile: profileMap.get(id), count }))
+        .filter(x => x.profile)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Country distribution
+  const { data: countryDist = [] } = useQuery({
+    queryKey: ["stats-countries"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("country_code");
+      const counts: Record<string, number> = {};
+      data?.forEach(p => {
+        if (p.country_code) counts[p.country_code] = (counts[p.country_code] || 0) + 1;
+      });
+      return Object.entries(counts)
+        .map(([code, count]) => ({ code, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 12);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Recent records (last 10 fastest completions, last 7 days)
+  const { data: recentRecords = [] } = useQuery({
+    queryKey: ["stats-recent-records"],
+    queryFn: async () => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 7);
+      const { data } = await supabase
+        .from("completions")
+        .select("id, profile_id, level_id, completion_time, completed_at")
+        .gte("completed_at", cutoff.toISOString())
+        .order("completed_at", { ascending: false })
+        .limit(10);
+      if (!data || data.length === 0) return [];
+      const profileIds = [...new Set(data.map(d => d.profile_id))];
+      const levelIds = [...new Set(data.map(d => d.level_id))];
+      const [{ data: profiles }, { data: levels }] = await Promise.all([
+        supabase.from("profiles").select("id, username, display_name").in("id", profileIds),
+        supabase.from("levels").select("id, name, rank_position").in("id", levelIds),
+      ]);
+      const pm = new Map((profiles || []).map(p => [p.id, p]));
+      const lm = new Map((levels || []).map(l => [l.id, l]));
+      return data.map(d => ({
+        ...d,
+        profile: pm.get(d.profile_id),
+        level: lm.get(d.level_id),
+      })).filter(r => r.profile && r.level);
+    },
+    staleTime: 60_000,
+  });
+
   const levelDistribution = useMemo(() => {
     if (!levelsData) return [];
     return [
