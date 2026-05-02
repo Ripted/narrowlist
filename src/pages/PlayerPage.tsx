@@ -15,7 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { 
   ArrowLeft, Trophy, Target, Clock, Medal, UserPlus, Camera, Loader2, 
-  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, Star, MapPin, Shield, Hammer
+  Edit2, Check, X, Search, TrendingUp, CheckCircle, Crown, ChevronLeft, ChevronRight, Calendar, ArrowUpDown, Star, MapPin, Shield, Hammer,
+  MessageCircle, Music2, Youtube, Link as LinkIcon
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { countries, getCountryByCode } from "@/config/countries";
@@ -29,6 +30,9 @@ interface ProfileData {
   display_name: string | null;
   country_code: string | null;
   extra_points?: number;
+  discord_url?: string | null;
+  tiktok_url?: string | null;
+  youtube_url?: string | null;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -181,7 +185,7 @@ export default function PlayerPage() {
     if (username) {
       supabase
         .from("profiles")
-        .select("id, user_id, banner_url, avatar_url, bio, display_name, country_code, extra_points")
+        .select("id, user_id, banner_url, avatar_url, bio, display_name, country_code, extra_points, discord_url, tiktok_url, youtube_url")
         .eq("username", username)
         .single()
         .then(async ({ data }) => {
