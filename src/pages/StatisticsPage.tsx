@@ -1122,6 +1122,116 @@ export default function StatisticsPage() {
             </div>
           </div>
         </div>
+
+        {/* New stats sections */}
+        <div className="grid lg:grid-cols-2 gap-6 mt-8">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
+              <Flame className="w-5 h-5 text-red-400" /> Hardest Levels
+            </h3>
+            {hardestLevels.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Not enough difficulty votes yet.</p>
+            ) : (
+              <ol className="space-y-2">
+                {hardestLevels.map((l, i) => (
+                  <li key={l.id} className="flex items-center justify-between text-sm">
+                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>#{l.info!.rank} {l.info!.name} <span className="text-xs text-muted-foreground">({l.info!.type})</span></span>
+                    <span className="font-mono text-red-400 ml-2 shrink-0">D{l.avg.toFixed(1)} · {l.votes}v</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
+              <Star className="w-5 h-5 text-amber-400" /> Highest Rated Levels
+            </h3>
+            {highestRatedLevels.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Not enough ratings yet.</p>
+            ) : (
+              <ol className="space-y-2">
+                {highestRatedLevels.map((l, i) => (
+                  <li key={l.id} className="flex items-center justify-between text-sm">
+                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>#{l.info!.rank} {l.info!.name} <span className="text-xs text-muted-foreground">({l.info!.type})</span></span>
+                    <span className="font-mono text-amber-400 ml-2 shrink-0">{l.avg.toFixed(2)} · {l.count}r</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
+              <Award className="w-5 h-5 text-primary" /> Top Verifiers
+            </h3>
+            {topVerifiers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No verifiers yet.</p>
+            ) : (
+              <ol className="space-y-2">
+                {topVerifiers.map((v, i) => (
+                  <li key={v.profile!.id} className="flex items-center justify-between text-sm">
+                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>{v.profile!.display_name || v.profile!.username}</span>
+                    <span className="font-mono text-primary ml-2 shrink-0">{v.count} verified</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-accent" /> Most Active (30d)
+            </h3>
+            {mostActivePlayers.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No recent activity.</p>
+            ) : (
+              <ol className="space-y-2">
+                {mostActivePlayers.map((p, i) => (
+                  <li key={p.profile!.id} className="flex items-center justify-between text-sm">
+                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>{p.profile!.display_name || p.profile!.username}</span>
+                    <span className="font-mono text-accent ml-2 shrink-0">{p.count} runs</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" /> Country Distribution
+            </h3>
+            {countryDist.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No country data yet.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {countryDist.map(c => (
+                  <span key={c.code} className="px-2.5 py-1 rounded-md bg-secondary text-xs font-mono">
+                    {c.code} <span className="text-muted-foreground">×{c.count}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
+              <Clock className="w-5 h-5 text-primary" /> Recent Runs (7d)
+            </h3>
+            {recentRecords.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No runs in the last 7 days.</p>
+            ) : (
+              <ol className="space-y-2">
+                {recentRecords.map((r, i) => (
+                  <li key={r.id} className="flex items-center justify-between text-sm gap-2">
+                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>{r.profile!.display_name || r.profile!.username} <span className="text-xs text-muted-foreground">on #{r.level!.rank_position} {r.level!.name}</span></span>
+                    <span className="font-mono text-primary shrink-0">{Number(r.completion_time).toFixed(3)}s</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+        </div>
       </main>
     </div>
   );
