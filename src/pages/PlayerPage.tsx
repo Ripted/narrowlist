@@ -638,6 +638,65 @@ export default function PlayerPage() {
                     {canEdit && <Button size="sm" variant="ghost" onClick={() => setEditingBio(true)} className={`mt-1 gap-1 text-xs ${isAdmin && !isOwner ? "text-accent" : ""}`}><Edit2 className="w-3 h-3" />{profileData?.bio ? "Edit Bio" : "Add Bio"}{isAdmin && !isOwner ? " (Admin)" : ""}</Button>}
                   </div>
                 )}
+
+                {/* Socials */}
+                {(() => {
+                  const hasAny = !!(profileData?.discord_url || profileData?.tiktok_url || profileData?.youtube_url);
+                  const ownerOnlyEdit = isOwner; // socials are owner-only per spec
+                  if (!hasAny && !ownerOnlyEdit) return null;
+                  return (
+                    <div className="mt-3">
+                      {editingSocials ? (
+                        <div className="space-y-2 max-w-md">
+                          <div className="flex items-center gap-2">
+                            <MessageCircle className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <Input value={discordUrl} onChange={(e) => setDiscordUrl(e.target.value)} placeholder="Discord URL (optional)" className="bg-secondary border-border" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Music2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <Input value={tiktokUrl} onChange={(e) => setTiktokUrl(e.target.value)} placeholder="TikTok URL (optional)" className="bg-secondary border-border" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Youtube className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <Input value={youtubeUrl} onChange={(e) => setYoutubeUrl(e.target.value)} placeholder="YouTube URL (optional)" className="bg-secondary border-border" />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" onClick={saveSocials} disabled={savingSocials}>{savingSocials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}</Button>
+                            <Button size="sm" variant="ghost" onClick={() => {
+                              setEditingSocials(false);
+                              setDiscordUrl(profileData?.discord_url || "");
+                              setTiktokUrl(profileData?.tiktok_url || "");
+                              setYoutubeUrl(profileData?.youtube_url || "");
+                            }}><X className="w-4 h-4" /></Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {profileData?.discord_url && (
+                            <a href={profileData.discord_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-accent/20 text-xs text-foreground transition-colors">
+                              <MessageCircle className="w-3.5 h-3.5" /> Discord
+                            </a>
+                          )}
+                          {profileData?.tiktok_url && (
+                            <a href={profileData.tiktok_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-accent/20 text-xs text-foreground transition-colors">
+                              <Music2 className="w-3.5 h-3.5" /> TikTok
+                            </a>
+                          )}
+                          {profileData?.youtube_url && (
+                            <a href={profileData.youtube_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-accent/20 text-xs text-foreground transition-colors">
+                              <Youtube className="w-3.5 h-3.5" /> YouTube
+                            </a>
+                          )}
+                          {ownerOnlyEdit && (
+                            <Button size="sm" variant="ghost" onClick={() => setEditingSocials(true)} className="gap-1 text-xs h-7">
+                              <LinkIcon className="w-3 h-3" />{hasAny ? "Edit Socials" : "Add Socials"}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {canClaim && (
