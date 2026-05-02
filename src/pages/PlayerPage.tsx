@@ -458,6 +458,8 @@ export default function PlayerPage() {
       setSavingSocials(false);
     }
   };
+
+  const saveCountry = async (code: string | null) => {
     if (!profileData) return;
     setSavingCountry(true);
     try {
