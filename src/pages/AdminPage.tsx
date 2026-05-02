@@ -205,6 +205,18 @@ interface WebhookSettings {
 
 const ITEMS_PER_PAGE = 20;
 
+function isVideoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const u = url.toLowerCase();
+  return /\.(mp4|webm|mov|m4v)(\?|$)/.test(u)
+    || u.includes("youtube.com")
+    || u.includes("youtu.be")
+    || u.includes("twitch.tv")
+    || u.includes("streamable.com")
+    || u.includes("medal.tv")
+    || u.includes("vimeo.com");
+}
+
 export default function AdminPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
