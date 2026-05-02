@@ -4924,7 +4924,10 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <Label>Proof Screenshot</Label>
+                <Label>Proof (Screenshot or Video URL)</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Paste an image URL, video URL (YouTube / Twitch / Streamable / .mp4), or upload a screenshot.
+                </p>
                 <div className="mt-1 space-y-2">
                   <input
                     type="file"
@@ -4939,7 +4942,14 @@ export default function AdminPage() {
                   />
                   {manualRunProofUrl ? (
                     <div className="relative">
-                      <img src={manualRunProofUrl} alt="Proof" className="w-full h-32 object-cover rounded-lg border border-border" />
+                      {isVideoUrl(manualRunProofUrl) ? (
+                        <div className="w-full h-32 rounded-lg border border-border bg-secondary flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                          <FileVideo className="w-5 h-5" />
+                          <span className="truncate max-w-[80%]">{manualRunProofUrl}</span>
+                        </div>
+                      ) : (
+                        <img src={manualRunProofUrl} alt="Proof" className="w-full h-32 object-cover rounded-lg border border-border" />
+                      )}
                       <Button
                         type="button"
                         variant="destructive"
@@ -4965,7 +4975,7 @@ export default function AdminPage() {
                   <Input
                     value={manualRunProofUrl}
                     onChange={(e) => setManualRunProofUrl(e.target.value)}
-                    placeholder="Or paste image URL..."
+                    placeholder="Or paste image / video URL..."
                     className="bg-secondary border-border"
                   />
                 </div>
