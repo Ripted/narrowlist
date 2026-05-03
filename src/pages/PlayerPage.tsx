@@ -1011,7 +1011,7 @@ export default function PlayerPage() {
                       <Hammer className="w-5 h-5 text-primary" />
                       Created Levels
                       <span className="text-sm font-normal text-muted-foreground ml-2">
-                        ({createdLevelsTotalPoints.toLocaleString()} total points)
+                        ({createdLevelsTotalPoints.toFixed(1)} creator points)
                       </span>
                     </h2>
                   </div>
