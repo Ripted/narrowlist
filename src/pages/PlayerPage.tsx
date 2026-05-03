@@ -1031,10 +1031,16 @@ export default function PlayerPage() {
                         <div className="flex-1 min-w-0">
                           <span className="font-medium text-foreground truncate block">{level.name || level.level_id}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-primary">
-                          <Trophy className="w-4 h-4" />
-                          <span className="font-mono font-bold">{level.points}</span>
-                        </div>
+                        {(() => {
+                          const agg = ratingsAgg?.get(level.id);
+                          const creatorPts = agg && agg.count > 0 ? (agg.avg_overall / 10) * level.points : 0;
+                          return (
+                            <div className="flex items-center gap-1 text-primary" title="Creator points">
+                              <Hammer className="w-4 h-4" />
+                              <span className="font-mono font-bold">{creatorPts.toFixed(1)}</span>
+                            </div>
+                          );
+                        })()}
                       </Link>
                     ))}
                   </div>
