@@ -1907,15 +1907,18 @@ export default function AdminPage() {
   const confirmDeleteLevel = async () => {
     if (!deleteConfirmLevel) return;
     
+    const deletedName = deleteConfirmLevel.name || deleteConfirmLevel.level_id;
+    const deletedRank = deleteConfirmLevel.rank_position;
     const { error } = await supabase.from("levels").delete().eq("id", deleteConfirmLevel.id);
     
     if (error) {
       toast({ title: "Error", description: "Failed to remove level", variant: "destructive" });
     } else {
-      await logAction("Removed level", deleteConfirmLevel.name || deleteConfirmLevel.level_id);
+      await logAction("Removed level", deletedName);
       toast({ title: "Success", description: "Level removed" });
       const remaining = levels.filter(l => l.id !== deleteConfirmLevel.id);
       await updateRanks(remaining.map((l, i) => ({ ...l, rank_position: i + 1 })));
+      await sendAdminNotification("level_deletion", deletedName, deletedRank, undefined, "Main", "deleted");
       fetchLevels();
       fetchChangelog();
     }
