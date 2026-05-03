@@ -1932,6 +1932,10 @@ export default function AdminPage() {
     
     if (targetIndex < 0 || targetIndex >= newLevels.length) return;
     
+    const movingLevel = newLevels[index];
+    const oldRank = index + 1;
+    const newRank = targetIndex + 1;
+    
     [newLevels[index], newLevels[targetIndex]] = [newLevels[targetIndex], newLevels[index]];
     
     const updatedLevels = newLevels.map((l, i) => ({
@@ -1942,6 +1946,8 @@ export default function AdminPage() {
     
     setLevels(updatedLevels);
     await updateRanks(updatedLevels);
+    await sendAdminNotification("rank_change", movingLevel.name || movingLevel.level_id, oldRank, newRank, "Main", "moved");
+    fetchChangelog();
   };
 
   const updateRanks = async (updatedLevels: Level[]) => {
