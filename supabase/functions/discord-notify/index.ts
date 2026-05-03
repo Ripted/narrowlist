@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
       } else if (event_type === 'extra_to_main') {
         message = `${emoji} **${level_name}** transferred from Extra List to Main List at #${new_rank}`;
       } else if (event_type === 'level_to_extra' || event_type === 'level_to_extended') {
-        message = `${emoji} **${level_name}** transferred from ${list_type || 'Main'} List to ${event_type === 'level_to_extra' ? 'Extra' : 'Extended'} List`;
+        message = `${emoji} **${level_name}** transferred from ${list_type || 'Main'} List to Extra List`;
       } else if (event_type === 'rank_change' && hasBothRanks) {
         const template = webhook.custom_message_template || '{emoji} **{levelName}** moved from #{oldRank} to #{newRank} on {listType} List';
         message = applyTemplate(template, variables);
