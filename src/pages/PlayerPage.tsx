@@ -145,13 +145,15 @@ export default function PlayerPage() {
   
   const { data: ratingsAgg } = useAllRatingsAggregate();
 
+  // Creator points = sum of (avg_overall_rating / 10) * level.points.
+  // Unrated levels contribute 0 (matches Leaderboard "Creators" tab).
   const createdLevelsTotalPoints = useMemo(() => {
     return createdLevels.reduce((sum: number, l: any) => {
       const agg = ratingsAgg?.get(l.id);
       if (agg && agg.count > 0) {
         return sum + (agg.avg_overall / 10) * l.points;
       }
-      return sum + l.points;
+      return sum;
     }, 0);
   }, [createdLevels, ratingsAgg]);
   
@@ -713,7 +715,7 @@ export default function PlayerPage() {
                     <div className="text-[10px] sm:text-xs text-muted-foreground">Created</div>
                   </div>
                   <div className="text-center p-2 sm:p-3 rounded-lg bg-card border border-border">
-                    <div className="flex items-center justify-center gap-1"><Hammer className="w-3 h-3 sm:w-4 sm:h-4 text-accent" /><span className="font-display text-xl sm:text-2xl font-bold text-accent">{Math.round(createdLevelsTotalPoints).toLocaleString()}</span></div>
+                    <div className="flex items-center justify-center gap-1"><Hammer className="w-3 h-3 sm:w-4 sm:h-4 text-accent" /><span className="font-display text-xl sm:text-2xl font-bold text-accent">{createdLevelsTotalPoints.toFixed(1)}</span></div>
                     <div className="text-[10px] sm:text-xs text-muted-foreground">Creator Points</div>
                   </div>
                 </div>
@@ -1009,7 +1011,7 @@ export default function PlayerPage() {
                       <Hammer className="w-5 h-5 text-primary" />
                       Created Levels
                       <span className="text-sm font-normal text-muted-foreground ml-2">
-                        ({createdLevelsTotalPoints.toLocaleString()} total points)
+                        ({createdLevelsTotalPoints.toFixed(1)} creator points)
                       </span>
                     </h2>
                   </div>
