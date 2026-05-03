@@ -145,13 +145,15 @@ export default function PlayerPage() {
   
   const { data: ratingsAgg } = useAllRatingsAggregate();
 
+  // Creator points = sum of (avg_overall_rating / 10) * level.points.
+  // Unrated levels contribute 0 (matches Leaderboard "Creators" tab).
   const createdLevelsTotalPoints = useMemo(() => {
     return createdLevels.reduce((sum: number, l: any) => {
       const agg = ratingsAgg?.get(l.id);
       if (agg && agg.count > 0) {
         return sum + (agg.avg_overall / 10) * l.points;
       }
-      return sum + l.points;
+      return sum;
     }, 0);
   }, [createdLevels, ratingsAgg]);
   
