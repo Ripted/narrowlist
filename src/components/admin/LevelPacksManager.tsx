@@ -322,8 +322,48 @@ export function LevelPacksManager() {
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's this pack about?" rows={3} />
             </div>
             <div>
-              <Label>Cover image URL (optional)</Label>
-              <Input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://..." />
+              <Label>Cover image</Label>
+              <div className="flex items-center gap-3 mt-1">
+                {coverUrl ? (
+                  <img src={coverUrl} alt="cover" className="w-16 h-16 rounded object-cover border border-border" />
+                ) : (
+                  <div className="w-16 h-16 rounded bg-muted flex items-center justify-center border border-border">
+                    <Package className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={coverUrl}
+                    onChange={(e) => setCoverUrl(e.target.value)}
+                    placeholder="Paste image URL or upload below"
+                    onPaste={async (e) => {
+                      const file = Array.from(e.clipboardData.files).find(f => f.type.startsWith("image/"));
+                      if (!file) return;
+                      e.preventDefault();
+                      await uploadCoverFile(file);
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingCover}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) await uploadCoverFile(file);
+                        e.target.value = "";
+                      }}
+                      className="text-xs"
+                    />
+                    {coverUrl && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setCoverUrl("")} className="gap-1">
+                        <X className="w-3 h-3" /> Clear
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Tip: paste an image directly into the URL box.</p>
+                </div>
+              </div>
             </div>
 
             <div>
