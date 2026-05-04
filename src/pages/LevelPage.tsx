@@ -404,8 +404,8 @@ export default function LevelPage() {
               </div>
             </div>
 
-            <div className="hidden lg:block">
-              <div className="aspect-video rounded-lg bg-secondary border border-border overflow-hidden">
+            <div className="lg:col-span-1">
+              <div className="relative aspect-video rounded-lg bg-secondary border border-border overflow-hidden group">
                 {thumbnailUrl ? (
                   <img 
                     src={thumbnailUrl} 
@@ -418,6 +418,17 @@ export default function LevelPage() {
                       #{rank || "?"}
                     </div>
                   </div>
+                )}
+                {thumbnailUrl && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleDownloadThumbnail}
+                    className="absolute top-2 right-2 h-8 w-8 p-0 bg-background/80 backdrop-blur hover:bg-background"
+                    title="Download image"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
             </div>
