@@ -23,6 +23,7 @@ import AdminPage from "./pages/AdminPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import PacksPage from "./pages/PacksPage";
 import HubPage from "./pages/HubPage";
+import HelpImprovePage from "./pages/HelpImprovePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
               <Route path="/guide" element={<GuidePage />} />
               <Route path="/themes" element={<ThemesPage />} />
               <Route path="/statistics" element={<StatisticsPage />} />
+              <Route path="/help-improve" element={<HelpImprovePage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/packs" element={<PacksPage />} />
               <Route path="/packs/:packId" element={<PacksPage />} />

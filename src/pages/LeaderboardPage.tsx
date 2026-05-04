@@ -260,7 +260,9 @@ export default function LeaderboardPage() {
       
       const agg = ratingsAgg?.get(level.id);
       const hasRating = !!agg && agg.count > 0;
-      const ratingMultiplier = hasRating ? agg!.avg_overall / 10 : 0;
+      // Default to 5/10 when a level has no ratings yet.
+      const ratingValue = hasRating ? agg!.avg_overall : 5;
+      const ratingMultiplier = ratingValue / 10;
       const levelCreatorPoints = ratingMultiplier * (level.points || 0);
       
       creatorsList.forEach((creator: string) => {

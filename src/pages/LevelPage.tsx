@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers, TrendingUp, FileText } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers, TrendingUp, FileText, Package, Download } from "lucide-react";
 import { LevelFeedbackButton } from "@/components/LevelFeedbackButton";
 import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
 import { WatchlistButton } from "@/components/WatchlistButton";
@@ -46,7 +46,49 @@ export default function LevelPage() {
   const [profiles, setProfiles] = useState<Map<string, DbProfile>>(new Map());
   const [manualRuns, setManualRuns] = useState<ManualRunEntry[]>([]);
   const [sortMode, setSortMode] = useState<"time" | "date">("time");
+  const [packsContaining, setPacksContaining] = useState<{ id: string; name: string; cover_url: string | null }[]>([]);
   const { data: levelTags = [] } = useLevelTags(levelDbId);
+
+  // Fetch packs containing this level
+  useEffect(() => {
+    async function loadPacks() {
+      if (!levelDbId) return;
+      const levelType = isFromExtendedList ? "extended" : "main";
+      const { data: itemRows } = await supabase
+        .from("level_pack_items")
+        .select("pack_id")
+        .eq("level_id", levelDbId)
+        .eq("level_type", levelType);
+      const packIds = Array.from(new Set((itemRows || []).map((r: any) => r.pack_id)));
+      if (packIds.length === 0) { setPacksContaining([]); return; }
+      const { data: packs } = await supabase
+        .from("level_packs")
+        .select("id, name, cover_url")
+        .in("id", packIds);
+      setPacksContaining(packs || []);
+    }
+    loadPacks();
+  }, [levelDbId, isFromExtendedList]);
+
+  const handleDownloadThumbnail = async () => {
+    if (!thumbnailUrl) return;
+    try {
+      const res = await fetch(thumbnailUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ext = (blob.type.split("/")[1] || "png").split("+")[0];
+      a.download = `${(level?.levelInfo?.name || levelId || "level").replace(/[^a-z0-9-_]+/gi, "_")}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(thumbnailUrl, "_blank");
+    }
+  };
+
   // Fetch profiles from DB
   useEffect(() => {
     async function loadProfiles() {
@@ -362,8 +404,8 @@ export default function LevelPage() {
               </div>
             </div>
 
-            <div className="hidden lg:block">
-              <div className="aspect-video rounded-lg bg-secondary border border-border overflow-hidden">
+            <div className="lg:col-span-1">
+              <div className="relative aspect-video rounded-lg bg-secondary border border-border overflow-hidden group">
                 {thumbnailUrl ? (
                   <img 
                     src={thumbnailUrl} 
@@ -376,6 +418,17 @@ export default function LevelPage() {
                       #{rank || "?"}
                     </div>
                   </div>
+                )}
+                {thumbnailUrl && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleDownloadThumbnail}
+                    className="absolute top-2 right-2 h-8 w-8 p-0 bg-background/80 backdrop-blur hover:bg-background"
+                    title="Download image"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
             </div>
@@ -392,6 +445,32 @@ export default function LevelPage() {
               <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                 {description}
               </p>
+            </div>
+          )}
+
+          {/* Packs containing this level */}
+          {packsContaining.length > 0 && (
+            <div className="rounded-lg bg-card border border-border p-4 mb-8">
+              <h3 className="font-display text-sm font-bold flex items-center gap-2 mb-3 text-muted-foreground">
+                <Package className="w-4 h-4" />
+                In Level Packs ({packsContaining.length})
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {packsContaining.map((pack) => (
+                  <Link
+                    key={pack.id}
+                    to={`/packs/${pack.id}`}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/70 border border-border text-sm transition"
+                  >
+                    {pack.cover_url ? (
+                      <img src={pack.cover_url} alt="" className="w-5 h-5 rounded object-cover" />
+                    ) : (
+                      <Package className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <span className="font-medium">{pack.name}</span>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
 

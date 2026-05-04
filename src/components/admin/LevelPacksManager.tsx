@@ -68,6 +68,7 @@ export function LevelPacksManager() {
   const [coverUrl, setCoverUrl] = useState("");
   const [items, setItems] = useState<PackItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // Level picker
   const [allLevels, setAllLevels] = useState<LevelOption[]>([]);
@@ -110,6 +111,25 @@ export function LevelPacksManager() {
     loadPacks();
     loadLevels();
   }, []);
+
+  const uploadCoverFile = async (file: File) => {
+    setUploadingCover(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const fileName = `pack-cover-${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from("level-thumbnails")
+        .upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("level-thumbnails").getPublicUrl(data.path);
+      setCoverUrl(publicUrl);
+      toast({ title: "Uploaded", description: "Cover image set" });
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploadingCover(false);
+    }
+  };
 
   const openNew = () => {
     setEditingPack(null);
@@ -166,6 +186,23 @@ export function LevelPacksManager() {
     setItems(next.map((it, i) => ({ ...it, display_order: i })));
   };
 
+  const notifyPack = async (event_type: string, packName: string, details?: string) => {
+    try {
+      await supabase.functions.invoke("admin-notify", {
+        body: {
+          event_type,
+          admin_email: user?.email || "unknown",
+          level_name: packName,
+          details,
+          list_type: "Pack",
+          action: event_type,
+        },
+      });
+    } catch (e) {
+      console.error("pack notify failed", e);
+    }
+  };
+
   const savePack = async () => {
     if (!name.trim()) {
       toast({ title: "Name required", variant: "destructive" });
@@ -174,6 +211,7 @@ export function LevelPacksManager() {
     setSaving(true);
     try {
       let packId = editingPack?.id;
+      const isNew = !packId;
       if (!packId) {
         const { data, error } = await supabase
           .from("level_packs")
@@ -213,6 +251,7 @@ export function LevelPacksManager() {
       }
 
       toast({ title: "Saved", description: `Pack "${name}" saved` });
+      await notifyPack(isNew ? "pack_created" : "pack_updated", name.trim(), `${items.length} levels`);
       setEditorOpen(false);
       loadPacks();
     } catch (e: any) {
@@ -224,11 +263,13 @@ export function LevelPacksManager() {
 
   const confirmDelete = async () => {
     if (!deleteId) return;
+    const pack = packs.find(p => p.id === deleteId);
     const { error } = await supabase.from("level_packs").delete().eq("id", deleteId);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Deleted" });
+      if (pack) await notifyPack("pack_deleted", pack.name);
       loadPacks();
     }
     setDeleteId(null);
@@ -321,8 +362,48 @@ export function LevelPacksManager() {
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's this pack about?" rows={3} />
             </div>
             <div>
-              <Label>Cover image URL (optional)</Label>
-              <Input value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="https://..." />
+              <Label>Cover image</Label>
+              <div className="flex items-center gap-3 mt-1">
+                {coverUrl ? (
+                  <img src={coverUrl} alt="cover" className="w-16 h-16 rounded object-cover border border-border" />
+                ) : (
+                  <div className="w-16 h-16 rounded bg-muted flex items-center justify-center border border-border">
+                    <Package className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 space-y-2">
+                  <Input
+                    value={coverUrl}
+                    onChange={(e) => setCoverUrl(e.target.value)}
+                    placeholder="Paste image URL or upload below"
+                    onPaste={async (e) => {
+                      const file = Array.from(e.clipboardData.files).find(f => f.type.startsWith("image/"));
+                      if (!file) return;
+                      e.preventDefault();
+                      await uploadCoverFile(file);
+                    }}
+                  />
+                  <div className="flex gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingCover}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) await uploadCoverFile(file);
+                        e.target.value = "";
+                      }}
+                      className="text-xs"
+                    />
+                    {coverUrl && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setCoverUrl("")} className="gap-1">
+                        <X className="w-3 h-3" /> Clear
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Tip: paste an image directly into the URL box.</p>
+                </div>
+              </div>
             </div>
 
             <div>

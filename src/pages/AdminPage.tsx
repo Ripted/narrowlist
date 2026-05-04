@@ -1616,6 +1616,14 @@ export default function AdminPage() {
     } else {
       await logAction("Removed future level", deleteConfirmFutureLevel.name || deleteConfirmFutureLevel.level_id);
       toast({ title: "Success", description: "Future level removed" });
+      await sendAdminNotification(
+        "future_level_deleted",
+        deleteConfirmFutureLevel.name || deleteConfirmFutureLevel.level_id,
+        deleteConfirmFutureLevel.rank_position,
+        undefined,
+        "Future",
+        "deleted",
+      );
       fetchFutureLevels();
       fetchChangelog();
     }
@@ -1637,13 +1645,15 @@ export default function AdminPage() {
     if (!editingFutureLevel) return;
     
     setSavingFutureLevel(true);
+    const newRank = parseInt(editFutureRank) || 1;
+    const oldRank = editingFutureLevel.rank_position;
     const { error } = await supabase
       .from("future_levels")
       .update({
         name: editFutureName || null,
         author: editFutureAuthor || null,
-        rank_position: parseInt(editFutureRank) || 1,
-        points: parseInt(editFuturePoints) || calculatePoints(parseInt(editFutureRank) || 1),
+        rank_position: newRank,
+        points: parseInt(editFuturePoints) || calculatePoints(newRank),
         thumbnail_url: editFutureThumbnail || null,
         description: editFutureDescription.trim() || null,
       } as any)
@@ -1654,6 +1664,16 @@ export default function AdminPage() {
     } else {
       await logAction("Edited future level", `${editFutureName || editingFutureLevel.level_id}`);
       toast({ title: "Success", description: "Future level updated" });
+      if (newRank !== oldRank) {
+        await sendAdminNotification(
+          "future_level_rank_change",
+          editFutureName || editingFutureLevel.name || editingFutureLevel.level_id,
+          oldRank,
+          newRank,
+          "Future",
+          "moved",
+        );
+      }
       setEditingFutureLevel(null);
       fetchFutureLevels();
       fetchChangelog();

@@ -131,6 +131,8 @@ Deno.serve(async (req) => {
       let emoji = '';
       if (event_type === 'rank_change') emoji = new_rank < old_rank ? '⬆️' : '⬇️';
       else if (event_type === 'future_level') emoji = '📋';
+      else if (event_type === 'future_level_deleted') emoji = '🗑️';
+      else if (event_type === 'future_level_rank_change') emoji = new_rank < old_rank ? '⬆️' : '⬇️';
       else if (event_type === 'level_addition') emoji = '✨';
       else if (event_type === 'level_deletion') emoji = '🗑️';
       else if (event_type === 'future_to_main') emoji = '🚀';
@@ -138,6 +140,9 @@ Deno.serve(async (req) => {
       else if (event_type === 'level_to_extra' || event_type === 'level_to_extended') emoji = '📤';
       else if (event_type === 'extra_to_main') emoji = '⬆️';
       else if (event_type === 'transferred') emoji = '🔄';
+      else if (event_type === 'pack_created') emoji = '🆕';
+      else if (event_type === 'pack_updated') emoji = '✏️';
+      else if (event_type === 'pack_deleted') emoji = '🗑️';
 
       const variables: Record<string, string> = {
         levelName: level_name || 'Unknown',
@@ -149,9 +154,6 @@ Deno.serve(async (req) => {
         adminEmail: admin_email || 'unknown',
       };
 
-      // Build per-event-type messages. Bypass custom template for events
-      // that lack an oldRank (additions/deletions/transfers) so we never
-      // render garbage like "moved from # to #7".
       const hasBothRanks = old_rank && new_rank;
 
       if (event_type === 'level_addition') {
@@ -166,6 +168,18 @@ Deno.serve(async (req) => {
         message = `${emoji} **${level_name}** transferred from Extra List to Main List at #${new_rank}`;
       } else if (event_type === 'level_to_extra' || event_type === 'level_to_extended') {
         message = `${emoji} **${level_name}** transferred from ${list_type || 'Main'} List to Extra List`;
+      } else if (event_type === 'future_level') {
+        message = `${emoji} **${level_name}** added to the Future List at estimated #${new_rank}`;
+      } else if (event_type === 'future_level_deleted') {
+        message = `${emoji} **${level_name}** removed from the Future List`;
+      } else if (event_type === 'future_level_rank_change' && hasBothRanks) {
+        message = `${emoji} **${level_name}** moved from #${old_rank} to #${new_rank} on the Future List`;
+      } else if (event_type === 'pack_created') {
+        message = `${emoji} Level pack **${level_name}** created`;
+      } else if (event_type === 'pack_updated') {
+        message = `${emoji} Level pack **${level_name}** updated${details ? ` (${details})` : ''}`;
+      } else if (event_type === 'pack_deleted') {
+        message = `${emoji} Level pack **${level_name}** deleted`;
       } else if (event_type === 'rank_change' && hasBothRanks) {
         const template = webhook.custom_message_template || '{emoji} **{levelName}** moved from #{oldRank} to #{newRank} on {listType} List';
         message = applyTemplate(template, variables);

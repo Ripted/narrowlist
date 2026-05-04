@@ -276,7 +276,7 @@ const Index = () => {
                       </Button>
                     </div>
                   </div>
-                  <ScrollArea className="max-h-72">
+                  <ScrollArea className="h-80">
                     <div className="p-2 space-y-0.5">
                       {allTagOptions.map((tag) => {
                         const tagKey = `${tag.emoji}|${tag.text}`;
