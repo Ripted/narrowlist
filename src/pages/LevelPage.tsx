@@ -448,6 +448,32 @@ export default function LevelPage() {
             </div>
           )}
 
+          {/* Packs containing this level */}
+          {packsContaining.length > 0 && (
+            <div className="rounded-lg bg-card border border-border p-4 mb-8">
+              <h3 className="font-display text-sm font-bold flex items-center gap-2 mb-3 text-muted-foreground">
+                <Package className="w-4 h-4" />
+                In Level Packs ({packsContaining.length})
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {packsContaining.map((pack) => (
+                  <Link
+                    key={pack.id}
+                    to={`/packs/${pack.id}`}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/70 border border-border text-sm transition"
+                  >
+                    {pack.cover_url ? (
+                      <img src={pack.cover_url} alt="" className="w-5 h-5 rounded object-cover" />
+                    ) : (
+                      <Package className="w-4 h-4 text-muted-foreground" />
+                    )}
+                    <span className="font-medium">{pack.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Alternative Level IDs Section */}
           {alternativeIds.length > 0 && (
             <div className="rounded-lg bg-card border border-border p-4 mb-8">
