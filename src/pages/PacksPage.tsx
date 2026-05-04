@@ -158,7 +158,7 @@ export default function PacksPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {packs.map((pack) => (
                     <Link key={pack.id} to={`/packs/${pack.id}`} className="group rounded-xl border border-border bg-card overflow-hidden hover:border-primary/50 transition">
-                      <div className="relative h-40 bg-muted">
+                      <div className="relative aspect-square bg-muted">
                         {pack.cover_url ? (
                           <img src={pack.cover_url} alt={pack.name} className="w-full h-full object-cover group-hover:scale-105 transition" />
                         ) : (
