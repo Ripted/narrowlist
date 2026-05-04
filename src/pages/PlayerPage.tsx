@@ -1032,9 +1032,10 @@ export default function PlayerPage() {
                         </div>
                         {(() => {
                           const agg = ratingsAgg?.get(level.id);
-                          const creatorPts = agg && agg.count > 0 ? (agg.avg_overall / 10) * level.points : 0;
+                          const rating = agg && agg.count > 0 ? agg.avg_overall : 5;
+                          const creatorPts = (rating / 10) * level.points;
                           return (
-                            <div className="flex items-center gap-1 text-primary" title="Creator points">
+                            <div className="flex items-center gap-1 text-primary" title={agg && agg.count > 0 ? "Creator points" : "Creator points (default 5/10 rating)"}>
                               <Hammer className="w-4 h-4" />
                               <span className="font-mono font-bold">{creatorPts.toFixed(1)}</span>
                             </div>
