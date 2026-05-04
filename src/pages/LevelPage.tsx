@@ -79,7 +79,7 @@ export default function LevelPage() {
       const a = document.createElement("a");
       a.href = url;
       const ext = (blob.type.split("/")[1] || "png").split("+")[0];
-      a.download = `${(levelInfo?.name || levelId || "level").replace(/[^a-z0-9-_]+/gi, "_")}.${ext}`;
+      a.download = `${(level?.levelInfo?.name || levelId || "level").replace(/[^a-z0-9-_]+/gi, "_")}.${ext}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
