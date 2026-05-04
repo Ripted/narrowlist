@@ -1616,6 +1616,14 @@ export default function AdminPage() {
     } else {
       await logAction("Removed future level", deleteConfirmFutureLevel.name || deleteConfirmFutureLevel.level_id);
       toast({ title: "Success", description: "Future level removed" });
+      await sendAdminNotification(
+        "future_level_deleted",
+        deleteConfirmFutureLevel.name || deleteConfirmFutureLevel.level_id,
+        deleteConfirmFutureLevel.rank_position,
+        undefined,
+        "Future",
+        "deleted",
+      );
       fetchFutureLevels();
       fetchChangelog();
     }
