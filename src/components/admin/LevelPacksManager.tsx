@@ -186,6 +186,23 @@ export function LevelPacksManager() {
     setItems(next.map((it, i) => ({ ...it, display_order: i })));
   };
 
+  const notifyPack = async (event_type: string, packName: string, details?: string) => {
+    try {
+      await supabase.functions.invoke("admin-notify", {
+        body: {
+          event_type,
+          admin_email: user?.email || "unknown",
+          level_name: packName,
+          details,
+          list_type: "Pack",
+          action: event_type,
+        },
+      });
+    } catch (e) {
+      console.error("pack notify failed", e);
+    }
+  };
+
   const savePack = async () => {
     if (!name.trim()) {
       toast({ title: "Name required", variant: "destructive" });
@@ -194,6 +211,7 @@ export function LevelPacksManager() {
     setSaving(true);
     try {
       let packId = editingPack?.id;
+      const isNew = !packId;
       if (!packId) {
         const { data, error } = await supabase
           .from("level_packs")
@@ -233,6 +251,7 @@ export function LevelPacksManager() {
       }
 
       toast({ title: "Saved", description: `Pack "${name}" saved` });
+      await notifyPack(isNew ? "pack_created" : "pack_updated", name.trim(), `${items.length} levels`);
       setEditorOpen(false);
       loadPacks();
     } catch (e: any) {
@@ -244,11 +263,13 @@ export function LevelPacksManager() {
 
   const confirmDelete = async () => {
     if (!deleteId) return;
+    const pack = packs.find(p => p.id === deleteId);
     const { error } = await supabase.from("level_packs").delete().eq("id", deleteId);
     if (error) {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Deleted" });
+      if (pack) await notifyPack("pack_deleted", pack.name);
       loadPacks();
     }
     setDeleteId(null);
