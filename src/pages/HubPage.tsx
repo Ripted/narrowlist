@@ -19,6 +19,7 @@ import {
   User,
   Shield,
   Target,
+  Sparkles,
   LucideIcon,
 } from "lucide-react";
 
