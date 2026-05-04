@@ -68,6 +68,7 @@ export function LevelPacksManager() {
   const [coverUrl, setCoverUrl] = useState("");
   const [items, setItems] = useState<PackItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // Level picker
   const [allLevels, setAllLevels] = useState<LevelOption[]>([]);
