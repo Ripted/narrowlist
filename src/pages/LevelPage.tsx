@@ -46,7 +46,49 @@ export default function LevelPage() {
   const [profiles, setProfiles] = useState<Map<string, DbProfile>>(new Map());
   const [manualRuns, setManualRuns] = useState<ManualRunEntry[]>([]);
   const [sortMode, setSortMode] = useState<"time" | "date">("time");
+  const [packsContaining, setPacksContaining] = useState<{ id: string; name: string; cover_url: string | null }[]>([]);
   const { data: levelTags = [] } = useLevelTags(levelDbId);
+
+  // Fetch packs containing this level
+  useEffect(() => {
+    async function loadPacks() {
+      if (!levelDbId) return;
+      const levelType = isFromExtendedList ? "extended" : "main";
+      const { data: itemRows } = await supabase
+        .from("level_pack_items")
+        .select("pack_id")
+        .eq("level_id", levelDbId)
+        .eq("level_type", levelType);
+      const packIds = Array.from(new Set((itemRows || []).map((r: any) => r.pack_id)));
+      if (packIds.length === 0) { setPacksContaining([]); return; }
+      const { data: packs } = await supabase
+        .from("level_packs")
+        .select("id, name, cover_url")
+        .in("id", packIds);
+      setPacksContaining(packs || []);
+    }
+    loadPacks();
+  }, [levelDbId, isFromExtendedList]);
+
+  const handleDownloadThumbnail = async () => {
+    if (!thumbnailUrl) return;
+    try {
+      const res = await fetch(thumbnailUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ext = (blob.type.split("/")[1] || "png").split("+")[0];
+      a.download = `${(levelInfo?.name || levelId || "level").replace(/[^a-z0-9-_]+/gi, "_")}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(thumbnailUrl, "_blank");
+    }
+  };
+
   // Fetch profiles from DB
   useEffect(() => {
     async function loadProfiles() {
