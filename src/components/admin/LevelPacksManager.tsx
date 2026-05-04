@@ -112,6 +112,25 @@ export function LevelPacksManager() {
     loadLevels();
   }, []);
 
+  const uploadCoverFile = async (file: File) => {
+    setUploadingCover(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const fileName = `pack-cover-${Date.now()}.${ext}`;
+      const { data, error } = await supabase.storage
+        .from("level-thumbnails")
+        .upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("level-thumbnails").getPublicUrl(data.path);
+      setCoverUrl(publicUrl);
+      toast({ title: "Uploaded", description: "Cover image set" });
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
   const openNew = () => {
     setEditingPack(null);
     setName("");
