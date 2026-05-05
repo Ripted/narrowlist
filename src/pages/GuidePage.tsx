@@ -365,7 +365,7 @@ export default function GuidePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Every level on the Main, Extended and Extra lists can receive a difficulty
+                  Every level on the Main and Extra lists can receive a difficulty
                   vote. Each vote is a single number from <span className="text-foreground font-mono">0.0</span> to
                   <span className="text-foreground font-mono"> 8.0</span>. The displayed difficulty is the
                   <span className="text-foreground font-medium"> average of all votes</span>.
@@ -410,7 +410,7 @@ export default function GuidePage() {
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p>• On every level page in the <span className="text-foreground">Difficulty</span> panel.</p>
-                <p>• Sortable on the Main, Extended and Extra list pages.</p>
+                <p>• Sortable on the Main and Extra list pages.</p>
                 <p>• Aggregated on the Statistics page (Hardest Levels).</p>
               </CardContent>
             </Card>
