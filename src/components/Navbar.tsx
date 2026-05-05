@@ -68,7 +68,6 @@ export function Navbar() {
 
   const getMoreNavItems = () => {
     const items = [
-      { path: "/extended-list", label: "Extended List", icon: List },
       { path: "/extra-list", label: "Extra List", icon: List },
       { path: "/packs", label: "Level Packs", icon: Package },
       { path: "/recent", label: "Recent Runs", icon: Activity },
