@@ -152,10 +152,6 @@ export default function GuidePage() {
                     <List className="w-4 h-4" />
                     Main List
                   </Button>
-                  <Button onClick={() => navigate("/extended-list")} variant="secondary" className="gap-2">
-                    <Target className="w-4 h-4" />
-                    Extended List
-                  </Button>
                   <Button onClick={() => navigate("/extra-list")} variant="secondary" className="gap-2">
                     <ListPlus className="w-4 h-4" />
                     Extra List
@@ -181,12 +177,6 @@ export default function GuidePage() {
                 title="Main List"
                 description="The top 100 hardest levels in Narrow Arrow. Each level awards points based on its ranking position."
                 onClick={() => navigate("/main")}
-              />
-              <FeatureCard 
-                icon={Target}
-                title="Extended List"
-                description="Levels ranked 101+ that extend the main list. Notable levels that don't quite make the top 100. No points awarded."
-                onClick={() => navigate("/extended-list")}
               />
               <FeatureCard 
                 icon={Clock}
@@ -296,7 +286,6 @@ export default function GuidePage() {
                     <PointsRow rank="#31 - #50" points={4} />
                     <PointsRow rank="#51 - #70" points={2} />
                     <PointsRow rank="#71 - #100" points={1} />
-                    <PointsRow rank="#101+ (Extended)" points={0} />
                   </div>
                   <Button 
                     onClick={() => navigate("/main")} 
@@ -353,7 +342,6 @@ export default function GuidePage() {
                     <h3 className="font-display font-semibold mb-1">How the Lists Work</h3>
                     <p className="text-muted-foreground">
                       <strong>Main List</strong> (top 100): The 100 hardest levels, awarding points based on rank.{' '}
-                      <strong>Extended List</strong> (101+): Hard levels that extend the main ranking but award no points.{' '}
                       <strong>Extra List</strong>: Separate list for levels that don't meet main list standards, with their own point system.{' '}
                       <strong>Future List</strong>: Upcoming levels not yet ranked.
                     </p>
@@ -377,7 +365,7 @@ export default function GuidePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Every level on the Main, Extended and Extra lists can receive a difficulty
+                  Every level on the Main and Extra lists can receive a difficulty
                   vote. Each vote is a single number from <span className="text-foreground font-mono">0.0</span> to
                   <span className="text-foreground font-mono"> 8.0</span>. The displayed difficulty is the
                   <span className="text-foreground font-medium"> average of all votes</span>.
@@ -422,7 +410,7 @@ export default function GuidePage() {
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p>• On every level page in the <span className="text-foreground">Difficulty</span> panel.</p>
-                <p>• Sortable on the Main, Extended and Extra list pages.</p>
+                <p>• Sortable on the Main and Extra list pages.</p>
                 <p>• Aggregated on the Statistics page (Hardest Levels).</p>
               </CardContent>
             </Card>

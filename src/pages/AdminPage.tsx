@@ -689,18 +689,16 @@ export default function AdminPage() {
     const swapLevel = newLevels[targetIndex];
     
     try {
-      // Update both levels' rank positions
-      await supabase
-        .from("extended_levels")
-        .update({ rank_position: swapLevel.rank_position })
-        .eq("id", currentLevel.id);
-      
-      await supabase
-        .from("extended_levels")
-        .update({ rank_position: currentLevel.rank_position })
-        .eq("id", swapLevel.id);
-      
+      const oldRank = currentLevel.rank_position;
+      const newRank = swapLevel.rank_position;
+      // Park current at a temporary value to avoid UNIQUE(rank_position) collision
+      const tempRank = -Math.abs(oldRank) - 1000000;
+      await supabase.from("extended_levels").update({ rank_position: tempRank }).eq("id", currentLevel.id);
+      await supabase.from("extended_levels").update({ rank_position: oldRank }).eq("id", swapLevel.id);
+      await supabase.from("extended_levels").update({ rank_position: newRank }).eq("id", currentLevel.id);
+
       await logAction("Moved extra level", `${currentLevel.name || currentLevel.level_id} ${direction}`);
+      await sendAdminNotification("rank_change", currentLevel.name || currentLevel.level_id, oldRank, newRank, "Extra", "moved");
       fetchExtendedLevels();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
