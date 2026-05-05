@@ -286,7 +286,6 @@ export default function GuidePage() {
                     <PointsRow rank="#31 - #50" points={4} />
                     <PointsRow rank="#51 - #70" points={2} />
                     <PointsRow rank="#71 - #100" points={1} />
-                    <PointsRow rank="#101+ (Extended)" points={0} />
                   </div>
                   <Button 
                     onClick={() => navigate("/main")} 
