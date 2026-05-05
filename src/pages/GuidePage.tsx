@@ -179,12 +179,6 @@ export default function GuidePage() {
                 onClick={() => navigate("/main")}
               />
               <FeatureCard 
-                icon={Target}
-                title="Extended List"
-                description="Levels ranked 101+ that extend the main list. Notable levels that don't quite make the top 100. No points awarded."
-                onClick={() => navigate("/extended-list")}
-              />
-              <FeatureCard 
                 icon={Clock}
                 title="Future List"
                 description="Preview upcoming levels that will be added to the main list. Get ready for new challenges!"
