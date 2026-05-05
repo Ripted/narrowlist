@@ -51,7 +51,6 @@ const HubPage = () => {
   const items: HubItem[] = [
     // Lists
     { path: "/main", label: "Main List", description: "Top 100 hardest levels", icon: Target, category: "lists" },
-    { path: "/extended-list", label: "Extended List", description: "Levels ranked 101+", icon: List, category: "lists" },
     { path: "/extra-list", label: "Extra List", description: "Levels with extra points", icon: List, category: "lists" },
     { path: "/future-list", label: "Future List", description: "Upcoming & inactive levels", icon: Clock, category: "lists" },
     { path: "/packs", label: "Level Packs", description: "Curated level collections", icon: Package, category: "lists" },
