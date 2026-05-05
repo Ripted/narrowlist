@@ -342,7 +342,6 @@ export default function GuidePage() {
                     <h3 className="font-display font-semibold mb-1">How the Lists Work</h3>
                     <p className="text-muted-foreground">
                       <strong>Main List</strong> (top 100): The 100 hardest levels, awarding points based on rank.{' '}
-                      <strong>Extended List</strong> (101+): Hard levels that extend the main ranking but award no points.{' '}
                       <strong>Extra List</strong>: Separate list for levels that don't meet main list standards, with their own point system.{' '}
                       <strong>Future List</strong>: Upcoming levels not yet ranked.
                     </p>
