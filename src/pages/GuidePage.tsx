@@ -152,10 +152,6 @@ export default function GuidePage() {
                     <List className="w-4 h-4" />
                     Main List
                   </Button>
-                  <Button onClick={() => navigate("/extended-list")} variant="secondary" className="gap-2">
-                    <Target className="w-4 h-4" />
-                    Extended List
-                  </Button>
                   <Button onClick={() => navigate("/extra-list")} variant="secondary" className="gap-2">
                     <ListPlus className="w-4 h-4" />
                     Extra List
