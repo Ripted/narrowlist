@@ -357,9 +357,9 @@ export default function LevelPage() {
                 <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center">
                   <Trophy className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-primary" />
                   <div className="font-display text-lg sm:text-2xl font-bold text-primary">
-                    {isFromExtendedList ? "0" : points}
+                    {points}
                   </div>
-                  <div className="text-[10px] sm:text-xs text-muted-foreground">Points</div>
+                  <div className="text-[10px] sm:text-xs text-muted-foreground">{isFromExtendedList ? "Extra Pts" : "Points"}</div>
                 </div>
                 <div className="rounded-lg bg-card border border-border p-2 sm:p-4 text-center">
                   <Clock className="w-4 h-4 sm:w-6 sm:h-6 mx-auto mb-1 sm:mb-2 text-accent" />
