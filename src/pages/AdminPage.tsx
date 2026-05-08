@@ -4097,15 +4097,15 @@ export default function AdminPage() {
                 <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-secondary/30 rounded-lg">
                   <div className="flex-1 min-w-[200px]">
                     <Input
-                      placeholder="Level ID"
+                      placeholder="Level ID or paste link"
                       value={newExtendedLevelId}
                       onChange={(e) => {
-                        setNewExtendedLevelId(e.target.value);
+                        const cleaned = extractLevelId(e.target.value);
+                        setNewExtendedLevelId(cleaned);
                         // Debounce fetch preview
-                        const value = e.target.value;
                         setTimeout(() => {
-                          if (value && value.length > 5) {
-                            fetchExtendedLevelPreview(value);
+                          if (cleaned && cleaned.length > 5) {
+                            fetchExtendedLevelPreview(cleaned);
                           }
                         }, 500);
                       }}
