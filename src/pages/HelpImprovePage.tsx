@@ -65,21 +65,24 @@ export default function HelpImprovePage() {
     return m;
   }, [tagVotes]);
 
-  const sortByCount = (counts: Map<string, number> | undefined) =>
+  const sortByCount = (getCount: (dbId: string) => number) =>
     [...levels]
-      .map((l) => ({ level: l, count: counts?.get(l.dbId || "") || 0 }))
+      .map((l) => ({ level: l, count: getCount(l.dbId || "") }))
       .sort((a, b) => a.count - b.count)
       .slice(0, 30);
 
   const needsRatings = useMemo(
-    () => sortByCount(ratingsAgg as any),
+    () => sortByCount((id) => (ratingsAgg as any)?.get(id)?.count || 0),
     [levels, ratingsAgg]
   );
   const needsDifficulty = useMemo(
-    () => sortByCount(difficultyAgg as any),
+    () => sortByCount((id) => (difficultyAgg as any)?.get(id)?.count || 0),
     [levels, difficultyAgg]
   );
-  const needsTags = useMemo(() => sortByCount(tagCounts), [levels, tagCounts]);
+  const needsTags = useMemo(
+    () => sortByCount((id) => tagCounts.get(id) || 0),
+    [levels, tagCounts]
+  );
 
   // Levels you've beaten but haven't voted on
   const beatenButNotVoted = useMemo(() => {
