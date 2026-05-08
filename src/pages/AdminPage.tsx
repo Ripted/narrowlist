@@ -19,6 +19,8 @@ import { LevelTagAssigner } from "@/components/admin/LevelTagAssigner";
 import { BulkTagAssigner } from "@/components/admin/BulkTagAssigner";
 import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
+import { HtsCupManager } from "@/components/admin/HtsCupManager";
+import { extractLevelId } from "@/lib/extractLevelId";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -3531,9 +3533,9 @@ export default function AdminPage() {
                 </h2>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Input
-                    placeholder="Enter level ID"
+                    placeholder="Enter level ID or paste link"
                     value={newLevelId}
-                    onChange={(e) => setNewLevelId(e.target.value)}
+                    onChange={(e) => setNewLevelId(extractLevelId(e.target.value))}
                     className="flex-1 bg-secondary border-border"
                   />
                   <Input
@@ -3829,9 +3831,9 @@ export default function AdminPage() {
                 </h2>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Input
-                    placeholder="Enter level ID"
+                    placeholder="Enter level ID or paste link"
                     value={newFutureLevelId}
-                    onChange={(e) => setNewFutureLevelId(e.target.value)}
+                    onChange={(e) => setNewFutureLevelId(extractLevelId(e.target.value))}
                     className="flex-1 bg-secondary border-border"
                   />
                   <Input
@@ -4095,15 +4097,15 @@ export default function AdminPage() {
                 <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-secondary/30 rounded-lg">
                   <div className="flex-1 min-w-[200px]">
                     <Input
-                      placeholder="Level ID"
+                      placeholder="Level ID or paste link"
                       value={newExtendedLevelId}
                       onChange={(e) => {
-                        setNewExtendedLevelId(e.target.value);
+                        const cleaned = extractLevelId(e.target.value);
+                        setNewExtendedLevelId(cleaned);
                         // Debounce fetch preview
-                        const value = e.target.value;
                         setTimeout(() => {
-                          if (value && value.length > 5) {
-                            fetchExtendedLevelPreview(value);
+                          if (cleaned && cleaned.length > 5) {
+                            fetchExtendedLevelPreview(cleaned);
                           }
                         }, 500);
                       }}
@@ -4733,9 +4735,23 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
-            </TabsContent>
 
-            {/* Tags Tab */}
+              {/* HTS Cup Section */}
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-yellow-500" />
+                    HTS Cup
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Run separate Discord-posted brackets for tournament rounds. Configure tracked levels and players, set the qualify limit, and post standings.
+                  </p>
+                </div>
+                <div className="p-4">
+                  <HtsCupManager />
+                </div>
+              </div>
+            </TabsContent>
             <TabsContent value="tags" className="space-y-6">
               <div className="rounded-lg bg-card border border-border p-4 md:p-6">
                 <TagPresetsManager />

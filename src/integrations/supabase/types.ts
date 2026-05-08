@@ -325,6 +325,48 @@ export type Database = {
         }
         Relationships: []
       }
+      hts_cup_rounds: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          last_payload: Json | null
+          last_posted_at: string | null
+          level_ids: string[]
+          player_usernames: string[]
+          qualify_limit: number
+          round_name: string
+          updated_at: string
+          webhook_url: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_payload?: Json | null
+          last_posted_at?: string | null
+          level_ids?: string[]
+          player_usernames?: string[]
+          qualify_limit?: number
+          round_name: string
+          updated_at?: string
+          webhook_url?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_payload?: Json | null
+          last_posted_at?: string | null
+          level_ids?: string[]
+          player_usernames?: string[]
+          qualify_limit?: number
+          round_name?: string
+          updated_at?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
       level_difficulty_votes: {
         Row: {
           created_at: string
