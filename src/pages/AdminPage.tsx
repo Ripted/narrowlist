@@ -19,6 +19,8 @@ import { LevelTagAssigner } from "@/components/admin/LevelTagAssigner";
 import { BulkTagAssigner } from "@/components/admin/BulkTagAssigner";
 import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
+import { HtsCupManager } from "@/components/admin/HtsCupManager";
+import { extractLevelId } from "@/lib/extractLevelId";
 import {
   AlertDialog,
   AlertDialogAction,
