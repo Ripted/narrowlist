@@ -4735,9 +4735,23 @@ export default function AdminPage() {
                   )}
                 </div>
               </div>
-            </TabsContent>
 
-            {/* Tags Tab */}
+              {/* HTS Cup Section */}
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-yellow-500" />
+                    HTS Cup
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Run separate Discord-posted brackets for tournament rounds. Configure tracked levels and players, set the qualify limit, and post standings.
+                  </p>
+                </div>
+                <div className="p-4">
+                  <HtsCupManager />
+                </div>
+              </div>
+            </TabsContent>
             <TabsContent value="tags" className="space-y-6">
               <div className="rounded-lg bg-card border border-border p-4 md:p-6">
                 <TagPresetsManager />
