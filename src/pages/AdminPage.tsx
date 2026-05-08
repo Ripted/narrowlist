@@ -3831,9 +3831,9 @@ export default function AdminPage() {
                 </h2>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <Input
-                    placeholder="Enter level ID"
+                    placeholder="Enter level ID or paste link"
                     value={newFutureLevelId}
-                    onChange={(e) => setNewFutureLevelId(e.target.value)}
+                    onChange={(e) => setNewFutureLevelId(extractLevelId(e.target.value))}
                     className="flex-1 bg-secondary border-border"
                   />
                   <Input
