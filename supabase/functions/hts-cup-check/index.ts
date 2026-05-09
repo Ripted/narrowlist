@@ -46,11 +46,21 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Normalize lookalike characters (I/l/1, O/0) and lowercase so visually identical
+    // usernames like "Apple" vs "AppIe" still match.
+    const normalize = (s: string) =>
+      (s || "")
+        .toLowerCase()
+        .replace(/[il1|]/g, "i")
+        .replace(/[o0]/g, "o")
+        .trim();
+
     const trackedPlayers: string[] = (round.player_usernames || []).map((u: string) => u.trim()).filter(Boolean);
-    const trackedLower = new Set(trackedPlayers.map((u) => u.toLowerCase()));
+    const trackedNorm = new Map<string, string>(); // normalized -> original input
+    for (const u of trackedPlayers) trackedNorm.set(normalize(u), u);
     const levelIds: string[] = (round.level_ids || []).map((l: string) => l.trim()).filter(Boolean);
 
-    // Map: lowercased username -> { username, time, level_id, run_id }
+    // Map: normalized username -> { username, time, level_id, run_id }
     const best = new Map<string, { username: string; time: number; level_id: string; run_id: number; arrow_name: string }>();
 
     for (const lid of levelIds) {
@@ -59,8 +69,8 @@ Deno.serve(async (req) => {
         if (!r.ok) continue;
         const entries: LeaderboardEntry[] = await r.json();
         for (const e of entries) {
-          const key = (e.username || "").toLowerCase();
-          if (!trackedLower.has(key)) continue;
+          const key = normalize(e.username || "");
+          if (!trackedNorm.has(key)) continue;
           const existing = best.get(key);
           if (!existing || e.completion_time < existing.time) {
             best.set(key, {
