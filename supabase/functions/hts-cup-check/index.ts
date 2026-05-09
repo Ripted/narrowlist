@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
     const levelIds: string[] = (round.level_ids || []).map((l: string) => l.trim()).filter(Boolean);
 
     // Map: normalized username -> { username, time, level_id, run_id }
-    const best = new Map<string, { username: string; time: number; level_id: string; run_id: number; arrow_name: string }>();
+    const best = new Map<string, { username: string; time: number; level_id: string; run_id: number; arrow_name: string; completedAt: string | null; completedAtMs: number }>();
 
     for (const lid of levelIds) {
       try {
