@@ -94,9 +94,9 @@ Deno.serve(async (req) => {
     const qualifiers = sorted.slice(0, qualifyLimit);
     const eliminated = sorted.slice(qualifyLimit);
 
-    // Players who have not played any of the tracked levels yet
-    const playedLower = new Set(sorted.map((s) => s.username.toLowerCase()));
-    const noShow = trackedPlayers.filter((u) => !playedLower.has(u.toLowerCase()));
+    // Players who have not played any of the tracked levels yet (matched via normalized name)
+    const playedNorm = new Set(sorted.map((s) => normalize(s.username)));
+    const noShow = trackedPlayers.filter((u) => !playedNorm.has(normalize(u)));
     const allEliminated = [...eliminated.map((e) => e.username), ...noShow];
 
     // Build embed
