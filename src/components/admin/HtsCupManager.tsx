@@ -267,7 +267,7 @@ export const HtsCupManager = () => {
                     <div className="font-bold">✅ Qualified ({(previewData.qualifiers || []).length})</div>
                     {(previewData.qualifiers || []).map((q: any, i: number) => (
                       <div key={q.username} className="font-mono text-xs">
-                        {["🥇","🥈","🥉"][i] || `#${i+1}`} {q.username} — {Number(q.time).toFixed(3)}s
+                        {["🥇","🥈","🥉"][i] || `#${i+1}`} {q.username} — {q.completedAt ? new Date(q.completedAt).toLocaleString() : "?"} ({Number(q.time).toFixed(3)}s)
                       </div>
                     ))}
                     <div className="font-bold mt-2">❌ Eliminated</div>
