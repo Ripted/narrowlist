@@ -41,6 +41,48 @@ export type Database = {
         }
         Relationships: []
       }
+      bug_reports: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          description: string
+          id: string
+          page_url: string | null
+          reporter_email: string | null
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          page_url?: string | null
+          reporter_email?: string | null
+          severity?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          page_url?: string | null
+          reporter_email?: string | null
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       completions: {
         Row: {
           arrow_name: string | null

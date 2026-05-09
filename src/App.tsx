@@ -25,6 +25,7 @@ import PacksPage from "./pages/PacksPage";
 import HubPage from "./pages/HubPage";
 import HelpImprovePage from "./pages/HelpImprovePage";
 import NotFound from "./pages/NotFound";
+import { BugReportButton } from "./components/BugReportButton";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
               <Route path="/admin" element={<AdminPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <BugReportButton />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

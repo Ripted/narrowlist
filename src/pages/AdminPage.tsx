@@ -20,6 +20,7 @@ import { BulkTagAssigner } from "@/components/admin/BulkTagAssigner";
 import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
 import { HtsCupManager } from "@/components/admin/HtsCupManager";
+import { BugReportsAdmin } from "@/components/admin/BugReportsAdmin";
 import { extractLevelId } from "@/lib/extractLevelId";
 import {
   AlertDialog,
@@ -3052,6 +3053,7 @@ export default function AdminPage() {
                   <Package className="w-3 h-3 hidden sm:inline" />
                   Packs
                 </TabsTrigger>
+                <TabsTrigger value="bugs" className="text-xs sm:text-sm flex-shrink-0">Bugs</TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
               <Button
@@ -4750,6 +4752,11 @@ export default function AdminPage() {
                 <div className="p-4">
                   <HtsCupManager />
                 </div>
+              </div>
+            </TabsContent>
+            <TabsContent value="bugs" className="space-y-6">
+              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
+                <BugReportsAdmin />
               </div>
             </TabsContent>
             <TabsContent value="tags" className="space-y-6">
