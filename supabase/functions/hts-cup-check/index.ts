@@ -12,6 +12,9 @@ interface LeaderboardEntry {
   completion_time: number;
   username: string;
   arrow_name: string;
+  created_at?: string;
+  finishedAt?: string;
+  finished_at?: string;
 }
 
 function formatTime(seconds: number): string {
