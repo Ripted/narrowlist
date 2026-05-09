@@ -74,14 +74,19 @@ Deno.serve(async (req) => {
         for (const e of entries) {
           const key = normalize(e.username || "");
           if (!trackedNorm.has(key)) continue;
+          const completedAtRaw = e.created_at || e.finishedAt || e.finished_at || null;
+          const completedAtMs = completedAtRaw ? new Date(completedAtRaw).getTime() : Number.POSITIVE_INFINITY;
           const existing = best.get(key);
-          if (!existing || e.completion_time < existing.time) {
+          // Track EARLIEST completion across all tracked levels for this player
+          if (!existing || completedAtMs < existing.completedAtMs) {
             best.set(key, {
               username: e.username,
               time: e.completion_time,
               level_id: lid,
               run_id: e.run_id,
               arrow_name: e.arrow_name,
+              completedAt: completedAtRaw,
+              completedAtMs,
             });
           }
         }
@@ -91,8 +96,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Sort qualifiers by time
-    const sorted = Array.from(best.values()).sort((a, b) => a.time - b.time);
+    // Sort qualifiers by EARLIEST completion date (first to beat = qualifies first)
+    const sorted = Array.from(best.values()).sort((a, b) => a.completedAtMs - b.completedAtMs);
     const qualifyLimit = Math.max(1, Number(round.qualify_limit) || 3);
     const qualifiers = sorted.slice(0, qualifyLimit);
     const eliminated = sorted.slice(qualifyLimit);
@@ -102,12 +107,18 @@ Deno.serve(async (req) => {
     const noShow = trackedPlayers.filter((u) => !playedNorm.has(normalize(u)));
     const allEliminated = [...eliminated.map((e) => e.username), ...noShow];
 
+    const fmtDate = (iso: string | null) => {
+      if (!iso) return "unknown date";
+      const d = new Date(iso);
+      return `<t:${Math.floor(d.getTime() / 1000)}:f>`;
+    };
+
     // Build embed
     const trophyEmojis = ["🥇", "🥈", "🥉"];
     const qualifierLines = qualifiers
       .map((q, i) => {
         const medal = trophyEmojis[i] || `**#${i + 1}**`;
-        return `${medal} **${q.username}** — \`${formatTime(q.time)}\``;
+        return `${medal} **${q.username}** — ${fmtDate(q.completedAt)} • \`${formatTime(q.time)}\``;
       })
       .join("\n") || "_No qualifiers yet_";
 
