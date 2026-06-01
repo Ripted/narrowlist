@@ -857,13 +857,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "manual_runs_level_id_fkey"
-            columns: ["level_id"]
-            isOneToOne: false
-            referencedRelation: "levels"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "manual_runs_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
