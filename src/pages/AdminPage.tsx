@@ -632,7 +632,9 @@ export default function AdminPage() {
 
       // Shift existing levels down if inserting at a specific rank
       if (targetRank <= extendedLevels.length) {
-        const levelsToShift = extendedLevels.filter(l => l.rank_position >= targetRank);
+        const levelsToShift = extendedLevels
+          .filter(l => l.rank_position >= targetRank)
+          .sort((a, b) => b.rank_position - a.rank_position);
         for (const level of levelsToShift) {
           await supabase
             .from("extended_levels")
@@ -1179,7 +1181,9 @@ export default function AdminPage() {
         
         if (targetList === "main") {
           // Shift existing main levels
-          const levelsToUpdate = levels.filter(l => l.rank_position >= rank);
+          const levelsToUpdate = levels
+            .filter(l => l.rank_position >= rank)
+            .sort((a, b) => b.rank_position - a.rank_position);
           for (const level of levelsToUpdate) {
             await supabase
               .from("levels")
@@ -1522,7 +1526,9 @@ export default function AdminPage() {
       }
       
       if (targetRank <= levels.length) {
-        const levelsToUpdate = levels.filter(l => l.rank_position >= targetRank);
+        const levelsToUpdate = levels
+          .filter(l => l.rank_position >= targetRank)
+          .sort((a, b) => b.rank_position - a.rank_position);
         for (const level of levelsToUpdate) {
           await supabase
             .from("levels")
