@@ -632,7 +632,9 @@ export default function AdminPage() {
 
       // Shift existing levels down if inserting at a specific rank
       if (targetRank <= extendedLevels.length) {
-        const levelsToShift = extendedLevels.filter(l => l.rank_position >= targetRank);
+        const levelsToShift = extendedLevels
+          .filter(l => l.rank_position >= targetRank)
+          .sort((a, b) => b.rank_position - a.rank_position);
         for (const level of levelsToShift) {
           await supabase
             .from("extended_levels")
