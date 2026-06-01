@@ -1526,7 +1526,9 @@ export default function AdminPage() {
       }
       
       if (targetRank <= levels.length) {
-        const levelsToUpdate = levels.filter(l => l.rank_position >= targetRank);
+        const levelsToUpdate = levels
+          .filter(l => l.rank_position >= targetRank)
+          .sort((a, b) => b.rank_position - a.rank_position);
         for (const level of levelsToUpdate) {
           await supabase
             .from("levels")
