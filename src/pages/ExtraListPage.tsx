@@ -391,6 +391,19 @@ export default function ExtendedListPage() {
     return map;
   }, [allTags]);
 
+  // Tag options aggregated across the extra list for the filter UI
+  const allTagOptions = useMemo(() => {
+    const counts = new Map<string, { emoji: string; text: string; count: number }>();
+    allTags.forEach((tag) => {
+      if (tag.level_type !== "extra") return;
+      const key = `${tag.emoji}|${tag.text}`;
+      const existing = counts.get(key);
+      if (existing) existing.count++;
+      else counts.set(key, { emoji: tag.emoji, text: tag.text, count: 1 });
+    });
+    return Array.from(counts.values()).sort((a, b) => b.count - a.count);
+  }, [allTags]);
+
   const filteredLevels = useMemo(() => {
     let result = levels;
     if (searchQuery.trim()) {
@@ -403,6 +416,31 @@ export default function ExtendedListPage() {
           l.level_id.toLowerCase().includes(q)
       );
     }
+
+    if (showOnlyUncompleted && isLoggedIn) {
+      result = result.filter((l) => !completedExtraLevelIds.has(l.level_id));
+    }
+
+    if (selectedTags.size > 0) {
+      const levelTagMap = new Map<string, Set<string>>();
+      allTags.forEach((tag) => {
+        if (tag.level_type !== "extra") return;
+        const key = `${tag.emoji}|${tag.text}`;
+        if (!selectedTags.has(key)) return;
+        if (!levelTagMap.has(tag.level_id)) levelTagMap.set(tag.level_id, new Set());
+        levelTagMap.get(tag.level_id)!.add(key);
+      });
+      result = result.filter((level) => {
+        const present = levelTagMap.get(level.id);
+        if (!present) return false;
+        if (tagMatchMode === "all") {
+          for (const t of selectedTags) if (!present.has(t)) return false;
+          return true;
+        }
+        return present.size > 0;
+      });
+    }
+
     const ratingKey: Record<string, "avg_overall" | "avg_enjoyment" | "avg_design" | "avg_decoration" | "avg_gameplay"> = {
       rating_overall: "avg_overall",
       rating_enjoyment: "avg_enjoyment",
@@ -444,7 +482,7 @@ export default function ExtendedListPage() {
         });
     }
     return sorted;
-  }, [levels, searchQuery, sortField, sortDirection, ratingsAgg, difficultyAgg, victorCounts]);
+  }, [levels, searchQuery, showOnlyUncompleted, isLoggedIn, completedExtraLevelIds, selectedTags, tagMatchMode, allTags, sortField, sortDirection, ratingsAgg, difficultyAgg, victorCounts]);
 
   const totalPages = Math.ceil(filteredLevels.length / ITEMS_PER_PAGE);
   const paginatedLevels = useMemo(() => {
