@@ -277,11 +277,15 @@ export default function ExtendedListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortField, setSortField] = useState<LevelSortField>("rank");
   const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION.rank);
+  const [showOnlyUncompleted, setShowOnlyUncompleted] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [tagMatchMode, setTagMatchMode] = useState<"any" | "all">("any");
   const { completedExtraLevelIds, isLoggedIn } = useUserCompletions();
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const { data: ratingsAgg } = useAllRatingsAggregate();
   const { data: difficultyAgg } = useAllDifficultyAggregate();
   const { data: victorCounts } = useLevelCompletionCounts();
+
 
   // Fetch extended levels with verifier info
   const { data: levels = [], isLoading } = useQuery({
