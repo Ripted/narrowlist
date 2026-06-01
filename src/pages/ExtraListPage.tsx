@@ -519,6 +519,20 @@ export default function ExtendedListPage() {
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              {isLoggedIn && (
+                <Button
+                  variant={showOnlyUncompleted ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setShowOnlyUncompleted(!showOnlyUncompleted);
+                    setCurrentPage(1);
+                  }}
+                  className="gap-2 flex-shrink-0"
+                >
+                  <Filter className="w-4 h-4" />
+                  <span className="hidden sm:inline">Uncompleted</span>
+                </Button>
+              )}
               <SortControls
                 field={sortField}
                 direction={sortDirection}
@@ -542,6 +556,117 @@ export default function ExtendedListPage() {
               </div>
             </div>
           </div>
+
+          {/* Tag Filters */}
+          {allTagOptions.length > 0 && (
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Tag className="w-3 h-3" />
+                Tags:
+              </span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 px-2 gap-1 text-xs">
+                    {selectedTags.size > 0 ? `${selectedTags.size} selected` : "Choose tags"}
+                    <ChevronDown className="w-3 h-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-72 p-0 bg-popover border-border">
+                  <div className="p-3 border-b border-border flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium">Filter by tags</span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant={tagMatchMode === "any" ? "default" : "outline"}
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => setTagMatchMode("any")}
+                      >
+                        Any
+                      </Button>
+                      <Button
+                        variant={tagMatchMode === "all" ? "default" : "outline"}
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => setTagMatchMode("all")}
+                      >
+                        All
+                      </Button>
+                    </div>
+                  </div>
+                  <ScrollArea className="h-80">
+                    <div className="p-2 space-y-0.5">
+                      {allTagOptions.map((tag) => {
+                        const tagKey = `${tag.emoji}|${tag.text}`;
+                        const checked = selectedTags.has(tagKey);
+                        return (
+                          <label
+                            key={tagKey}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-secondary cursor-pointer text-sm"
+                          >
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(v) => {
+                                setSelectedTags((prev) => {
+                                  const next = new Set(prev);
+                                  if (v) next.add(tagKey);
+                                  else next.delete(tagKey);
+                                  return next;
+                                });
+                                setCurrentPage(1);
+                              }}
+                            />
+                            <span className="flex-1 truncate">
+                              {tag.emoji} {tag.text}
+                            </span>
+                            <span className="text-xs text-muted-foreground">{tag.count}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                  {selectedTags.size > 0 && (
+                    <div className="p-2 border-t border-border">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-7 gap-1 text-xs"
+                        onClick={() => {
+                          setSelectedTags(new Set());
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <X className="w-3 h-3" />
+                        Clear all
+                      </Button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+              {Array.from(selectedTags).map((tagKey) => {
+                const opt = allTagOptions.find((t) => `${t.emoji}|${t.text}` === tagKey);
+                if (!opt) return null;
+                return (
+                  <Button
+                    key={tagKey}
+                    variant="default"
+                    size="sm"
+                    className="h-7 px-2 gap-1 text-xs"
+                    onClick={() => {
+                      setSelectedTags((prev) => {
+                        const next = new Set(prev);
+                        next.delete(tagKey);
+                        return next;
+                      });
+                      setCurrentPage(1);
+                    }}
+                  >
+                    {opt.emoji} {opt.text}
+                    <X className="w-3 h-3" />
+                  </Button>
+                );
+              })}
+            </div>
+          )}
 
           <p className="text-muted-foreground text-sm mb-6">
             Levels that used to be in the main list or don't quite meet main list standards. 
