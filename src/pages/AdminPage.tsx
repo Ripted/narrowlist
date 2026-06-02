@@ -641,10 +641,12 @@ export default function AdminPage() {
   // Hardfix function removed - functionality covered by Sync Completions button
 
   const addExtendedLevel = async () => {
-    if (!newExtendedLevelId.trim()) return;
+    const levelId = cleanLevelIdText(newExtendedLevelId);
+    if (!levelId) return;
     setAddingExtendedLevel(true);
 
     try {
+      setNewExtendedLevelId(levelId);
       const targetRank = parseInt(newExtendedLevelRank) || extendedLevels.length + 1;
 
       // Validate target rank
@@ -652,41 +654,25 @@ export default function AdminPage() {
         throw new Error(`Rank must be between 1 and ${extendedLevels.length + 1}`);
       }
 
-      // Shift existing levels down if inserting at a specific rank
-      if (targetRank <= extendedLevels.length) {
-        const levelsToShift = extendedLevels
-          .filter(l => l.rank_position >= targetRank)
-          .sort((a, b) => b.rank_position - a.rank_position);
-        for (const level of levelsToShift) {
-          await supabase
-            .from("extended_levels")
-            .update({ rank_position: level.rank_position + 1 })
-            .eq("id", level.id);
-        }
-      }
-
       // Use preview data if available, otherwise fetch fresh
       let levelData: any = null;
       if (extendedLevelPreview) {
         levelData = { levelInfo: extendedLevelPreview };
       } else {
-        const response = await fetch(`https://api.narrowarrow.xyz/level-details/${newExtendedLevelId.trim()}?isCustomLevel=true`);
-        if (response.ok) {
-          levelData = await response.json();
-        }
+        levelData = await fetchLevelDetailsForAdmin(levelId);
       }
 
-      const { error } = await supabase.from("extended_levels").insert({
-        level_id: newExtendedLevelId.trim(),
-        name: levelData?.levelInfo?.name || null,
-        author: levelData?.levelInfo?.author || null,
-        rank_position: targetRank,
-        thumbnail_url: levelData?.levelInfo?.thumbnail_url || null,
+      const { error } = await (supabase as any).rpc("admin_add_extra_level", {
+        _level_id: levelId,
+        _name: levelData?.levelInfo?.name || null,
+        _author: levelData?.levelInfo?.author || null,
+        _rank_position: targetRank,
+        _thumbnail_url: levelData?.levelInfo?.thumbnail_url || null,
       });
 
       if (error) throw error;
 
-      const levelName = levelData?.levelInfo?.name || newExtendedLevelId.trim();
+      const levelName = levelData?.levelInfo?.name || levelId;
       await logAction("Added extra level", `${levelName} at rank #${targetRank}`);
       
       // Send webhook notification
@@ -1527,57 +1513,35 @@ export default function AdminPage() {
     : filteredLevels.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const addLevel = async () => {
-    if (!newLevelId.trim()) return;
+    const levelId = cleanLevelIdText(newLevelId);
+    if (!levelId) return;
     
     setAddingLevel(true);
     
     try {
-      const response = await fetch(
-        `https://api.narrowarrow.xyz/level-details/${newLevelId.trim()}?isCustomLevel=true`
-      );
-      
-      if (!response.ok) {
-        throw new Error("Level not found");
-      }
-      
-      const data = await response.json();
+      setNewLevelId(levelId);
+      const data = await fetchLevelDetailsForAdmin(levelId);
       const targetRank = newLevelRank ? parseInt(newLevelRank) : levels.length + 1;
       
       if (targetRank < 1 || targetRank > levels.length + 1) {
         throw new Error(`Rank must be between 1 and ${levels.length + 1}`);
       }
       
-      if (targetRank <= levels.length) {
-        const levelsToUpdate = levels
-          .filter(l => l.rank_position >= targetRank)
-          .sort((a, b) => b.rank_position - a.rank_position);
-        for (const level of levelsToUpdate) {
-          await supabase
-            .from("levels")
-            .update({ 
-              rank_position: level.rank_position + 1,
-              points: calculatePoints(level.rank_position + 1)
-            })
-            .eq("id", level.id);
-        }
-      }
-      
-      const { error } = await supabase.from("levels").insert({
-        level_id: newLevelId.trim(),
-        name: data.levelInfo?.name || "Unknown Level",
-        author: data.levelInfo?.author || "Unknown",
-        rank_position: targetRank,
-        points: calculatePoints(targetRank),
-        thumbnail_url: null,
+      const { error } = await (supabase as any).rpc("admin_add_main_level", {
+        _level_id: levelId,
+        _name: data.levelInfo?.name || "Unknown Level",
+        _author: data.levelInfo?.author || "Unknown",
+        _rank_position: targetRank,
+        _thumbnail_url: null,
       });
       
       if (error) throw error;
       
-      await logAction("Added level", `${data.levelInfo?.name || newLevelId} at rank #${targetRank}`);
+      await logAction("Added level", `${data.levelInfo?.name || levelId} at rank #${targetRank}`);
       toast({ title: "Success", description: `Level added at rank #${targetRank}` });
       
       // Send admin notification
-      await sendAdminNotification("level_addition", data.levelInfo?.name || newLevelId, undefined, targetRank, "Main", "added");
+      await sendAdminNotification("level_addition", data.levelInfo?.name || levelId, undefined, targetRank, "Main", "added");
       
       setNewLevelId("");
       setNewLevelRank("");
@@ -1591,38 +1555,31 @@ export default function AdminPage() {
   };
 
   const addFutureLevel = async () => {
-    if (!newFutureLevelId.trim()) return;
+    const levelId = cleanLevelIdText(newFutureLevelId);
+    if (!levelId) return;
     
     setAddingFutureLevel(true);
     
     try {
-      const response = await fetch(
-        `https://api.narrowarrow.xyz/level-details/${newFutureLevelId.trim()}?isCustomLevel=true`
-      );
+      setNewFutureLevelId(levelId);
+      const data = await fetchLevelDetailsForAdmin(levelId);
+      const targetRank = newFutureLevelRank ? parseInt(newFutureLevelRank) : futureLevels.length + 1;
       
-      if (!response.ok) {
-        throw new Error("Level not found");
-      }
-      
-      const data = await response.json();
-      const targetRank = newFutureLevelRank ? parseInt(newFutureLevelRank) : 1;
-      
-      const { error } = await supabase.from("future_levels").insert({
-        level_id: newFutureLevelId.trim(),
-        name: data.levelInfo?.name || "Unknown Level",
-        author: data.levelInfo?.author || "Unknown",
-        rank_position: targetRank,
-        points: calculatePoints(targetRank),
-        thumbnail_url: null,
+      const { error } = await (supabase as any).rpc("admin_add_future_level", {
+        _level_id: levelId,
+        _name: data.levelInfo?.name || "Unknown Level",
+        _author: data.levelInfo?.author || "Unknown",
+        _rank_position: targetRank,
+        _thumbnail_url: null,
       });
       
       if (error) throw error;
       
-      await logAction("Added future level", `${data.levelInfo?.name || newFutureLevelId} at estimated rank #${targetRank}`);
+      await logAction("Added future level", `${data.levelInfo?.name || levelId} at estimated rank #${targetRank}`);
       toast({ title: "Success", description: `Future level added with estimated rank #${targetRank}` });
       
       // Send admin notification
-      await sendAdminNotification("future_level", data.levelInfo?.name || newFutureLevelId, undefined, targetRank, "Future", "added");
+      await sendAdminNotification("future_level", data.levelInfo?.name || levelId, undefined, targetRank, "Future", "added");
       
       setNewFutureLevelId("");
       setNewFutureLevelRank("");
