@@ -1806,7 +1806,7 @@ export default function AdminPage() {
   const bulkImportLevels = async () => {
     const ids = bulkLevelIds
       .split(/[\n,]+/)
-      .map(id => id.trim())
+      .map(id => cleanLevelIdText(id))
       .filter(id => id.length > 0);
     
     if (ids.length === 0) {
@@ -1820,19 +1820,6 @@ export default function AdminPage() {
     
     const startRank = bulkStartRank ? parseInt(bulkStartRank) : levels.length + 1;
     
-    if (startRank <= levels.length) {
-      const levelsToUpdate = levels.filter(l => l.rank_position >= startRank);
-      for (const level of levelsToUpdate) {
-        await supabase
-          .from("levels")
-          .update({ 
-            rank_position: level.rank_position + ids.length,
-            points: calculatePoints(level.rank_position + ids.length)
-          })
-          .eq("id", level.id);
-      }
-    }
-    
     let currentRank = startRank;
     
     for (const levelId of ids) {
@@ -1843,24 +1830,14 @@ export default function AdminPage() {
           continue;
         }
         
-        const response = await fetch(
-          `https://api.narrowarrow.xyz/level-details/${levelId}?isCustomLevel=true`
-        );
+        const data = await fetchLevelDetailsForAdmin(levelId);
         
-        if (!response.ok) {
-          errorCount++;
-          continue;
-        }
-        
-        const data = await response.json();
-        
-        const { error } = await supabase.from("levels").insert({
-          level_id: levelId,
-          name: data.levelInfo?.name || "Unknown Level",
-          author: data.levelInfo?.author || "Unknown",
-          rank_position: currentRank,
-          points: calculatePoints(currentRank),
-          thumbnail_url: null,
+        const { error } = await (supabase as any).rpc("admin_add_main_level", {
+          _level_id: levelId,
+          _name: data.levelInfo?.name || "Unknown Level",
+          _author: data.levelInfo?.author || "Unknown",
+          _rank_position: currentRank,
+          _thumbnail_url: null,
         });
         
         if (error) {
