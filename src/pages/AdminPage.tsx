@@ -2388,7 +2388,7 @@ export default function AdminPage() {
     for (const f of updated) {
       await supabase
         .from("future_levels")
-        .update({ rank_position: f.rank_position })
+        .update({ rank_position: f.rank_position, points: calculatePoints(f.rank_position) })
         .eq("id", f.id);
     }
     setSavingFuture(false);
