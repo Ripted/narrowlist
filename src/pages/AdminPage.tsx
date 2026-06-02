@@ -1721,6 +1721,10 @@ export default function AdminPage() {
     if (!editingExtendedLevel) return;
     
     setSavingExtendedLevel(true);
+    const requestedRank = Math.min(
+      Math.max(parseInt(editExtendedRank) || editingExtendedLevel.rank_position, 1),
+      extendedLevels.length,
+    );
     
     const creatorsArray = editExtendedCreators
       .split(/[,\n]+/)
@@ -1738,7 +1742,6 @@ export default function AdminPage() {
         name: editExtendedName || null,
         author: editExtendedAuthor || null,
         creators: creatorsArray.length > 0 ? creatorsArray : null,
-        rank_position: parseInt(editExtendedRank) || 1,
         thumbnail_url: editExtendedThumbnail || null,
         verifier_profile_id: editExtendedVerifier === "none" ? null : editExtendedVerifier || null,
         alternative_ids: alternativeIdsArray.length > 0 ? alternativeIdsArray : null,
@@ -1749,6 +1752,15 @@ export default function AdminPage() {
     if (error) {
       toast({ title: "Error", description: "Failed to update extra level", variant: "destructive" });
     } else {
+      if (requestedRank !== editingExtendedLevel.rank_position) {
+        const reordered = [...extendedLevels].sort((a, b) => a.rank_position - b.rank_position);
+        const currentIndex = reordered.findIndex((level) => level.id === editingExtendedLevel.id);
+        if (currentIndex >= 0) {
+          const [item] = reordered.splice(currentIndex, 1);
+          reordered.splice(requestedRank - 1, 0, item);
+          await updateExtendedRanksSafely(reordered);
+        }
+      }
       await logAction("Edited extra level", `${editExtendedName || editingExtendedLevel.level_id}${alternativeIdsArray.length > 0 ? ` (alt IDs: ${alternativeIdsArray.join(", ")})` : ""}`);
       toast({ title: "Success", description: "Extra level updated" });
       setEditingExtendedLevel(null);
