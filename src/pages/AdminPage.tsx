@@ -596,7 +596,12 @@ export default function AdminPage() {
   const fetchLevelDetailsForAdmin = async (levelId: string) => {
     const response = await fetch(`https://api.narrowarrow.xyz/level-details/${encodeURIComponent(levelId)}?isCustomLevel=true`);
     if (!response.ok) throw new Error("Level not found");
-    return response.json();
+    return response.json() as Promise<AdminLevelApiResponse>;
+  };
+
+  const callAdminListRpc = (name: AdminListRpcName, args: AdminListRpcArgs): AdminListRpcResult => {
+    const rpcClient = supabase.rpc as unknown as (fn: AdminListRpcName, args: AdminListRpcArgs) => AdminListRpcResult;
+    return rpcClient(name, args);
   };
 
   const resyncExtraLevels = async () => {
