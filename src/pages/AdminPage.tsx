@@ -1602,6 +1602,16 @@ export default function AdminPage() {
     if (error) {
       toast({ title: "Error", description: "Failed to remove future level", variant: "destructive" });
     } else {
+      const remainingFuture = futureLevels
+        .filter((level) => level.id !== deleteConfirmFutureLevel.id)
+        .sort((a, b) => a.rank_position - b.rank_position);
+
+      await updateFutureRanks(remainingFuture.map((level, index) => ({
+        ...level,
+        rank_position: index + 1,
+        points: calculatePoints(index + 1),
+      })));
+
       await logAction("Removed future level", deleteConfirmFutureLevel.name || deleteConfirmFutureLevel.level_id);
       toast({ title: "Success", description: "Future level removed" });
       await sendAdminNotification(
