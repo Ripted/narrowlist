@@ -770,6 +770,23 @@ export default function AdminPage() {
     }
   };
 
+  const updateExtendedRanksSafely = async (updated: ExtendedLevel[]) => {
+    for (let i = 0; i < updated.length; i++) {
+      await supabase
+        .from("extended_levels")
+        .update({ rank_position: -(i + 1) - 100000 })
+        .eq("id", updated[i].id);
+    }
+
+    for (let i = 0; i < updated.length; i++) {
+      const newRank = i + 1;
+      await supabase
+        .from("extended_levels")
+        .update({ rank_position: newRank, points: calculateExtraPoints(newRank) })
+        .eq("id", updated[i].id);
+    }
+  };
+
   const transferExtendedToMain = async (level: ExtendedLevel) => {
     try {
       // Get the next rank in main list
