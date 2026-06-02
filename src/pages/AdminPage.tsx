@@ -1188,28 +1188,12 @@ export default function AdminPage() {
         const targetList = submissionTargetList;
         
         if (targetList === "main") {
-          // Shift existing main levels
-          const levelsToUpdate = levels
-            .filter(l => l.rank_position >= rank)
-            .sort((a, b) => b.rank_position - a.rank_position);
-          for (const level of levelsToUpdate) {
-            await supabase
-              .from("levels")
-              .update({ 
-                rank_position: level.rank_position + 1,
-                points: calculatePoints(level.rank_position + 1)
-              })
-              .eq("id", level.id);
-          }
-
-          // Add to main list
-          const { error: insertError } = await supabase.from("levels").insert({
-            level_id: submission.level_id,
-            name: submission.level_name,
-            author: submission.author,
-            rank_position: rank,
-            points: calculatePoints(rank),
-            thumbnail_url: submission.thumbnail_url,
+          const { error: insertError } = await (supabase as any).rpc("admin_add_main_level", {
+            _level_id: cleanLevelIdText(submission.level_id),
+            _name: submission.level_name,
+            _author: submission.author,
+            _rank_position: rank,
+            _thumbnail_url: submission.thumbnail_url,
           });
 
           if (insertError) throw insertError;
@@ -1218,14 +1202,12 @@ export default function AdminPage() {
           toast({ title: "Level Approved", description: `Added to Main List at rank #${rank}` });
           fetchLevels();
         } else if (targetList === "extra") {
-          // Add to extra list
-          const { error: insertError } = await supabase.from("extended_levels").insert({
-            level_id: submission.level_id,
-            name: submission.level_name,
-            author: submission.author,
-            rank_position: rank,
-            points: 0, // Will be auto-calculated by trigger
-            thumbnail_url: submission.thumbnail_url,
+          const { error: insertError } = await (supabase as any).rpc("admin_add_extra_level", {
+            _level_id: cleanLevelIdText(submission.level_id),
+            _name: submission.level_name,
+            _author: submission.author,
+            _rank_position: rank,
+            _thumbnail_url: submission.thumbnail_url,
           });
 
           if (insertError) throw insertError;
@@ -1234,14 +1216,12 @@ export default function AdminPage() {
           toast({ title: "Level Approved", description: `Added to Extra List at rank #${rank}` });
           fetchExtendedLevels();
         } else if (targetList === "future") {
-          // Add to future list
-          const { error: insertError } = await supabase.from("future_levels").insert({
-            level_id: submission.level_id,
-            name: submission.level_name,
-            author: submission.author,
-            rank_position: rank,
-            points: calculatePoints(rank),
-            thumbnail_url: submission.thumbnail_url,
+          const { error: insertError } = await (supabase as any).rpc("admin_add_future_level", {
+            _level_id: cleanLevelIdText(submission.level_id),
+            _name: submission.level_name,
+            _author: submission.author,
+            _rank_position: rank,
+            _thumbnail_url: submission.thumbnail_url,
           });
 
           if (insertError) throw insertError;
