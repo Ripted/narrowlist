@@ -1449,6 +1449,17 @@ export default function AdminPage() {
     return 0; // 101+ (Extended List)
   };
 
+  const calculateExtraPoints = (rank: number): number => {
+    if (rank === 1) return 10;
+    if (rank === 2) return 8;
+    if (rank === 3) return 7;
+    if (rank === 4) return 6;
+    if (rank === 5) return 5;
+    if (rank <= 10) return 3;
+    if (rank <= 25) return 2;
+    return 1;
+  };
+
   // Filtered and paginated data
   const filteredLevels = useMemo(() => {
     if (!levelSearchQuery.trim()) return levels;
