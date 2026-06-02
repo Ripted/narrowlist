@@ -679,7 +679,7 @@ export default function AdminPage() {
         levelData = await fetchLevelDetailsForAdmin(levelId);
       }
 
-      const { error } = await (supabase as any).rpc("admin_add_extra_level", {
+      const { error } = await callAdminListRpc("admin_add_extra_level", {
         _level_id: levelId,
         _name: levelData?.levelInfo?.name || null,
         _author: levelData?.levelInfo?.author || null,
@@ -849,7 +849,7 @@ export default function AdminPage() {
     try {
       const targetRank = extendedLevels.length + 1;
 
-      const { error: insertError } = await (supabase as any).rpc("admin_add_extra_level", {
+      const { error: insertError } = await callAdminListRpc("admin_add_extra_level", {
         _level_id: level.level_id,
         _name: level.name,
         _author: level.author,
@@ -1216,7 +1216,7 @@ export default function AdminPage() {
         const targetList = submissionTargetList;
         
         if (targetList === "main") {
-          const { error: insertError } = await (supabase as any).rpc("admin_add_main_level", {
+          const { error: insertError } = await callAdminListRpc("admin_add_main_level", {
             _level_id: cleanLevelIdText(submission.level_id),
             _name: submission.level_name,
             _author: submission.author,
@@ -1230,7 +1230,7 @@ export default function AdminPage() {
           toast({ title: "Level Approved", description: `Added to Main List at rank #${rank}` });
           fetchLevels();
         } else if (targetList === "extra") {
-          const { error: insertError } = await (supabase as any).rpc("admin_add_extra_level", {
+          const { error: insertError } = await callAdminListRpc("admin_add_extra_level", {
             _level_id: cleanLevelIdText(submission.level_id),
             _name: submission.level_name,
             _author: submission.author,
@@ -1244,7 +1244,7 @@ export default function AdminPage() {
           toast({ title: "Level Approved", description: `Added to Extra List at rank #${rank}` });
           fetchExtendedLevels();
         } else if (targetList === "future") {
-          const { error: insertError } = await (supabase as any).rpc("admin_add_future_level", {
+          const { error: insertError } = await callAdminListRpc("admin_add_future_level", {
             _level_id: cleanLevelIdText(submission.level_id),
             _name: submission.level_name,
             _author: submission.author,
@@ -1546,7 +1546,7 @@ export default function AdminPage() {
         throw new Error(`Rank must be between 1 and ${levels.length + 1}`);
       }
       
-      const { error } = await (supabase as any).rpc("admin_add_main_level", {
+      const { error } = await callAdminListRpc("admin_add_main_level", {
         _level_id: levelId,
         _name: data.levelInfo?.name || "Unknown Level",
         _author: data.levelInfo?.author || "Unknown",
@@ -1584,7 +1584,7 @@ export default function AdminPage() {
       const data = await fetchLevelDetailsForAdmin(levelId);
       const targetRank = newFutureLevelRank ? parseInt(newFutureLevelRank) : futureLevels.length + 1;
       
-      const { error } = await (supabase as any).rpc("admin_add_future_level", {
+      const { error } = await callAdminListRpc("admin_add_future_level", {
         _level_id: levelId,
         _name: data.levelInfo?.name || "Unknown Level",
         _author: data.levelInfo?.author || "Unknown",
@@ -1893,7 +1893,7 @@ export default function AdminPage() {
         
         const data = await fetchLevelDetailsForAdmin(levelId);
         
-        const { error } = await (supabase as any).rpc("admin_add_main_level", {
+        const { error } = await callAdminListRpc("admin_add_main_level", {
           _level_id: levelId,
           _name: data.levelInfo?.name || "Unknown Level",
           _author: data.levelInfo?.author || "Unknown",
