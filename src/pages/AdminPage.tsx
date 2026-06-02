@@ -206,6 +206,18 @@ interface WebhookSettings {
   custom_message_template: string | null;
 }
 
+interface AdminLevelApiResponse {
+  levelInfo?: {
+    name?: string | null;
+    author?: string | null;
+    thumbnail_url?: string | null;
+  };
+}
+
+type AdminListRpcName = "admin_add_main_level" | "admin_add_extra_level" | "admin_add_future_level";
+type AdminListRpcArgs = Record<string, string | number | null>;
+type AdminListRpcResult = Promise<{ data: unknown; error: { message: string } | null }>;
+
 const ITEMS_PER_PAGE = 20;
 
 function isVideoUrl(url: string | null | undefined): boolean {
@@ -542,13 +554,14 @@ export default function AdminPage() {
 
   // Extended List functions
   const fetchExtendedLevelPreview = async (levelId: string) => {
-    if (!levelId.trim()) {
+    const cleanLevelId = extractLevelId(levelId);
+    if (!cleanLevelId.trim()) {
       setExtendedLevelPreview(null);
       return;
     }
     setFetchingExtendedLevelInfo(true);
     try {
-      const response = await fetch(`https://api.narrowarrow.xyz/level-details/${levelId.trim()}?isCustomLevel=true`);
+      const response = await fetch(`https://api.narrowarrow.xyz/level-details/${encodeURIComponent(cleanLevelId)}?isCustomLevel=true`);
       if (response.ok) {
         const data = await response.json();
         setExtendedLevelPreview({
@@ -563,6 +576,32 @@ export default function AdminPage() {
     } finally {
       setFetchingExtendedLevelInfo(false);
     }
+  };
+
+  const cleanLevelIdText = (value: string) => extractLevelId(value).trim();
+
+  const handleLevelIdPaste = (
+    event: React.ClipboardEvent<HTMLInputElement>,
+    setter: (value: string) => void,
+    afterClean?: (value: string) => void,
+  ) => {
+    const pasted = event.clipboardData.getData("text");
+    const cleaned = cleanLevelIdText(pasted);
+    if (!cleaned || cleaned === pasted.trim()) return;
+    event.preventDefault();
+    setter(cleaned);
+    afterClean?.(cleaned);
+  };
+
+  const fetchLevelDetailsForAdmin = async (levelId: string) => {
+    const response = await fetch(`https://api.narrowarrow.xyz/level-details/${encodeURIComponent(levelId)}?isCustomLevel=true`);
+    if (!response.ok) throw new Error("Level not found");
+    return response.json() as Promise<AdminLevelApiResponse>;
+  };
+
+  const callAdminListRpc = (name: AdminListRpcName, args: AdminListRpcArgs): AdminListRpcResult => {
+    const rpcClient = supabase.rpc as unknown as (fn: AdminListRpcName, args: AdminListRpcArgs) => AdminListRpcResult;
+    return rpcClient(name, args);
   };
 
   const resyncExtraLevels = async () => {
@@ -619,10 +658,12 @@ export default function AdminPage() {
   // Hardfix function removed - functionality covered by Sync Completions button
 
   const addExtendedLevel = async () => {
-    if (!newExtendedLevelId.trim()) return;
+    const levelId = cleanLevelIdText(newExtendedLevelId);
+    if (!levelId) return;
     setAddingExtendedLevel(true);
 
     try {
+      setNewExtendedLevelId(levelId);
       const targetRank = parseInt(newExtendedLevelRank) || extendedLevels.length + 1;
 
       // Validate target rank
@@ -630,41 +671,25 @@ export default function AdminPage() {
         throw new Error(`Rank must be between 1 and ${extendedLevels.length + 1}`);
       }
 
-      // Shift existing levels down if inserting at a specific rank
-      if (targetRank <= extendedLevels.length) {
-        const levelsToShift = extendedLevels
-          .filter(l => l.rank_position >= targetRank)
-          .sort((a, b) => b.rank_position - a.rank_position);
-        for (const level of levelsToShift) {
-          await supabase
-            .from("extended_levels")
-            .update({ rank_position: level.rank_position + 1 })
-            .eq("id", level.id);
-        }
-      }
-
       // Use preview data if available, otherwise fetch fresh
       let levelData: any = null;
       if (extendedLevelPreview) {
         levelData = { levelInfo: extendedLevelPreview };
       } else {
-        const response = await fetch(`https://api.narrowarrow.xyz/level-details/${newExtendedLevelId.trim()}?isCustomLevel=true`);
-        if (response.ok) {
-          levelData = await response.json();
-        }
+        levelData = await fetchLevelDetailsForAdmin(levelId);
       }
 
-      const { error } = await supabase.from("extended_levels").insert({
-        level_id: newExtendedLevelId.trim(),
-        name: levelData?.levelInfo?.name || null,
-        author: levelData?.levelInfo?.author || null,
-        rank_position: targetRank,
-        thumbnail_url: levelData?.levelInfo?.thumbnail_url || null,
+      const { error } = await callAdminListRpc("admin_add_extra_level", {
+        _level_id: levelId,
+        _name: levelData?.levelInfo?.name || null,
+        _author: levelData?.levelInfo?.author || null,
+        _rank_position: targetRank,
+        _thumbnail_url: levelData?.levelInfo?.thumbnail_url || null,
       });
 
       if (error) throw error;
 
-      const levelName = levelData?.levelInfo?.name || newExtendedLevelId.trim();
+      const levelName = levelData?.levelInfo?.name || levelId;
       await logAction("Added extra level", `${levelName} at rank #${targetRank}`);
       
       // Send webhook notification
@@ -762,6 +787,23 @@ export default function AdminPage() {
     }
   };
 
+  const updateExtendedRanksSafely = async (updated: ExtendedLevel[]) => {
+    for (let i = 0; i < updated.length; i++) {
+      await supabase
+        .from("extended_levels")
+        .update({ rank_position: -(i + 1) - 100000 })
+        .eq("id", updated[i].id);
+    }
+
+    for (let i = 0; i < updated.length; i++) {
+      const newRank = i + 1;
+      await supabase
+        .from("extended_levels")
+        .update({ rank_position: newRank, points: calculateExtraPoints(newRank) })
+        .eq("id", updated[i].id);
+    }
+  };
+
   const transferExtendedToMain = async (level: ExtendedLevel) => {
     try {
       // Get the next rank in main list
@@ -805,20 +847,14 @@ export default function AdminPage() {
 
   const transferMainToExtended = async (level: Level) => {
     try {
-      // Get the next rank in extended list
       const targetRank = extendedLevels.length + 1;
 
-      // Insert into extended levels with all relevant data
-      const { error: insertError } = await supabase.from("extended_levels").insert({
-        level_id: level.level_id,
-        name: level.name,
-        author: level.author,
-        creators: [],
-        rank_position: targetRank,
-        points: 0,
-        thumbnail_url: level.thumbnail_url,
-        verifier_profile_id: level.verifier_profile_id,
-        alternative_ids: level.alternative_ids,
+      const { error: insertError } = await callAdminListRpc("admin_add_extra_level", {
+        _level_id: level.level_id,
+        _name: level.name,
+        _author: level.author,
+        _rank_position: targetRank,
+        _thumbnail_url: level.thumbnail_url,
       });
 
       if (insertError) throw insertError;
@@ -1180,28 +1216,12 @@ export default function AdminPage() {
         const targetList = submissionTargetList;
         
         if (targetList === "main") {
-          // Shift existing main levels
-          const levelsToUpdate = levels
-            .filter(l => l.rank_position >= rank)
-            .sort((a, b) => b.rank_position - a.rank_position);
-          for (const level of levelsToUpdate) {
-            await supabase
-              .from("levels")
-              .update({ 
-                rank_position: level.rank_position + 1,
-                points: calculatePoints(level.rank_position + 1)
-              })
-              .eq("id", level.id);
-          }
-
-          // Add to main list
-          const { error: insertError } = await supabase.from("levels").insert({
-            level_id: submission.level_id,
-            name: submission.level_name,
-            author: submission.author,
-            rank_position: rank,
-            points: calculatePoints(rank),
-            thumbnail_url: submission.thumbnail_url,
+          const { error: insertError } = await callAdminListRpc("admin_add_main_level", {
+            _level_id: cleanLevelIdText(submission.level_id),
+            _name: submission.level_name,
+            _author: submission.author,
+            _rank_position: rank,
+            _thumbnail_url: submission.thumbnail_url,
           });
 
           if (insertError) throw insertError;
@@ -1210,14 +1230,12 @@ export default function AdminPage() {
           toast({ title: "Level Approved", description: `Added to Main List at rank #${rank}` });
           fetchLevels();
         } else if (targetList === "extra") {
-          // Add to extra list
-          const { error: insertError } = await supabase.from("extended_levels").insert({
-            level_id: submission.level_id,
-            name: submission.level_name,
-            author: submission.author,
-            rank_position: rank,
-            points: 0, // Will be auto-calculated by trigger
-            thumbnail_url: submission.thumbnail_url,
+          const { error: insertError } = await callAdminListRpc("admin_add_extra_level", {
+            _level_id: cleanLevelIdText(submission.level_id),
+            _name: submission.level_name,
+            _author: submission.author,
+            _rank_position: rank,
+            _thumbnail_url: submission.thumbnail_url,
           });
 
           if (insertError) throw insertError;
@@ -1226,14 +1244,12 @@ export default function AdminPage() {
           toast({ title: "Level Approved", description: `Added to Extra List at rank #${rank}` });
           fetchExtendedLevels();
         } else if (targetList === "future") {
-          // Add to future list
-          const { error: insertError } = await supabase.from("future_levels").insert({
-            level_id: submission.level_id,
-            name: submission.level_name,
-            author: submission.author,
-            rank_position: rank,
-            points: calculatePoints(rank),
-            thumbnail_url: submission.thumbnail_url,
+          const { error: insertError } = await callAdminListRpc("admin_add_future_level", {
+            _level_id: cleanLevelIdText(submission.level_id),
+            _name: submission.level_name,
+            _author: submission.author,
+            _rank_position: rank,
+            _thumbnail_url: submission.thumbnail_url,
           });
 
           if (insertError) throw insertError;
@@ -1444,6 +1460,17 @@ export default function AdminPage() {
     return 0; // 101+ (Extended List)
   };
 
+  const calculateExtraPoints = (rank: number): number => {
+    if (rank === 1) return 10;
+    if (rank === 2) return 8;
+    if (rank === 3) return 7;
+    if (rank === 4) return 6;
+    if (rank === 5) return 5;
+    if (rank <= 10) return 3;
+    if (rank <= 25) return 2;
+    return 1;
+  };
+
   // Filtered and paginated data
   const filteredLevels = useMemo(() => {
     if (!levelSearchQuery.trim()) return levels;
@@ -1505,57 +1532,35 @@ export default function AdminPage() {
     : filteredLevels.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const addLevel = async () => {
-    if (!newLevelId.trim()) return;
+    const levelId = cleanLevelIdText(newLevelId);
+    if (!levelId) return;
     
     setAddingLevel(true);
     
     try {
-      const response = await fetch(
-        `https://api.narrowarrow.xyz/level-details/${newLevelId.trim()}?isCustomLevel=true`
-      );
-      
-      if (!response.ok) {
-        throw new Error("Level not found");
-      }
-      
-      const data = await response.json();
+      setNewLevelId(levelId);
+      const data = await fetchLevelDetailsForAdmin(levelId);
       const targetRank = newLevelRank ? parseInt(newLevelRank) : levels.length + 1;
       
       if (targetRank < 1 || targetRank > levels.length + 1) {
         throw new Error(`Rank must be between 1 and ${levels.length + 1}`);
       }
       
-      if (targetRank <= levels.length) {
-        const levelsToUpdate = levels
-          .filter(l => l.rank_position >= targetRank)
-          .sort((a, b) => b.rank_position - a.rank_position);
-        for (const level of levelsToUpdate) {
-          await supabase
-            .from("levels")
-            .update({ 
-              rank_position: level.rank_position + 1,
-              points: calculatePoints(level.rank_position + 1)
-            })
-            .eq("id", level.id);
-        }
-      }
-      
-      const { error } = await supabase.from("levels").insert({
-        level_id: newLevelId.trim(),
-        name: data.levelInfo?.name || "Unknown Level",
-        author: data.levelInfo?.author || "Unknown",
-        rank_position: targetRank,
-        points: calculatePoints(targetRank),
-        thumbnail_url: null,
+      const { error } = await callAdminListRpc("admin_add_main_level", {
+        _level_id: levelId,
+        _name: data.levelInfo?.name || "Unknown Level",
+        _author: data.levelInfo?.author || "Unknown",
+        _rank_position: targetRank,
+        _thumbnail_url: null,
       });
       
       if (error) throw error;
       
-      await logAction("Added level", `${data.levelInfo?.name || newLevelId} at rank #${targetRank}`);
+      await logAction("Added level", `${data.levelInfo?.name || levelId} at rank #${targetRank}`);
       toast({ title: "Success", description: `Level added at rank #${targetRank}` });
       
       // Send admin notification
-      await sendAdminNotification("level_addition", data.levelInfo?.name || newLevelId, undefined, targetRank, "Main", "added");
+      await sendAdminNotification("level_addition", data.levelInfo?.name || levelId, undefined, targetRank, "Main", "added");
       
       setNewLevelId("");
       setNewLevelRank("");
@@ -1569,38 +1574,31 @@ export default function AdminPage() {
   };
 
   const addFutureLevel = async () => {
-    if (!newFutureLevelId.trim()) return;
+    const levelId = cleanLevelIdText(newFutureLevelId);
+    if (!levelId) return;
     
     setAddingFutureLevel(true);
     
     try {
-      const response = await fetch(
-        `https://api.narrowarrow.xyz/level-details/${newFutureLevelId.trim()}?isCustomLevel=true`
-      );
+      setNewFutureLevelId(levelId);
+      const data = await fetchLevelDetailsForAdmin(levelId);
+      const targetRank = newFutureLevelRank ? parseInt(newFutureLevelRank) : futureLevels.length + 1;
       
-      if (!response.ok) {
-        throw new Error("Level not found");
-      }
-      
-      const data = await response.json();
-      const targetRank = newFutureLevelRank ? parseInt(newFutureLevelRank) : 1;
-      
-      const { error } = await supabase.from("future_levels").insert({
-        level_id: newFutureLevelId.trim(),
-        name: data.levelInfo?.name || "Unknown Level",
-        author: data.levelInfo?.author || "Unknown",
-        rank_position: targetRank,
-        points: calculatePoints(targetRank),
-        thumbnail_url: null,
+      const { error } = await callAdminListRpc("admin_add_future_level", {
+        _level_id: levelId,
+        _name: data.levelInfo?.name || "Unknown Level",
+        _author: data.levelInfo?.author || "Unknown",
+        _rank_position: targetRank,
+        _thumbnail_url: null,
       });
       
       if (error) throw error;
       
-      await logAction("Added future level", `${data.levelInfo?.name || newFutureLevelId} at estimated rank #${targetRank}`);
+      await logAction("Added future level", `${data.levelInfo?.name || levelId} at estimated rank #${targetRank}`);
       toast({ title: "Success", description: `Future level added with estimated rank #${targetRank}` });
       
       // Send admin notification
-      await sendAdminNotification("future_level", data.levelInfo?.name || newFutureLevelId, undefined, targetRank, "Future", "added");
+      await sendAdminNotification("future_level", data.levelInfo?.name || levelId, undefined, targetRank, "Future", "added");
       
       setNewFutureLevelId("");
       setNewFutureLevelRank("");
@@ -1621,6 +1619,16 @@ export default function AdminPage() {
     if (error) {
       toast({ title: "Error", description: "Failed to remove future level", variant: "destructive" });
     } else {
+      const remainingFuture = futureLevels
+        .filter((level) => level.id !== deleteConfirmFutureLevel.id)
+        .sort((a, b) => a.rank_position - b.rank_position);
+
+      await updateFutureRanks(remainingFuture.map((level, index) => ({
+        ...level,
+        rank_position: index + 1,
+        points: calculatePoints(index + 1),
+      })));
+
       await logAction("Removed future level", deleteConfirmFutureLevel.name || deleteConfirmFutureLevel.level_id);
       toast({ title: "Success", description: "Future level removed" });
       await sendAdminNotification(
@@ -1734,6 +1742,10 @@ export default function AdminPage() {
     if (!editingExtendedLevel) return;
     
     setSavingExtendedLevel(true);
+    const requestedRank = Math.min(
+      Math.max(parseInt(editExtendedRank) || editingExtendedLevel.rank_position, 1),
+      extendedLevels.length,
+    );
     
     const creatorsArray = editExtendedCreators
       .split(/[,\n]+/)
@@ -1751,7 +1763,6 @@ export default function AdminPage() {
         name: editExtendedName || null,
         author: editExtendedAuthor || null,
         creators: creatorsArray.length > 0 ? creatorsArray : null,
-        rank_position: parseInt(editExtendedRank) || 1,
         thumbnail_url: editExtendedThumbnail || null,
         verifier_profile_id: editExtendedVerifier === "none" ? null : editExtendedVerifier || null,
         alternative_ids: alternativeIdsArray.length > 0 ? alternativeIdsArray : null,
@@ -1762,6 +1773,15 @@ export default function AdminPage() {
     if (error) {
       toast({ title: "Error", description: "Failed to update extra level", variant: "destructive" });
     } else {
+      if (requestedRank !== editingExtendedLevel.rank_position) {
+        const reordered = [...extendedLevels].sort((a, b) => a.rank_position - b.rank_position);
+        const currentIndex = reordered.findIndex((level) => level.id === editingExtendedLevel.id);
+        if (currentIndex >= 0) {
+          const [item] = reordered.splice(currentIndex, 1);
+          reordered.splice(requestedRank - 1, 0, item);
+          await updateExtendedRanksSafely(reordered);
+        }
+      }
       await logAction("Edited extra level", `${editExtendedName || editingExtendedLevel.level_id}${alternativeIdsArray.length > 0 ? ` (alt IDs: ${alternativeIdsArray.join(", ")})` : ""}`);
       toast({ title: "Success", description: "Extra level updated" });
       setEditingExtendedLevel(null);
@@ -1847,7 +1867,7 @@ export default function AdminPage() {
   const bulkImportLevels = async () => {
     const ids = bulkLevelIds
       .split(/[\n,]+/)
-      .map(id => id.trim())
+      .map(id => cleanLevelIdText(id))
       .filter(id => id.length > 0);
     
     if (ids.length === 0) {
@@ -1861,19 +1881,6 @@ export default function AdminPage() {
     
     const startRank = bulkStartRank ? parseInt(bulkStartRank) : levels.length + 1;
     
-    if (startRank <= levels.length) {
-      const levelsToUpdate = levels.filter(l => l.rank_position >= startRank);
-      for (const level of levelsToUpdate) {
-        await supabase
-          .from("levels")
-          .update({ 
-            rank_position: level.rank_position + ids.length,
-            points: calculatePoints(level.rank_position + ids.length)
-          })
-          .eq("id", level.id);
-      }
-    }
-    
     let currentRank = startRank;
     
     for (const levelId of ids) {
@@ -1884,24 +1891,14 @@ export default function AdminPage() {
           continue;
         }
         
-        const response = await fetch(
-          `https://api.narrowarrow.xyz/level-details/${levelId}?isCustomLevel=true`
-        );
+        const data = await fetchLevelDetailsForAdmin(levelId);
         
-        if (!response.ok) {
-          errorCount++;
-          continue;
-        }
-        
-        const data = await response.json();
-        
-        const { error } = await supabase.from("levels").insert({
-          level_id: levelId,
-          name: data.levelInfo?.name || "Unknown Level",
-          author: data.levelInfo?.author || "Unknown",
-          rank_position: currentRank,
-          points: calculatePoints(currentRank),
-          thumbnail_url: null,
+        const { error } = await callAdminListRpc("admin_add_main_level", {
+          _level_id: levelId,
+          _name: data.levelInfo?.name || "Unknown Level",
+          _author: data.levelInfo?.author || "Unknown",
+          _rank_position: currentRank,
+          _thumbnail_url: null,
         });
         
         if (error) {
@@ -2408,7 +2405,7 @@ export default function AdminPage() {
     for (const f of updated) {
       await supabase
         .from("future_levels")
-        .update({ rank_position: f.rank_position })
+        .update({ rank_position: f.rank_position, points: calculatePoints(f.rank_position) })
         .eq("id", f.id);
     }
     setSavingFuture(false);
@@ -3544,6 +3541,7 @@ export default function AdminPage() {
                     placeholder="Enter level ID or paste link"
                     value={newLevelId}
                     onChange={(e) => setNewLevelId(extractLevelId(e.target.value))}
+                    onPaste={(e) => handleLevelIdPaste(e, setNewLevelId)}
                     className="flex-1 bg-secondary border-border"
                   />
                   <Input
@@ -3842,6 +3840,7 @@ export default function AdminPage() {
                     placeholder="Enter level ID or paste link"
                     value={newFutureLevelId}
                     onChange={(e) => setNewFutureLevelId(extractLevelId(e.target.value))}
+                    onPaste={(e) => handleLevelIdPaste(e, setNewFutureLevelId)}
                     className="flex-1 bg-secondary border-border"
                   />
                   <Input
@@ -4117,6 +4116,7 @@ export default function AdminPage() {
                           }
                         }, 500);
                       }}
+                      onPaste={(e) => handleLevelIdPaste(e, setNewExtendedLevelId, fetchExtendedLevelPreview)}
                       onBlur={() => fetchExtendedLevelPreview(newExtendedLevelId)}
                       className="bg-card border-border h-8"
                     />
@@ -4834,7 +4834,14 @@ export default function AdminPage() {
               <Textarea
                 id="bulkIds"
                 value={bulkLevelIds}
-                onChange={(e) => setBulkLevelIds(e.target.value)}
+                  onChange={(e) => setBulkLevelIds(e.target.value)}
+                  onBlur={() => setBulkLevelIds(
+                    bulkLevelIds
+                      .split(/[\n,]+/)
+                      .map((id) => cleanLevelIdText(id))
+                      .filter(Boolean)
+                      .join("\n")
+                  )}
                 placeholder="1743661104278&#10;1234567890123"
                 className="mt-1 bg-secondary border-border min-h-[200px] font-mono text-sm"
               />

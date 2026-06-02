@@ -1174,6 +1174,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_add_extra_level: {
+        Args: {
+          _author: string
+          _level_id: string
+          _name: string
+          _rank_position: number
+          _thumbnail_url?: string
+        }
+        Returns: string
+      }
+      admin_add_future_level: {
+        Args: {
+          _author: string
+          _level_id: string
+          _name: string
+          _rank_position: number
+          _thumbnail_url?: string
+        }
+        Returns: string
+      }
+      admin_add_main_level: {
+        Args: {
+          _author: string
+          _level_id: string
+          _name: string
+          _rank_position: number
+          _thumbnail_url?: string
+        }
+        Returns: string
+      }
       calculate_extra_points_for_rank: {
         Args: { rank_position: number }
         Returns: number
@@ -1193,6 +1223,10 @@ export type Database = {
         Returns: boolean
       }
       is_head_admin: { Args: { _user_id: string }; Returns: boolean }
+      normalize_level_ranks: {
+        Args: { _list_type: string }
+        Returns: undefined
+      }
       recalculate_all_extra_points: { Args: never; Returns: undefined }
       recalculate_player_extra_points: {
         Args: { player_profile_id: string }

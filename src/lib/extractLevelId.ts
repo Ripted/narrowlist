@@ -13,10 +13,22 @@ export function extractLevelId(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) return "";
 
+  try {
+    const url = new URL(trimmed);
+    const queryKeys = ["levelid", "levelId", "level_id", "id", "customLevelId", "custom_level_id"];
+    for (const key of queryKeys) {
+      const value = url.searchParams.get(key);
+      if (value) return value.trim();
+    }
+    const pathToken = url.pathname.split("/").filter(Boolean).pop();
+    if (pathToken && /^[A-Za-z0-9]+$/.test(pathToken)) return pathToken;
+  } catch {
+    // Not a full URL; fall through to pattern matching.
+  }
+
   // Try common URL patterns first (alphanumeric IDs allowed)
   const patterns = [
-    /levelid=([A-Za-z0-9]+)/i,
-    /level_id=([A-Za-z0-9]+)/i,
+    /(?:levelid|levelId|level_id|customLevelId|custom_level_id)=([A-Za-z0-9]+)/i,
     /[?&]id=([A-Za-z0-9]+)/i,
     /\/level\/([A-Za-z0-9]+)/i,
     /\/levels?\/([A-Za-z0-9]+)/i,
