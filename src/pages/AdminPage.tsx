@@ -830,20 +830,14 @@ export default function AdminPage() {
 
   const transferMainToExtended = async (level: Level) => {
     try {
-      // Get the next rank in extended list
       const targetRank = extendedLevels.length + 1;
 
-      // Insert into extended levels with all relevant data
-      const { error: insertError } = await supabase.from("extended_levels").insert({
-        level_id: level.level_id,
-        name: level.name,
-        author: level.author,
-        creators: [],
-        rank_position: targetRank,
-        points: 0,
-        thumbnail_url: level.thumbnail_url,
-        verifier_profile_id: level.verifier_profile_id,
-        alternative_ids: level.alternative_ids,
+      const { error: insertError } = await (supabase as any).rpc("admin_add_extra_level", {
+        _level_id: level.level_id,
+        _name: level.name,
+        _author: level.author,
+        _rank_position: targetRank,
+        _thumbnail_url: level.thumbnail_url,
       });
 
       if (insertError) throw insertError;
