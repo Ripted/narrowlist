@@ -542,13 +542,14 @@ export default function AdminPage() {
 
   // Extended List functions
   const fetchExtendedLevelPreview = async (levelId: string) => {
-    if (!levelId.trim()) {
+    const cleanLevelId = extractLevelId(levelId);
+    if (!cleanLevelId.trim()) {
       setExtendedLevelPreview(null);
       return;
     }
     setFetchingExtendedLevelInfo(true);
     try {
-      const response = await fetch(`https://api.narrowarrow.xyz/level-details/${levelId.trim()}?isCustomLevel=true`);
+      const response = await fetch(`https://api.narrowarrow.xyz/level-details/${encodeURIComponent(cleanLevelId)}?isCustomLevel=true`);
       if (response.ok) {
         const data = await response.json();
         setExtendedLevelPreview({
@@ -563,6 +564,27 @@ export default function AdminPage() {
     } finally {
       setFetchingExtendedLevelInfo(false);
     }
+  };
+
+  const cleanLevelIdText = (value: string) => extractLevelId(value).trim();
+
+  const handleLevelIdPaste = (
+    event: React.ClipboardEvent<HTMLInputElement>,
+    setter: (value: string) => void,
+    afterClean?: (value: string) => void,
+  ) => {
+    const pasted = event.clipboardData.getData("text");
+    const cleaned = cleanLevelIdText(pasted);
+    if (!cleaned || cleaned === pasted.trim()) return;
+    event.preventDefault();
+    setter(cleaned);
+    afterClean?.(cleaned);
+  };
+
+  const fetchLevelDetailsForAdmin = async (levelId: string) => {
+    const response = await fetch(`https://api.narrowarrow.xyz/level-details/${encodeURIComponent(levelId)}?isCustomLevel=true`);
+    if (!response.ok) throw new Error("Level not found");
+    return response.json();
   };
 
   const resyncExtraLevels = async () => {
