@@ -206,6 +206,18 @@ interface WebhookSettings {
   custom_message_template: string | null;
 }
 
+interface AdminLevelApiResponse {
+  levelInfo?: {
+    name?: string | null;
+    author?: string | null;
+    thumbnail_url?: string | null;
+  };
+}
+
+type AdminListRpcName = "admin_add_main_level" | "admin_add_extra_level" | "admin_add_future_level";
+type AdminListRpcArgs = Record<string, string | number | null>;
+type AdminListRpcResult = Promise<{ data: unknown; error: { message: string } | null }>;
+
 const ITEMS_PER_PAGE = 20;
 
 function isVideoUrl(url: string | null | undefined): boolean {
