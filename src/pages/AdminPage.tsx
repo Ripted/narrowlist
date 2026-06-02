@@ -3480,6 +3480,7 @@ export default function AdminPage() {
                     placeholder="Enter level ID or paste link"
                     value={newLevelId}
                     onChange={(e) => setNewLevelId(extractLevelId(e.target.value))}
+                    onPaste={(e) => handleLevelIdPaste(e, setNewLevelId)}
                     className="flex-1 bg-secondary border-border"
                   />
                   <Input
@@ -3778,6 +3779,7 @@ export default function AdminPage() {
                     placeholder="Enter level ID or paste link"
                     value={newFutureLevelId}
                     onChange={(e) => setNewFutureLevelId(extractLevelId(e.target.value))}
+                    onPaste={(e) => handleLevelIdPaste(e, setNewFutureLevelId)}
                     className="flex-1 bg-secondary border-border"
                   />
                   <Input
@@ -4053,6 +4055,7 @@ export default function AdminPage() {
                           }
                         }, 500);
                       }}
+                      onPaste={(e) => handleLevelIdPaste(e, setNewExtendedLevelId, fetchExtendedLevelPreview)}
                       onBlur={() => fetchExtendedLevelPreview(newExtendedLevelId)}
                       className="bg-card border-border h-8"
                     />
@@ -4770,7 +4773,14 @@ export default function AdminPage() {
               <Textarea
                 id="bulkIds"
                 value={bulkLevelIds}
-                onChange={(e) => setBulkLevelIds(e.target.value)}
+                  onChange={(e) => setBulkLevelIds(e.target.value)}
+                  onBlur={() => setBulkLevelIds(
+                    bulkLevelIds
+                      .split(/[\n,]+/)
+                      .map((id) => cleanLevelIdText(id))
+                      .filter(Boolean)
+                      .join("\n")
+                  )}
                 placeholder="1743661104278&#10;1234567890123"
                 className="mt-1 bg-secondary border-border min-h-[200px] font-mono text-sm"
               />
