@@ -600,8 +600,8 @@ export default function AdminPage() {
   };
 
   const callAdminListRpc = (name: AdminListRpcName, args: AdminListRpcArgs): AdminListRpcResult => {
-    const rpcClient = supabase.rpc as unknown as (fn: AdminListRpcName, args: AdminListRpcArgs) => AdminListRpcResult;
-    return rpcClient(name, args);
+    // Call via supabase.rpc to preserve `this` binding (avoids "reading 'rest'" error)
+    return (supabase.rpc as any).call(supabase, name, args) as AdminListRpcResult;
   };
 
   const resyncExtraLevels = async () => {
