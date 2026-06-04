@@ -50,6 +50,7 @@ const App = () => (
               <Route path="/extended-list" element={<ExtendedListPage />} />
               <Route path="/extra-list" element={<ExtraListPage />} />
               <Route path="/recent" element={<RecentRunsPage />} />
+              <Route path="/recently-added" element={<RecentlyAddedPage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/submit" element={<SubmitLevelPage />} />
               <Route path="/guide" element={<GuidePage />} />
