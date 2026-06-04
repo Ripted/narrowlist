@@ -223,6 +223,7 @@ export type Database = {
       }
       extended_levels: {
         Row: {
+          added_at: string
           alternative_ids: string[] | null
           author: string | null
           created_at: string
@@ -238,6 +239,7 @@ export type Database = {
           verifier_profile_id: string | null
         }
         Insert: {
+          added_at?: string
           alternative_ids?: string[] | null
           author?: string | null
           created_at?: string
@@ -253,6 +255,7 @@ export type Database = {
           verifier_profile_id?: string | null
         }
         Update: {
+          added_at?: string
           alternative_ids?: string[] | null
           author?: string | null
           created_at?: string
@@ -327,6 +330,7 @@ export type Database = {
       }
       future_levels: {
         Row: {
+          added_at: string
           author: string | null
           created_at: string
           creators: string[] | null
@@ -340,6 +344,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          added_at?: string
           author?: string | null
           created_at?: string
           creators?: string[] | null
@@ -353,6 +358,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          added_at?: string
           author?: string | null
           created_at?: string
           creators?: string[] | null
@@ -752,6 +758,7 @@ export type Database = {
       }
       levels: {
         Row: {
+          added_at: string
           alternative_ids: string[] | null
           author: string | null
           created_at: string
@@ -767,6 +774,7 @@ export type Database = {
           verifier_profile_id: string | null
         }
         Insert: {
+          added_at?: string
           alternative_ids?: string[] | null
           author?: string | null
           created_at?: string
@@ -782,6 +790,7 @@ export type Database = {
           verifier_profile_id?: string | null
         }
         Update: {
+          added_at?: string
           alternative_ids?: string[] | null
           author?: string | null
           created_at?: string

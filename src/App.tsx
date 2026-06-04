@@ -25,6 +25,7 @@ import PacksPage from "./pages/PacksPage";
 import HubPage from "./pages/HubPage";
 import HelpImprovePage from "./pages/HelpImprovePage";
 import LevelRoulettePage from "./pages/LevelRoulettePage";
+import RecentlyAddedPage from "./pages/RecentlyAddedPage";
 import NotFound from "./pages/NotFound";
 import { BugReportButton } from "./components/BugReportButton";
 
@@ -49,6 +50,7 @@ const App = () => (
               <Route path="/extended-list" element={<ExtendedListPage />} />
               <Route path="/extra-list" element={<ExtraListPage />} />
               <Route path="/recent" element={<RecentRunsPage />} />
+              <Route path="/recently-added" element={<RecentlyAddedPage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/submit" element={<SubmitLevelPage />} />
               <Route path="/guide" element={<GuidePage />} />
