@@ -25,6 +25,7 @@ import PacksPage from "./pages/PacksPage";
 import HubPage from "./pages/HubPage";
 import HelpImprovePage from "./pages/HelpImprovePage";
 import LevelRoulettePage from "./pages/LevelRoulettePage";
+import RecentlyAddedPage from "./pages/RecentlyAddedPage";
 import NotFound from "./pages/NotFound";
 import { BugReportButton } from "./components/BugReportButton";
 
