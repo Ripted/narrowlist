@@ -72,6 +72,7 @@ export function Navbar() {
       { path: "/roulette", label: "Level Roulette", icon: Dice5 },
       { path: "/packs", label: "Level Packs", icon: Package },
       { path: "/recent", label: "Recent Runs", icon: Activity },
+      { path: "/recently-added", label: "Recently Added", icon: Clock },
       { path: "/compare", label: "Compare Players", icon: GitCompare },
       { path: "/statistics", label: "Statistics", icon: BarChart3 },
       { path: "/submit", label: "Submit", icon: Send },
