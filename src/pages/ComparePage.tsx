@@ -66,30 +66,54 @@ export default function ComparePage() {
 
     setLoadingPlayer(true);
 
-    const { data: completions } = await supabase
-      .from("completions")
-      .select("level_id, completion_time, completed_at")
-      .eq("profile_id", profile.id);
+    const [apiMain, apiExtra, manual] = await Promise.all([
+      supabase.from("completions").select("level_id, completion_time, completed_at").eq("profile_id", profile.id),
+      supabase.from("extra_completions").select("level_id, completion_time, completed_at").eq("profile_id", profile.id),
+      supabase.from("manual_runs").select("level_id, completion_time, completed_at, list_type").eq("profile_id", profile.id),
+    ]);
 
-    const levelIds = [...new Set(completions?.map(c => c.level_id) || [])];
-    const { data: levels } = await supabase
-      .from("levels")
-      .select("id, level_id, name, rank_position, points")
-      .in("id", levelIds);
+    const mainRaw = (apiMain.data || []).map(c => ({ ...c, list: "main" as const }));
+    const extraRaw = (apiExtra.data || []).map(c => ({ ...c, list: "extra" as const }));
+    const manualMain = (manual.data || []).filter(m => m.list_type === "main").map(c => ({ level_id: c.level_id, completion_time: c.completion_time, completed_at: c.completed_at, list: "main" as const }));
+    const manualExtra = (manual.data || []).filter(m => m.list_type === "extra").map(c => ({ level_id: c.level_id, completion_time: c.completion_time, completed_at: c.completed_at, list: "extra" as const }));
 
-    const levelMap = new Map(levels?.map(l => [l.id, l]) || []);
+    const mainIds = [...new Set([...mainRaw, ...manualMain].map(c => c.level_id))];
+    const extraIds = [...new Set([...extraRaw, ...manualExtra].map(c => c.level_id))];
+
+    const [mainLevels, extraLevels] = await Promise.all([
+      mainIds.length ? supabase.from("levels").select("id, level_id, name, rank_position, points").in("id", mainIds) : Promise.resolve({ data: [] as any[] }),
+      extraIds.length ? supabase.from("extended_levels").select("id, level_id, name, rank_position, points").in("id", extraIds) : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    const mainMap = new Map((mainLevels.data || []).map((l: any) => [l.id, l]));
+    const extraMap = new Map((extraLevels.data || []).map((l: any) => [l.id, l]));
+
+    // Dedupe per (level_id, list) preferring earliest completion
+    const dedup = new Map<string, CompletionData>();
+    const addRow = (c: { level_id: string; completion_time: number; completed_at: string; list: "main" | "extra" }) => {
+      const lvl = c.list === "main" ? mainMap.get(c.level_id) : extraMap.get(c.level_id);
+      if (!lvl) return;
+      const key = `${c.list}:${c.level_id}`;
+      const rank = c.list === "extra" ? (lvl.rank_position || 0) + 1000 : (lvl.rank_position || 0);
+      const entry: CompletionData = {
+        level_id: c.level_id,
+        level_string_id: lvl.level_id || "",
+        level_name: lvl.name || "Unknown",
+        level_rank: rank,
+        level_points: lvl.points || 0,
+        completion_time: c.completion_time,
+        completed_at: c.completed_at,
+      };
+      const existing = dedup.get(key);
+      if (!existing || new Date(entry.completed_at) < new Date(existing.completed_at)) {
+        dedup.set(key, entry);
+      }
+    };
+    [...mainRaw, ...extraRaw, ...manualMain, ...manualExtra].forEach(addRow);
 
     const playerData: PlayerData = {
       ...profile,
-      completions: (completions || []).map(c => ({
-        level_id: c.level_id,
-        level_string_id: levelMap.get(c.level_id)?.level_id || "",
-        level_name: levelMap.get(c.level_id)?.name || "Unknown",
-        level_rank: levelMap.get(c.level_id)?.rank_position || 0,
-        level_points: levelMap.get(c.level_id)?.points || 0,
-        completion_time: c.completion_time,
-        completed_at: c.completed_at,
-      })).sort((a, b) => a.level_rank - b.level_rank),
+      completions: Array.from(dedup.values()).sort((a, b) => a.level_rank - b.level_rank),
     };
 
     setSelectedPlayers(prev => [...prev, playerData]);
