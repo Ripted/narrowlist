@@ -128,9 +128,12 @@ export default function RecentlyAddedPage() {
                     by {l.author || "Unknown"}
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
-                  <Clock className="w-3 h-3" />
-                  {timeAgo(l.added_at)}
+                <div className="text-xs text-muted-foreground flex flex-col items-end gap-0.5 whitespace-nowrap">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {timeAgo(l.added_at)}
+                  </span>
+                  <span>{new Date(l.added_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
                 </div>
               </Link>
             ))}
