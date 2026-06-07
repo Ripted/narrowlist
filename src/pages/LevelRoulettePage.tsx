@@ -211,11 +211,11 @@ export default function LevelRoulettePage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Min rank</Label>
-                <Input type="number" min={1} value={rankMin} onChange={(e) => setRankMin(Number(e.target.value) || 1)} />
+                <Input type="number" min={1} max={maxAvailableRank} value={rankMin} onChange={(e) => setRankMin(Math.min(maxAvailableRank, Math.max(1, Number(e.target.value) || 1)))} />
               </div>
               <div className="space-y-1.5">
-                <Label>Max rank</Label>
-                <Input type="number" min={1} value={rankMax} onChange={(e) => setRankMax(Number(e.target.value) || 1)} />
+                <Label>Max rank (≤ {maxAvailableRank})</Label>
+                <Input type="number" min={1} max={maxAvailableRank} value={rankMax} onChange={(e) => setRankMax(Math.min(maxAvailableRank, Math.max(1, Number(e.target.value) || 1)))} />
               </div>
             </div>
 
