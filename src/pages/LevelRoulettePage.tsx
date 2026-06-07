@@ -69,22 +69,6 @@ export default function LevelRoulettePage() {
   const [savedRuns, setSavedRuns] = useState<SavedRouletteRun[]>(loadSavedRuns);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
-  // Max possible rank across enabled lists (used to clamp Max rank input)
-  const maxAvailableRank = useMemo(() => {
-    let m = 0;
-    for (const l of allLevels) {
-      if (l.listType === "main" && !includeMain) continue;
-      if (l.listType === "extra" && !includeExtra) continue;
-      if (l.rank_position > m) m = l.rank_position;
-    }
-    return m || 1;
-  }, [allLevels, includeMain, includeExtra]);
-
-  // Clamp rankMax when list selection changes
-  useEffect(() => {
-    if (rankMax > maxAvailableRank) setRankMax(maxAvailableRank);
-  }, [maxAvailableRank]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const { data: allLevels = [], isLoading } = useQuery({
     queryKey: ["roulette-levels"],
     queryFn: async () => {
@@ -101,6 +85,22 @@ export default function LevelRoulettePage() {
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  // Max possible rank across enabled lists (used to clamp Max rank input)
+  const maxAvailableRank = useMemo(() => {
+    let m = 0;
+    for (const l of allLevels) {
+      if (l.listType === "main" && !includeMain) continue;
+      if (l.listType === "extra" && !includeExtra) continue;
+      if (l.rank_position > m) m = l.rank_position;
+    }
+    return m || 1;
+  }, [allLevels, includeMain, includeExtra]);
+
+  // Clamp rankMax when list selection / available data changes
+  useEffect(() => {
+    if (rankMax > maxAvailableRank) setRankMax(maxAvailableRank);
+  }, [maxAvailableRank]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const eligibleLevels = useMemo(() => {
     const min = Math.max(1, Math.min(rankMin, rankMax));
