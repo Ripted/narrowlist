@@ -169,8 +169,16 @@ export default function LevelRoulettePage() {
   };
 
   const clearSavedRuns = () => {
+    if (!confirm("Delete ALL saved roulette runs?")) return;
     localStorage.removeItem(STORAGE_KEY);
     setSavedRuns([]);
+  };
+
+  const deleteSavedRun = (id: string) => {
+    const next = savedRuns.filter((r) => r.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setSavedRuns(next);
+    if (expandedRunId === id) setExpandedRunId(null);
   };
 
   return (
