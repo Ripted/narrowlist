@@ -310,13 +310,50 @@ export default function LevelRoulettePage() {
               <h2 className="font-display text-xl font-bold">Saved runs</h2>
               <Button onClick={clearSavedRuns} size="sm" variant="outline" className="gap-2"><Trash2 className="h-4 w-4" /> Clear</Button>
             </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {savedRuns.map((run) => (
-                <div key={run.id} className="rounded-lg border border-border bg-secondary/40 p-3 text-sm">
-                  <div className="font-medium">{run.completed}/{run.total} completed</div>
-                  <div className="text-xs text-muted-foreground">{new Date(run.savedAt).toLocaleString()} • {run.skipped}/{run.skipsAllowed} skips • ranks {run.rankMin}-{run.rankMax}</div>
-                </div>
-              ))}
+            <div className="space-y-2">
+              {savedRuns.map((run) => {
+                const isOpen = expandedRunId === run.id;
+                return (
+                  <div key={run.id} className="rounded-lg border border-border bg-secondary/40 p-3 text-sm">
+                    <div className="flex items-start gap-2">
+                      <button
+                        onClick={() => setExpandedRunId(isOpen ? null : run.id)}
+                        className="flex-1 text-left"
+                      >
+                        <div className="flex items-center gap-2 font-medium">
+                          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          {run.completed}/{run.total} completed
+                          {run.gaveUp && <span className="text-xs text-destructive">(gave up)</span>}
+                        </div>
+                        <div className="ml-6 text-xs text-muted-foreground">
+                          {new Date(run.savedAt).toLocaleString()} • {run.skipped}/{run.skipsAllowed} skips • ranks {run.rankMin}-{run.rankMax}
+                        </div>
+                      </button>
+                      <Button onClick={() => deleteSavedRun(run.id)} size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete this run">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {isOpen && (
+                      <div className="mt-3 border-t border-border pt-3 space-y-1">
+                        {run.levels.map((lv, i) => (
+                          <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="truncate">
+                              <span className="font-mono text-muted-foreground mr-2">#{lv.rank} {lv.listType}</span>
+                              {lv.name || lv.level_id}
+                            </span>
+                            <span className={
+                              lv.status === "completed" ? "text-primary font-medium" :
+                              lv.status === "skipped" ? "text-amber-500" : "text-muted-foreground"
+                            }>
+                              {lv.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
