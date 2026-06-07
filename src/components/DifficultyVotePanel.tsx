@@ -21,15 +21,15 @@ interface Props {
 }
 
 const TIER_INFO = [
-  { d: 8, label: "D8 — Robot/macro only (e.g. Lifeless)" },
-  { d: 7, label: "D7 — Forever human skill cap" },
-  { d: 6, label: "D6 — Above current skill cap" },
-  { d: 5, label: "D5 — Current skill cap (e.g. TapTapDash)" },
-  { d: 4, label: "D4 — Tops take a long time" },
-  { d: 3, label: "D3 — Tops beat semi-fast (e.g. Detour)" },
-  { d: 2, label: "D2 — Semi-new players need to learn" },
-  { d: 1, label: "D1 — Beginner hard map (e.g. RitF)" },
-  { d: 0, label: "D0 — Possible to die, low room for error" },
+  { d: 8, label: "D8 — Impossible for humans, requires a robot or macro" },
+  { d: 7, label: "D7 — The absolute limit of any human player" },
+  { d: 6, label: "D6 — Nobody has beaten this yet, but a human theoretically could (e.g. Amorathis)" },
+  { d: 5, label: "D5 — The hardest levels that have actually been beaten (e.g. TapTapDash)" },
+  { d: 4, label: "D4 — Only the best players can beat these, and it takes a long time (e.g. Exaction)" },
+  { d: 3, label: "D3 — Top players can beat these with some effort (e.g. Onerous Zones of Fate)" },
+  { d: 2, label: "D2 — Players will need some experience before clearing these (e.g. big square)" },
+  { d: 1, label: "D1 — A tough but reachable goal for beginners (e.g. RitF)" },
+  { d: 0, label: "D0 — Easy to finish, but you can still die if you're not careful (e.g. Circles)" },
 ];
 
 export function DifficultyVotePanel({ levelDbId, levelType }: Props) {
