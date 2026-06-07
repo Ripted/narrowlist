@@ -12,7 +12,7 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag, Clipboard, Package
+  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag, Clipboard, ClipboardPaste, Package
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import { LevelTagAssigner } from "@/components/admin/LevelTagAssigner";
@@ -2303,6 +2303,43 @@ export default function AdminPage() {
     }
   };
 
+  // Quick paste from clipboard for hover overlay on Main list
+  const handleQuickPasteMainThumbnail = async (levelId: string) => {
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    setUploadingThumbnail(levelId);
+    const url = await uploadThumbnail(file, levelId);
+    if (url) {
+      const { error } = await supabase.from("levels").update({ thumbnail_url: url }).eq("id", levelId);
+      if (!error) {
+        const level = levels.find(l => l.id === levelId);
+        await logAction("Pasted thumbnail", level?.name || levelId);
+        setLevels(prev => prev.map(l => l.id === levelId ? { ...l, thumbnail_url: url } : l));
+        toast({ title: "Pasted", description: "Thumbnail uploaded from clipboard" });
+        fetchChangelog();
+      }
+    }
+    setUploadingThumbnail(null);
+  };
+
+  // Quick paste from clipboard for hover overlay on Future list
+  const handleQuickPasteFutureThumbnail = async (levelId: string) => {
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    try {
+      const fileName = `future-${levelId}-${Date.now()}.${file.name.split('.').pop()}`;
+      const { data, error } = await supabase.storage.from('level-thumbnails').upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('level-thumbnails').getPublicUrl(data.path);
+      const { error: updErr } = await supabase.from("future_levels").update({ thumbnail_url: publicUrl }).eq("id", levelId);
+      if (updErr) throw updErr;
+      setFutureLevels(prev => prev.map(l => l.id === levelId ? { ...l, thumbnail_url: publicUrl } : l));
+      toast({ title: "Pasted", description: "Thumbnail uploaded from clipboard" });
+    } catch (err: any) {
+      toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
+    }
+  };
+
   const handlePasteMainThumbnail = async () => {
     if (!editingLevel) return;
     const file = await readImageFromClipboard();
@@ -3723,11 +3760,11 @@ export default function AdminPage() {
                                         <ImagePlus className="w-3 h-3 text-primary-foreground" />
                                       </button>
                                       <button
-                                        onClick={() => startThumbnailEdit(level)}
+                                        onClick={() => handleQuickPasteMainThumbnail(level.id)}
                                         className="p-1 rounded bg-secondary/80 hover:bg-secondary"
-                                        title="Enter URL"
+                                        title="Paste image from clipboard"
                                       >
-                                        <Edit2 className="w-3 h-3 text-foreground" />
+                                        <ClipboardPaste className="w-3 h-3 text-foreground" />
                                       </button>
                                     </div>
                                   </div>
@@ -4011,11 +4048,11 @@ export default function AdminPage() {
                                     <ImagePlus className="w-3 h-3 text-primary-foreground" />
                                   </button>
                                   <button
-                                    onClick={() => startFutureThumbnailEdit(level)}
+                                    onClick={() => handleQuickPasteFutureThumbnail(level.id)}
                                     className="p-1 rounded bg-secondary/80 hover:bg-secondary"
-                                    title="Enter URL"
+                                    title="Paste image from clipboard"
                                   >
-                                    <Edit2 className="w-3 h-3 text-foreground" />
+                                    <ClipboardPaste className="w-3 h-3 text-foreground" />
                                   </button>
                                 </div>
                               </div>

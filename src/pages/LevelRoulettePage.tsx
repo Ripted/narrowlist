@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/Navbar";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Dice5, Check, SkipForward, Flag, Save, Trash2, Play, RotateCcw, ExternalLink, Trophy } from "lucide-react";
+import { Dice5, Check, SkipForward, Flag, Save, Trash2, Play, RotateCcw, ExternalLink, Trophy, ChevronDown, ChevronUp } from "lucide-react";
 
 interface RouletteLevel {
   id: string;
@@ -67,6 +67,7 @@ export default function LevelRoulettePage() {
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
   const [gaveUp, setGaveUp] = useState(false);
   const [savedRuns, setSavedRuns] = useState<SavedRouletteRun[]>(loadSavedRuns);
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
   const { data: allLevels = [], isLoading } = useQuery({
     queryKey: ["roulette-levels"],
@@ -84,6 +85,22 @@ export default function LevelRoulettePage() {
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  // Max possible rank across enabled lists (used to clamp Max rank input)
+  const maxAvailableRank = useMemo(() => {
+    let m = 0;
+    for (const l of allLevels) {
+      if (l.listType === "main" && !includeMain) continue;
+      if (l.listType === "extra" && !includeExtra) continue;
+      if (l.rank_position > m) m = l.rank_position;
+    }
+    return m || 1;
+  }, [allLevels, includeMain, includeExtra]);
+
+  // Clamp rankMax when list selection / available data changes
+  useEffect(() => {
+    if (rankMax > maxAvailableRank) setRankMax(maxAvailableRank);
+  }, [maxAvailableRank]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const eligibleLevels = useMemo(() => {
     const min = Math.max(1, Math.min(rankMin, rankMax));
@@ -152,8 +169,16 @@ export default function LevelRoulettePage() {
   };
 
   const clearSavedRuns = () => {
+    if (!confirm("Delete ALL saved roulette runs?")) return;
     localStorage.removeItem(STORAGE_KEY);
     setSavedRuns([]);
+  };
+
+  const deleteSavedRun = (id: string) => {
+    const next = savedRuns.filter((r) => r.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setSavedRuns(next);
+    if (expandedRunId === id) setExpandedRunId(null);
   };
 
   return (
@@ -186,11 +211,11 @@ export default function LevelRoulettePage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Min rank</Label>
-                <Input type="number" min={1} value={rankMin} onChange={(e) => setRankMin(Number(e.target.value) || 1)} />
+                <Input type="number" min={1} max={maxAvailableRank} value={rankMin} onChange={(e) => setRankMin(Math.min(maxAvailableRank, Math.max(1, Number(e.target.value) || 1)))} />
               </div>
               <div className="space-y-1.5">
-                <Label>Max rank</Label>
-                <Input type="number" min={1} value={rankMax} onChange={(e) => setRankMax(Number(e.target.value) || 1)} />
+                <Label>Max rank (≤ {maxAvailableRank})</Label>
+                <Input type="number" min={1} max={maxAvailableRank} value={rankMax} onChange={(e) => setRankMax(Math.min(maxAvailableRank, Math.max(1, Number(e.target.value) || 1)))} />
               </div>
             </div>
 
@@ -285,13 +310,50 @@ export default function LevelRoulettePage() {
               <h2 className="font-display text-xl font-bold">Saved runs</h2>
               <Button onClick={clearSavedRuns} size="sm" variant="outline" className="gap-2"><Trash2 className="h-4 w-4" /> Clear</Button>
             </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {savedRuns.map((run) => (
-                <div key={run.id} className="rounded-lg border border-border bg-secondary/40 p-3 text-sm">
-                  <div className="font-medium">{run.completed}/{run.total} completed</div>
-                  <div className="text-xs text-muted-foreground">{new Date(run.savedAt).toLocaleString()} • {run.skipped}/{run.skipsAllowed} skips • ranks {run.rankMin}-{run.rankMax}</div>
-                </div>
-              ))}
+            <div className="space-y-2">
+              {savedRuns.map((run) => {
+                const isOpen = expandedRunId === run.id;
+                return (
+                  <div key={run.id} className="rounded-lg border border-border bg-secondary/40 p-3 text-sm">
+                    <div className="flex items-start gap-2">
+                      <button
+                        onClick={() => setExpandedRunId(isOpen ? null : run.id)}
+                        className="flex-1 text-left"
+                      >
+                        <div className="flex items-center gap-2 font-medium">
+                          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          {run.completed}/{run.total} completed
+                          {run.gaveUp && <span className="text-xs text-destructive">(gave up)</span>}
+                        </div>
+                        <div className="ml-6 text-xs text-muted-foreground">
+                          {new Date(run.savedAt).toLocaleString()} • {run.skipped}/{run.skipsAllowed} skips • ranks {run.rankMin}-{run.rankMax}
+                        </div>
+                      </button>
+                      <Button onClick={() => deleteSavedRun(run.id)} size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete this run">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    {isOpen && (
+                      <div className="mt-3 border-t border-border pt-3 space-y-1">
+                        {run.levels.map((lv, i) => (
+                          <div key={i} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="truncate">
+                              <span className="font-mono text-muted-foreground mr-2">#{lv.rank} {lv.listType}</span>
+                              {lv.name || lv.level_id}
+                            </span>
+                            <span className={
+                              lv.status === "completed" ? "text-primary font-medium" :
+                              lv.status === "skipped" ? "text-amber-500" : "text-muted-foreground"
+                            }>
+                              {lv.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}

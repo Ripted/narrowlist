@@ -370,19 +370,23 @@ export default function GuidePage() {
                   <span className="text-foreground font-mono"> 8.0</span>. The displayed difficulty is the
                   <span className="text-foreground font-medium"> average of all votes</span>.
                 </p>
-                <div className="grid sm:grid-cols-3 gap-3">
-                  <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
-                    <div className="font-display text-lg font-bold text-emerald-400">D0 – D2</div>
-                    <div className="text-xs text-muted-foreground mt-1">Beginner / Easy levels</div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                    <div className="font-display text-lg font-bold text-amber-400">D3 – D5</div>
-                    <div className="text-xs text-muted-foreground mt-1">Intermediate to Hard</div>
-                  </div>
-                  <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
-                    <div className="font-display text-lg font-bold text-red-400">D6 – D8</div>
-                    <div className="text-xs text-muted-foreground mt-1">Expert / Extreme</div>
-                  </div>
+                <div className="space-y-2">
+                  {[
+                    { d: "D8", color: "text-red-500", desc: "Impossible for humans, requires a robot or macro" },
+                    { d: "D7", color: "text-red-400", desc: "The absolute limit of any human player" },
+                    { d: "D6", color: "text-red-400", desc: "Nobody has beaten this yet, but a human theoretically could (e.g. Amorathis)" },
+                    { d: "D5", color: "text-amber-400", desc: "The hardest levels that have actually been beaten (e.g. TapTapDash)" },
+                    { d: "D4", color: "text-amber-400", desc: "Only the best players can beat these, and it takes a long time (e.g. Exaction)" },
+                    { d: "D3", color: "text-amber-400", desc: "Top players can beat these with some effort (e.g. Onerous Zones of Fate)" },
+                    { d: "D2", color: "text-emerald-400", desc: "Players will need some experience before clearing these (e.g. big square)" },
+                    { d: "D1", color: "text-emerald-400", desc: "A tough but reachable goal for beginners (e.g. RitF)" },
+                    { d: "D0", color: "text-emerald-400", desc: "Easy to finish, but you can still die if you're not careful (e.g. Circles)" },
+                  ].map((t) => (
+                    <div key={t.d} className="flex items-start gap-3 p-3 rounded-lg bg-secondary/40 border border-border">
+                      <div className={`font-display text-lg font-bold w-10 ${t.color}`}>{t.d}</div>
+                      <div className="text-sm text-muted-foreground flex-1">{t.desc}</div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
