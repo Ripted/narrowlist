@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Navbar } from "@/components/Navbar";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Dice5, Check, SkipForward, Flag, Save, Trash2, Play, RotateCcw, ExternalLink, Trophy } from "lucide-react";
+import { Dice5, Check, SkipForward, Flag, Save, Trash2, Play, RotateCcw, ExternalLink, Trophy, ChevronDown, ChevronUp } from "lucide-react";
 
 interface RouletteLevel {
   id: string;
@@ -67,6 +67,23 @@ export default function LevelRoulettePage() {
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
   const [gaveUp, setGaveUp] = useState(false);
   const [savedRuns, setSavedRuns] = useState<SavedRouletteRun[]>(loadSavedRuns);
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+
+  // Max possible rank across enabled lists (used to clamp Max rank input)
+  const maxAvailableRank = useMemo(() => {
+    let m = 0;
+    for (const l of allLevels) {
+      if (l.listType === "main" && !includeMain) continue;
+      if (l.listType === "extra" && !includeExtra) continue;
+      if (l.rank_position > m) m = l.rank_position;
+    }
+    return m || 1;
+  }, [allLevels, includeMain, includeExtra]);
+
+  // Clamp rankMax when list selection changes
+  useEffect(() => {
+    if (rankMax > maxAvailableRank) setRankMax(maxAvailableRank);
+  }, [maxAvailableRank]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: allLevels = [], isLoading } = useQuery({
     queryKey: ["roulette-levels"],
