@@ -232,9 +232,21 @@ export default function LevelPage() {
       };
     });
 
-    // Combine and sort
-    const combined = [...manualEntries, ...apiEntries];
-    
+    // Combine
+    let combined = [...manualEntries, ...apiEntries];
+
+    // Historical cutoff: drop runs newer than the selected datetime
+    if (historicalCutoff) {
+      const cutoffMs = Date.parse(historicalCutoff);
+      if (!Number.isNaN(cutoffMs)) {
+        combined = combined.filter((r) => {
+          if (!r.completed_at) return true; // keep unknown-date runs
+          const ts = Date.parse(r.completed_at);
+          return Number.isNaN(ts) || ts <= cutoffMs;
+        });
+      }
+    }
+
     if (sortMode === "time") {
       combined.sort((a, b) => a.completion_time - b.completion_time);
     } else {
@@ -246,9 +258,9 @@ export default function LevelPage() {
         return Date.parse(a.completed_at) - Date.parse(b.completed_at);
       });
     }
-    
+
     return combined;
-  }, [manualRuns, leaderboard, runDetails, sortMode]);
+  }, [manualRuns, leaderboard, runDetails, sortMode, historicalCutoff]);
 
   const handleCopyId = () => {
     if (levelId) {
