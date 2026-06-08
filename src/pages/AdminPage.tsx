@@ -925,29 +925,32 @@ export default function AdminPage() {
       .from("manual_runs")
       .select("*")
       .order("created_at", { ascending: false });
-    
+
     if (data) {
-      // Get level names and profile usernames
-      const enrichedRuns = await Promise.all(data.map(async (run) => {
-        const { data: level } = await supabase
-          .from("levels")
-          .select("name")
-          .eq("id", run.level_id)
-          .maybeSingle();
-        
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", run.profile_id)
-          .maybeSingle();
-        
+      // Resolve level names from BOTH main and extra tables based on list_type
+      const mainIds = Array.from(new Set(data.filter(r => r.list_type !== "extra").map(r => r.level_id)));
+      const extraIds = Array.from(new Set(data.filter(r => r.list_type === "extra").map(r => r.level_id)));
+      const profileIds = Array.from(new Set(data.map(r => r.profile_id)));
+
+      const [mainLevels, extraLevels, profilesRes] = await Promise.all([
+        mainIds.length ? supabase.from("levels").select("id, name, level_id").in("id", mainIds) : Promise.resolve({ data: [] as any[] }),
+        extraIds.length ? supabase.from("extended_levels").select("id, name, level_id").in("id", extraIds) : Promise.resolve({ data: [] as any[] }),
+        profileIds.length ? supabase.from("profiles").select("id, username").in("id", profileIds) : Promise.resolve({ data: [] as any[] }),
+      ]);
+
+      const mainMap = new Map((mainLevels.data || []).map((l: any) => [l.id, l]));
+      const extraMap = new Map((extraLevels.data || []).map((l: any) => [l.id, l]));
+      const profMap = new Map((profilesRes.data || []).map((p: any) => [p.id, p]));
+
+      const enrichedRuns = data.map((run) => {
+        const lvl = run.list_type === "extra" ? extraMap.get(run.level_id) : mainMap.get(run.level_id);
         return {
           ...run,
-          level_name: level?.name || "Unknown Level",
-          profile_username: profile?.username || "Unknown Player",
+          level_name: lvl?.name || lvl?.level_id || "Unknown Level",
+          profile_username: profMap.get(run.profile_id)?.username || "Unknown Player",
         };
-      }));
-      
+      });
+
       setManualRuns(enrichedRuns);
     }
   };
