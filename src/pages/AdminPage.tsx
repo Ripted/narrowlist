@@ -3688,7 +3688,7 @@ export default function AdminPage() {
                                     max={levels.length}
                                     value={rankInputValue}
                                     onChange={(e) => setRankInputValue(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && confirmRankChange()}
+                                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); setTimeout(() => confirmRankChange(), 50); } }}
                                     className="w-12 h-8 text-center p-1 bg-secondary"
                                     autoFocus
                                   />
