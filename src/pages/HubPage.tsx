@@ -105,7 +105,7 @@ const HubPage = () => {
             if (sectionItems.length === 0) return null;
             return (
               <section key={key}>
-                <h2 className="font-display text-xl font-semibold mb-4 flex items-center gap-2">
+                <h2 className="font-display text-xs font-semibold mb-4 flex items-center gap-2 uppercase tracking-[0.18em] text-muted-foreground">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                   {title}
                 </h2>
