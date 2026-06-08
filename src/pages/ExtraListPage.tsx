@@ -228,7 +228,7 @@ function ExtendedLevelCard({
             <div className="flex items-center gap-3 text-muted-foreground">
               {likeCount !== undefined && likeCount > 0 && (
                 <div className="flex items-center gap-1" title="Likes">
-                  <Heart className="w-3 h-3 text-destructive" />
+                  <Heart className="w-3 h-3 text-muted-foreground" />
                   <span>{likeCount}</span>
                 </div>
               )}
