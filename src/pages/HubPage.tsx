@@ -112,16 +112,17 @@ const HubPage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {sectionItems.map(({ path, label, description, icon: Icon }) => (
                     <Link key={path} to={path} className="group">
-                      <Card className="p-5 h-full bg-card/50 border-border/50 hover:border-primary/60 hover:bg-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/10">
-                        <div className="flex items-start gap-4">
-                          <div className="p-2.5 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
-                            <Icon className="w-5 h-5" />
+                      <Card className="relative overflow-hidden p-5 h-full bg-card/40 border-border/60 hover:border-primary/40 hover:bg-card/80 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-primary/5">
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br from-primary/[0.04] via-transparent to-accent/[0.04] pointer-events-none" />
+                        <div className="relative flex items-start gap-4">
+                          <div className="p-3 rounded-xl bg-gradient-to-br from-primary/15 to-accent/10 border border-primary/10 text-primary group-hover:from-primary/25 group-hover:to-accent/15 group-hover:border-primary/30 group-hover:scale-[1.04] transition-all duration-300">
+                            <Icon className="w-5 h-5" strokeWidth={2.25} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors tracking-tight">
                               {label}
                             </h3>
-                            <p className="text-sm text-muted-foreground mt-0.5">
+                            <p className="text-sm text-muted-foreground mt-0.5 leading-snug">
                               {description}
                             </p>
                           </div>
