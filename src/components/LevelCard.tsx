@@ -128,12 +128,12 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompl
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-3">
-          <div>
-            <h3 className="font-display font-semibold text-lg text-foreground group-hover:text-primary transition-colors line-clamp-1">
+        <div className="p-3.5 space-y-2.5">
+          <div className="space-y-0.5">
+            <h3 className="font-display font-semibold text-base text-foreground group-hover:text-primary transition-colors line-clamp-1 tracking-tight">
               {levelInfo.name}
             </h3>
-            <p className="flex items-center gap-1 text-sm text-muted-foreground">
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
               <User className="w-3 h-3" />
               {levelInfo.author}
             </p>
@@ -146,7 +146,7 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompl
 
           {/* Rating & Difficulty badges */}
           {((avgRating !== undefined && (ratingCount ?? 0) > 0) || (avgDifficulty !== undefined && (difficultyCount ?? 0) > 0)) && (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {avgRating !== undefined && (ratingCount ?? 0) > 0 && (
                 <div className="flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium" title={`${ratingCount} rating${ratingCount === 1 ? "" : "s"}`}>
                   <Star className="w-3 h-3 fill-current" />
@@ -162,10 +162,10 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompl
             </div>
           )}
 
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-3 text-muted-foreground">
               <div className="flex items-center gap-1" title="Likes">
-                <Heart className="w-3 h-3 text-destructive" />
+                <Heart className="w-3 h-3 text-muted-foreground" />
                 <span>{levelInfo.like_count}</span>
               </div>
               {victorCount !== undefined && victorCount > 0 && (
