@@ -183,7 +183,7 @@ export function PlayerRankHistoryChart({ profileId, currentRank }: PlayerRankHis
 
   const getTrendIcon = () => {
     if (pointsChange > 0) return <TrendingUp className="w-4 h-4 text-green-500" />;
-    if (pointsChange < 0) return <TrendingDown className="w-4 h-4 text-red-500" />;
+    if (pointsChange < 0) return <TrendingDown className="w-4 h-4 text-muted-foreground" />;
     return <Minus className="w-4 h-4 text-muted-foreground" />;
   };
 

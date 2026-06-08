@@ -111,7 +111,7 @@ export function FutureLevelCard({ level, likeCount }: FutureLevelCardProps) {
 
         {likeCount !== undefined && (
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Heart className="w-3 h-3 text-destructive" />
+            <Heart className="w-3 h-3 text-muted-foreground" />
             <span>{likeCount.toLocaleString()}</span>
           </div>
         )}

@@ -3063,7 +3063,8 @@ export default function AdminPage() {
 
           <Tabs defaultValue="levels" className="space-y-6">
             <div className="flex items-center justify-between gap-4 flex-wrap">
-              <TabsList className="justify-start overflow-x-auto flex-nowrap gap-1 h-auto p-1">
+              <TabsList className="justify-start overflow-x-auto flex-nowrap gap-1 h-auto p-1.5 bg-card/50 border border-border/60 rounded-xl">
+                <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Review</span>
                 <TabsTrigger value="submissions" className="text-xs sm:text-sm gap-1 flex-shrink-0">
                   <Send className="w-3 h-3 hidden sm:inline" />
                   Submissions
@@ -3073,17 +3074,24 @@ export default function AdminPage() {
                     </span>
                   )}
                 </TabsTrigger>
+                <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
+                <TabsTrigger value="bugs" className="text-xs sm:text-sm flex-shrink-0">Bugs</TabsTrigger>
+                <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
+                <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Lists</span>
                 <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
                 <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
                 <TabsTrigger value="extended" className="text-xs sm:text-sm flex-shrink-0">Extra ({extendedLevels.length})</TabsTrigger>
                 <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
-                <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
-                <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
-                <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
-                <TabsTrigger value="deleted" className="text-xs sm:text-sm flex-shrink-0 text-destructive">
+                <TabsTrigger value="deleted" className="text-xs sm:text-sm flex-shrink-0 text-muted-foreground data-[state=active]:text-foreground">
                   <RotateCcw className="w-3 h-3 hidden sm:inline" />
                   Deleted ({deletedLevels.length})
                 </TabsTrigger>
+                <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
+                <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Users</span>
+                <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
+                <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
+                <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
+                <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">System</span>
                 <TabsTrigger value="webhooks" className="text-xs sm:text-sm flex-shrink-0">
                   <Bell className="w-3 h-3 hidden sm:inline" />
                   Webhooks
@@ -3096,7 +3104,6 @@ export default function AdminPage() {
                   <Package className="w-3 h-3 hidden sm:inline" />
                   Packs
                 </TabsTrigger>
-                <TabsTrigger value="bugs" className="text-xs sm:text-sm flex-shrink-0">Bugs</TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
               <Button

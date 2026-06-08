@@ -357,7 +357,7 @@ export default function LevelPage() {
                       {levelInfo.author}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Heart className="w-3 h-3 sm:w-4 sm:h-4 text-destructive" />
+                      <Heart className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground" />
                       {levelInfo.like_count}
                     </span>
                     <span className="hidden sm:flex items-center gap-1">
