@@ -446,7 +446,7 @@ export default function LeaderboardPage() {
                     <Medal className="w-6 h-6 mx-auto text-glow-silver mb-1" />
                     <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{players[1].displayName || players[1].username}</div>
                     <div className="font-mono text-sm text-primary">{players[1].totalPoints} pts</div>
-                    <div className="w-24 h-24 bg-gradient-to-t from-glow-silver/60 to-glow-silver/30 rounded-t-lg mt-2" />
+                    <div className="w-24 h-24 bg-gradient-to-t from-glow-silver/70 via-glow-silver/40 to-glow-silver/10 rounded-t-2xl border-t-2 border-glow-silver/60 shadow-lg shadow-glow-silver/20 mt-2" />
                   </Link>
 
                   {/* First place */}
@@ -463,7 +463,7 @@ export default function LeaderboardPage() {
                     <Trophy className="w-8 h-8 mx-auto text-glow-gold mb-1" />
                     <div className="font-display font-bold text-lg text-foreground group-hover:text-primary transition-colors">{players[0].displayName || players[0].username}</div>
                     <div className="font-mono text-primary text-lg">{players[0].totalPoints} pts</div>
-                    <div className="w-32 h-32 bg-gradient-to-t from-glow-gold/60 to-glow-gold/30 rounded-t-lg mt-2" />
+                    <div className="w-32 h-32 bg-gradient-to-t from-glow-gold/70 via-glow-gold/40 to-glow-gold/10 rounded-t-2xl border-t-2 border-glow-gold/60 shadow-lg shadow-glow-gold/20 mt-2" />
                   </Link>
 
                   {/* Third place */}
@@ -480,7 +480,7 @@ export default function LeaderboardPage() {
                     <Medal className="w-5 h-5 mx-auto text-glow-bronze mb-1" />
                     <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{players[2].displayName || players[2].username}</div>
                     <div className="font-mono text-sm text-primary">{players[2].totalPoints} pts</div>
-                    <div className="w-20 h-16 bg-gradient-to-t from-glow-bronze/60 to-glow-bronze/30 rounded-t-lg mt-2" />
+                    <div className="w-20 h-16 bg-gradient-to-t from-glow-bronze/70 via-glow-bronze/40 to-glow-bronze/10 rounded-t-2xl border-t-2 border-glow-bronze/60 shadow-lg shadow-glow-bronze/20 mt-2" />
                   </Link>
                 </div>
               )}
@@ -554,7 +554,7 @@ export default function LeaderboardPage() {
                     <Medal className="w-6 h-6 mx-auto text-glow-silver mb-1" />
                     <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{extraPointsPlayers[1].display_name || extraPointsPlayers[1].username}</div>
                     <div className="font-mono text-sm text-accent flex items-center justify-center gap-1"><Star className="w-3 h-3" />{extraPointsPlayers[1].extra_points} pts</div>
-                    <div className="w-24 h-24 bg-gradient-to-t from-glow-silver/60 to-glow-silver/30 rounded-t-lg mt-2" />
+                    <div className="w-24 h-24 bg-gradient-to-t from-glow-silver/70 via-glow-silver/40 to-glow-silver/10 rounded-t-2xl border-t-2 border-glow-silver/60 shadow-lg shadow-glow-silver/20 mt-2" />
                   </Link>
 
                   {/* First place */}
@@ -571,7 +571,7 @@ export default function LeaderboardPage() {
                     <Crown className="w-8 h-8 mx-auto text-glow-gold mb-1" />
                     <div className="font-display font-bold text-lg text-foreground group-hover:text-primary transition-colors">{extraPointsPlayers[0].display_name || extraPointsPlayers[0].username}</div>
                     <div className="font-mono text-accent flex items-center justify-center gap-1"><Star className="w-4 h-4" />{extraPointsPlayers[0].extra_points} pts</div>
-                    <div className="w-24 h-32 bg-gradient-to-t from-glow-gold/60 to-glow-gold/30 rounded-t-lg mt-2" />
+                    <div className="w-24 h-32 bg-gradient-to-t from-glow-gold/70 via-glow-gold/40 to-glow-gold/10 rounded-t-2xl border-t-2 border-glow-gold/60 shadow-lg shadow-glow-gold/20 mt-2" />
                   </Link>
 
                   {/* Third place */}
@@ -588,7 +588,7 @@ export default function LeaderboardPage() {
                     <Medal className="w-5 h-5 mx-auto text-glow-bronze mb-1" />
                     <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{extraPointsPlayers[2].display_name || extraPointsPlayers[2].username}</div>
                     <div className="font-mono text-sm text-accent flex items-center justify-center gap-1"><Star className="w-3 h-3" />{extraPointsPlayers[2].extra_points} pts</div>
-                    <div className="w-24 h-16 bg-gradient-to-t from-glow-bronze/60 to-glow-bronze/30 rounded-t-lg mt-2" />
+                    <div className="w-24 h-16 bg-gradient-to-t from-glow-bronze/70 via-glow-bronze/40 to-glow-bronze/10 rounded-t-2xl border-t-2 border-glow-bronze/60 shadow-lg shadow-glow-bronze/20 mt-2" />
                   </Link>
                 </div>
               )}
