@@ -3976,7 +3976,7 @@ export default function AdminPage() {
                                 min={1}
                                 value={futureRankInputValue}
                                 onChange={(e) => setFutureRankInputValue(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && confirmFutureRankChange()}
+                                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); setTimeout(() => confirmFutureRankChange(), 50); } }}
                                 className="w-12 h-8 text-center p-1 bg-secondary"
                                 autoFocus
                               />
