@@ -715,7 +715,7 @@ export default function LeaderboardPage() {
                             <div className="text-xs text-muted-foreground">
                               {creator.levelCount} levels{creator.ratedLevelCount > 0 ? ` · ⭐ ${creator.avgRating.toFixed(1)}` : ""}
                             </div>
-                            <div className={`w-24 ${pedestal} ${rank === 1 ? "bg-gradient-to-t from-glow-gold/60 to-glow-gold/30" : rank === 2 ? "bg-gradient-to-t from-glow-silver/60 to-glow-silver/30" : "bg-gradient-to-t from-glow-bronze/60 to-glow-bronze/30"} rounded-t-lg mt-2`} />
+                            <div className={`w-24 ${pedestal} ${rank === 1 ? "bg-gradient-to-t from-glow-gold/70 via-glow-gold/40 to-glow-gold/10 border-glow-gold/60 shadow-glow-gold/20" : rank === 2 ? "bg-gradient-to-t from-glow-silver/70 via-glow-silver/40 to-glow-silver/10 border-glow-silver/60 shadow-glow-silver/20" : "bg-gradient-to-t from-glow-bronze/70 via-glow-bronze/40 to-glow-bronze/10 border-glow-bronze/60 shadow-glow-bronze/20"} rounded-t-2xl border-t-2 shadow-lg mt-2`} />
                           </Link>
                         );
                       })}
