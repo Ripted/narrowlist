@@ -49,6 +49,12 @@ export default function LevelPage() {
   const [sortMode, setSortMode] = useState<"time" | "date">("time");
   const [packsContaining, setPacksContaining] = useState<{ id: string; name: string; cover_url: string | null }[]>([]);
   const { data: levelTags = [] } = useLevelTags(levelDbId);
+  const [historicalCutoff, setHistoricalCutoff] = useState<string | null>(getPersistedHistoricalDate());
+
+  useEffect(() => {
+    const unsub = subscribeHistoricalDate(setHistoricalCutoff);
+    return unsub;
+  }, []);
 
   // Fetch packs containing this level
   useEffect(() => {
