@@ -5902,7 +5902,7 @@ export default function AdminPage() {
 
       {/* Rank Change Confirmation Dialog */}
       <AlertDialog open={!!rankConfirmLevel} onOpenChange={(open) => !open && setRankConfirmLevel(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-yellow-500" />
