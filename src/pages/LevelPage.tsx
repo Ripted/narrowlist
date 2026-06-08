@@ -16,6 +16,7 @@ import { useLevelTags } from "@/hooks/useLevelTags";
 import { LevelRatingPanel } from "@/components/LevelRatingPanel";
 import { CommunityTagsPanel } from "@/components/CommunityTagsPanel";
 import { DifficultyVotePanel } from "@/components/DifficultyVotePanel";
+import { getPersistedHistoricalDate, subscribeHistoricalDate } from "@/components/HistoricalListViewer";
 
 interface DbProfile {
   id: string;
