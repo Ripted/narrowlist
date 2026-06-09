@@ -2471,20 +2471,34 @@ export default function AdminPage() {
       toast({ title: "Invalid rank", description: "Enter a positive number", variant: "destructive" });
       return;
     }
-    const sorted = [...futureLevels].sort((a, b) => a.rank_position - b.rank_position);
-    const currentIndex = sorted.findIndex(f => f.id === futureRankInputId);
-    if (currentIndex === -1) return;
-    const targetIndex = Math.min(newRank - 1, sorted.length - 1);
-    if (currentIndex === targetIndex) {
+    const target = futureLevels.find(f => f.id === futureRankInputId);
+    if (!target) {
       setFutureRankInputId(null);
       return;
     }
-    const [item] = sorted.splice(currentIndex, 1);
-    sorted.splice(targetIndex, 0, item);
-    const updated = sorted.map((f, i) => ({ ...f, rank_position: i + 1 }));
-    setFutureLevels(updated);
+    if (target.rank_position === newRank) {
+      setFutureRankInputId(null);
+      return;
+    }
+    // Future ranks are estimates and can be any value — update only this level.
+    setSavingFuture(true);
+    const { error } = await supabase
+      .from("future_levels")
+      .update({ rank_position: newRank, points: calculatePoints(newRank) })
+      .eq("id", futureRankInputId);
+    setSavingFuture(false);
+    if (error) {
+      toast({ title: "Error", description: "Failed to update rank", variant: "destructive" });
+      setFutureRankInputId(null);
+      return;
+    }
+    setFutureLevels(prev =>
+      prev
+        .map(f => (f.id === futureRankInputId ? { ...f, rank_position: newRank, points: calculatePoints(newRank) } : f))
+        .sort((a, b) => a.rank_position - b.rank_position)
+    );
     setFutureRankInputId(null);
-    await updateFutureRanks(updated);
+    toast({ title: "Saved", description: `Estimated rank set to #${newRank}` });
   };
 
   const startFutureThumbnailEdit = (level: FutureLevel) => {
