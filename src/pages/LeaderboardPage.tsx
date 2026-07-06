@@ -11,6 +11,8 @@ import { Trophy, Medal, Search, Calendar, X, Hammer, Crown, Loader2, Star } from
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useAllRatingsAggregate } from "@/hooks/useLevelAggregates";
+import { useCreatorPointsConfig, mainLevelCreatorPoints, DEFAULT_CREATOR_CONFIG } from "@/hooks/useCreatorPointsConfig";
+import { getPersistedHistoricalDate, subscribeHistoricalDate } from "@/components/HistoricalListViewer";
 
 interface HistoricalPlayerStats {
   username: string;
@@ -53,10 +55,17 @@ export default function LeaderboardPage() {
   
   const { players, loading } = usePlayerLeaderboard();
   const { data: ratingsAgg } = useAllRatingsAggregate();
+  const { data: creatorConfig = DEFAULT_CREATOR_CONFIG } = useCreatorPointsConfig();
   const [searchQuery, setSearchQuery] = useState("");
-  const [historicalDate, setHistoricalDate] = useState<string | null>(null);
+  const [historicalDate, setHistoricalDate] = useState<string | null>(getPersistedHistoricalDate());
   const [historicalPlayers, setHistoricalPlayers] = useState<HistoricalPlayerStats[]>([]);
   const [loadingHistorical, setLoadingHistorical] = useState(false);
+
+  // Sync with globally-persisted historical date so the same selection works across pages.
+  useEffect(() => {
+    const unsub = subscribeHistoricalDate((v) => setHistoricalDate(v));
+    return unsub;
+  }, []);
 
   // Extra Points leaderboard data
   const { data: extraPointsPlayers = [], isLoading: loadingExtraPoints } = useQuery({
@@ -82,6 +91,18 @@ export default function LeaderboardPage() {
         .select("id, level_id, name, author, creators, rank_position, points, thumbnail_url")
         .order("rank_position");
       
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Extra-list levels also contribute to creator points (flat per level).
+  const { data: extraLevelsForCreators = [] } = useQuery({
+    queryKey: ["extra-levels-for-creators"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("extended_levels")
+        .select("id, level_id, name, author, creators, rank_position, points, thumbnail_url");
       if (error) throw error;
       return data || [];
     },
@@ -242,62 +263,71 @@ export default function LeaderboardPage() {
     return map;
   }, [profiles]);
 
-  // Creator stats calculation - handles both single author and multiple creators
-  // Creator points = sum of (avg_overall_rating / 10) * level.points
-  // If no rating, contributes 0 — encourages quality over difficulty alone.
+  // Creator stats calculation - handles both single author and multiple creators.
+  // Formula (admin-configurable):
+  //   Main-list level  → avg_rating (default value if unrated) × main_rating_multiplier
+  //   Extra-list level → flat extra_flat_points
   const creatorStats = useMemo(() => {
     const statsMap = new Map<string, CreatorStats>();
-    
-    levels.forEach((level: any) => {
-      const creatorsList: string[] = [];
-      if (level.creators && level.creators.length > 0) {
-        creatorsList.push(...level.creators);
-      } else if (level.author) {
-        creatorsList.push(level.author);
-      } else {
-        creatorsList.push("Unknown");
+
+    const resolveCreators = (level: any): string[] => {
+      if (level.creators && level.creators.length > 0) return [...level.creators];
+      if (level.author) return [level.author];
+      return ["Unknown"];
+    };
+
+    const ensure = (creator: string): CreatorStats => {
+      let entry = statsMap.get(creator);
+      if (!entry) {
+        const profileInfo = profileMap.get(creator.toLowerCase());
+        entry = {
+          author: creator,
+          levelCount: 0,
+          totalPoints: 0,
+          creatorPoints: 0,
+          ratedLevelCount: 0,
+          avgRating: 0,
+          avatarUrl: profileInfo?.avatarUrl,
+          levels: [],
+        };
+        statsMap.set(creator, entry);
       }
-      
+      return entry;
+    };
+
+    // Main list contributions
+    levels.forEach((level: any) => {
       const agg = ratingsAgg?.get(level.id);
       const hasRating = !!agg && agg.count > 0;
-      // Default to 5/10 when a level has no ratings yet.
-      const ratingValue = hasRating ? agg!.avg_overall : 5;
-      const ratingMultiplier = ratingValue / 10;
-      const levelCreatorPoints = ratingMultiplier * (level.points || 0);
-      
-      creatorsList.forEach((creator: string) => {
-        const existing = statsMap.get(creator);
-        const levelData = {
-          id: level.id,
-          level_id: level.level_id,
-          name: level.name,
-          rank_position: level.rank_position,
-          points: level.points,
-          thumbnail_url: level.thumbnail_url,
-        };
-        const profileInfo = profileMap.get(creator.toLowerCase());
-        
-        if (existing) {
-          existing.levelCount++;
-          existing.totalPoints += level.points;
-          existing.creatorPoints += levelCreatorPoints;
-          if (hasRating) {
-            existing.ratedLevelCount++;
-            existing.avgRating += agg!.avg_overall;
-          }
-          existing.levels.push(levelData);
-        } else {
-          statsMap.set(creator, {
-            author: creator,
-            levelCount: 1,
-            totalPoints: level.points,
-            creatorPoints: levelCreatorPoints,
-            ratedLevelCount: hasRating ? 1 : 0,
-            avgRating: hasRating ? agg!.avg_overall : 0,
-            avatarUrl: profileInfo?.avatarUrl,
-            levels: [levelData],
-          });
+      const levelCreatorPoints = mainLevelCreatorPoints(agg?.avg_overall, agg?.count, creatorConfig);
+      const levelData = {
+        id: level.id,
+        level_id: level.level_id,
+        name: level.name,
+        rank_position: level.rank_position,
+        points: level.points,
+        thumbnail_url: level.thumbnail_url,
+      };
+
+      resolveCreators(level).forEach((creator: string) => {
+        const e = ensure(creator);
+        e.levelCount++;
+        e.totalPoints += level.points || 0;
+        e.creatorPoints += levelCreatorPoints;
+        if (hasRating) {
+          e.ratedLevelCount++;
+          e.avgRating += agg!.avg_overall;
         }
+        e.levels.push(levelData);
+      });
+    });
+
+    // Extra list contributions (flat)
+    extraLevelsForCreators.forEach((level: any) => {
+      resolveCreators(level).forEach((creator: string) => {
+        const e = ensure(creator);
+        e.levelCount++;
+        e.creatorPoints += creatorConfig.extra_flat_points;
       });
     });
 
@@ -306,11 +336,12 @@ export default function LeaderboardPage() {
       if (c.ratedLevelCount > 0) c.avgRating = c.avgRating / c.ratedLevelCount;
       c.creatorPoints = Math.round(c.creatorPoints * 10) / 10;
     }
-    
-    // Sort by creator points (quality-weighted), tiebreak by level count
+
+    // Sort by creator points, tiebreak by level count
     return Array.from(statsMap.values())
       .sort((a, b) => b.creatorPoints - a.creatorPoints || b.levelCount - a.levelCount);
-  }, [levels, profileMap, ratingsAgg]);
+  }, [levels, extraLevelsForCreators, profileMap, ratingsAgg, creatorConfig]);
+
 
   const filteredCreators = useMemo(() => {
     if (!searchQuery.trim()) return creatorStats;
@@ -381,18 +412,35 @@ export default function LeaderboardPage() {
                     <PopoverContent className="w-72 p-4" align="end">
                       <div className="space-y-3">
                         <h4 className="font-medium text-sm">View Historical Leaderboard</h4>
-                        <p className="text-xs text-muted-foreground">See the leaderboard as it was on a specific date.</p>
+                        <p className="text-xs text-muted-foreground">See the leaderboard as it was on a specific date. This selection is shared across all pages.</p>
                         <Input
                           type="datetime-local"
-                          value={historicalDate || ""}
-                          onChange={(e) => setHistoricalDate(e.target.value || null)}
+                          value={(() => {
+                            if (!historicalDate) return "";
+                            const d = new Date(historicalDate);
+                            if (Number.isNaN(d.getTime())) return historicalDate;
+                            const pad = (n: number) => String(n).padStart(2, "0");
+                            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                          })()}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const iso = v ? new Date(v).toISOString() : null;
+                            if (iso) localStorage.setItem("narrowlist-historical-datetime", iso);
+                            else localStorage.removeItem("narrowlist-historical-datetime");
+                            window.dispatchEvent(new CustomEvent("historical-datetime-change", { detail: iso }));
+                            setHistoricalDate(iso);
+                          }}
                           className="h-9"
                         />
                         {historicalDate && (
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => setHistoricalDate(null)}
+                            onClick={() => {
+                              localStorage.removeItem("narrowlist-historical-datetime");
+                              window.dispatchEvent(new CustomEvent("historical-datetime-change", { detail: null }));
+                              setHistoricalDate(null);
+                            }}
                             className="w-full gap-2"
                           >
                             <X className="w-4 h-4" />
@@ -413,7 +461,11 @@ export default function LeaderboardPage() {
                   <span className="text-primary font-medium">Viewing leaderboard as of:</span>
                   <span className="text-foreground">{new Date(historicalDate).toLocaleString()}</span>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setHistoricalDate(null)}>
+                <Button variant="ghost" size="sm" onClick={() => {
+                  localStorage.removeItem("narrowlist-historical-datetime");
+                  window.dispatchEvent(new CustomEvent("historical-datetime-change", { detail: null }));
+                  setHistoricalDate(null);
+                }}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>

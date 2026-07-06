@@ -640,9 +640,9 @@ export default function GuidePage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
                   <p>
-                    Creator points are calculated from the average rating each of your levels receives,
-                    multiplied by the level's base points and a quality factor. The leaderboard ranks
-                    creators by total accumulated quality-weighted points across all of their levels.
+                    Creator points depend only on community ratings — not on where your level sits on the list.
+                    Each main-list level you made contributes its average rating (unrated levels are treated as 5/10),
+                    and each extra-list level grants a flat bonus. Admins can tune the multiplier and flat amount.
                   </p>
                 </AccordionContent>
               </AccordionItem>

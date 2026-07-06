@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { usePlayerLeaderboard, useLevels } from "@/hooks/useLevels";
 import { useAllRatingsAggregate } from "@/hooks/useLevelAggregates";
+import { useCreatorPointsConfig, mainLevelCreatorPoints, DEFAULT_CREATOR_CONFIG } from "@/hooks/useCreatorPointsConfig";
 import { useAuth } from "@/hooks/useAuth";
 import { formatTime, formatDate } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
@@ -71,7 +72,7 @@ export default function PlayerPage() {
     }
   }, [isCreatorView]);
   
-  // Fetch levels created by this player/creator
+  // Fetch main-list levels created by this player/creator
   const { data: createdLevels = [], isLoading: createdLevelsLoading } = useQuery({
     queryKey: ["created-levels", username],
     queryFn: async () => {
@@ -83,6 +84,26 @@ export default function PlayerPage() {
       if (!data) return [];
       
       // Filter levels where username matches author or is in creators array
+      return data.filter((level: any) => {
+        const authorMatch = level.author?.toLowerCase() === username?.toLowerCase();
+        const creatorsMatch = (level.creators || []).some(
+          (c: string) => c.toLowerCase() === username?.toLowerCase()
+        );
+        return authorMatch || creatorsMatch;
+      });
+    },
+    enabled: !!username,
+  });
+
+  // Fetch extra-list levels created by this player/creator (for creator points)
+  const { data: createdExtraLevels = [], isLoading: createdExtraLevelsLoading } = useQuery({
+    queryKey: ["created-extra-levels", username],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("extended_levels")
+        .select("id, level_id, name, author, creators, rank_position, points, thumbnail_url")
+        .order("rank_position");
+      if (!data) return [];
       return data.filter((level: any) => {
         const authorMatch = level.author?.toLowerCase() === username?.toLowerCase();
         const creatorsMatch = (level.creators || []).some(
@@ -144,17 +165,19 @@ export default function PlayerPage() {
   
   
   const { data: ratingsAgg } = useAllRatingsAggregate();
+  const { data: creatorConfig = DEFAULT_CREATOR_CONFIG } = useCreatorPointsConfig();
 
-  // Creator points = sum of (avg_overall_rating / 10) * level.points.
-  // Unrated levels contribute 0 (matches Leaderboard "Creators" tab).
-  // If a level has no ratings yet, treat it as a default 5/10 rating.
+  // Creator points formula:
+  //   main-list level  → avg_rating (default 5 if unrated) × main_rating_multiplier
+  //   extra-list level → extra_flat_points (default 1)
   const createdLevelsTotalPoints = useMemo(() => {
-    return createdLevels.reduce((sum: number, l: any) => {
+    const mainSum = createdLevels.reduce((sum: number, l: any) => {
       const agg = ratingsAgg?.get(l.id);
-      const rating = agg && agg.count > 0 ? agg.avg_overall : 5;
-      return sum + (rating / 10) * l.points;
+      return sum + mainLevelCreatorPoints(agg?.avg_overall, agg?.count, creatorConfig);
     }, 0);
-  }, [createdLevels, ratingsAgg]);
+    const extraSum = createdExtraLevels.length * creatorConfig.extra_flat_points;
+    return mainSum + extraSum;
+  }, [createdLevels, createdExtraLevels, ratingsAgg, creatorConfig]);
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -1032,10 +1055,10 @@ export default function PlayerPage() {
                         </div>
                         {(() => {
                           const agg = ratingsAgg?.get(level.id);
-                          const rating = agg && agg.count > 0 ? agg.avg_overall : 5;
-                          const creatorPts = (rating / 10) * level.points;
+                          const hasRating = !!(agg && agg.count > 0);
+                          const creatorPts = mainLevelCreatorPoints(agg?.avg_overall, agg?.count, creatorConfig);
                           return (
-                            <div className="flex items-center gap-1 text-primary" title={agg && agg.count > 0 ? "Creator points" : "Creator points (default 5/10 rating)"}>
+                            <div className="flex items-center gap-1 text-primary" title={hasRating ? "Creator points" : `Creator points (unrated → treated as ${creatorConfig.default_unrated_rating}/10)`}>
                               <Hammer className="w-4 h-4" />
                               <span className="font-mono font-bold">{creatorPts.toFixed(1)}</span>
                             </div>

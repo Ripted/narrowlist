@@ -12,13 +12,14 @@ import {
   Shield, Trash2, Plus, RefreshCw, GripVertical, Image, Edit2, 
   ChevronUp, ChevronDown, ArrowUpDown, Check, X, Upload, AlertTriangle,
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
-  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag, Clipboard, ClipboardPaste, Package
+  ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag, Clipboard, ClipboardPaste, Package, Hammer
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import { LevelTagAssigner } from "@/components/admin/LevelTagAssigner";
 import { BulkTagAssigner } from "@/components/admin/BulkTagAssigner";
 import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
+import { CreatorPointsConfigPanel } from "@/components/admin/CreatorPointsConfigPanel";
 import { HtsCupManager } from "@/components/admin/HtsCupManager";
 import { BugReportsAdmin } from "@/components/admin/BugReportsAdmin";
 import { extractLevelId } from "@/lib/extractLevelId";
@@ -684,7 +685,7 @@ export default function AdminPage() {
         _name: levelData?.levelInfo?.name || null,
         _author: levelData?.levelInfo?.author || null,
         _rank_position: targetRank,
-        _thumbnail_url: levelData?.levelInfo?.thumbnail_url || null,
+        _thumbnail_url: levelData?.levelInfo?.thumbnail_url || `https://api.narrowarrow.xyz/level-image/${levelId}.png`,
       });
 
       if (error) throw error;
@@ -1224,7 +1225,7 @@ export default function AdminPage() {
             _name: submission.level_name,
             _author: submission.author,
             _rank_position: rank,
-            _thumbnail_url: submission.thumbnail_url,
+            _thumbnail_url: submission.thumbnail_url || `https://api.narrowarrow.xyz/level-image/${cleanLevelIdText(submission.level_id)}.png`,
           });
 
           if (insertError) throw insertError;
@@ -1238,7 +1239,7 @@ export default function AdminPage() {
             _name: submission.level_name,
             _author: submission.author,
             _rank_position: rank,
-            _thumbnail_url: submission.thumbnail_url,
+            _thumbnail_url: submission.thumbnail_url || `https://api.narrowarrow.xyz/level-image/${cleanLevelIdText(submission.level_id)}.png`,
           });
 
           if (insertError) throw insertError;
@@ -1252,7 +1253,7 @@ export default function AdminPage() {
             _name: submission.level_name,
             _author: submission.author,
             _rank_position: rank,
-            _thumbnail_url: submission.thumbnail_url,
+            _thumbnail_url: submission.thumbnail_url || `https://api.narrowarrow.xyz/level-image/${cleanLevelIdText(submission.level_id)}.png`,
           });
 
           if (insertError) throw insertError;
@@ -1554,7 +1555,7 @@ export default function AdminPage() {
         _name: data.levelInfo?.name || "Unknown Level",
         _author: data.levelInfo?.author || "Unknown",
         _rank_position: targetRank,
-        _thumbnail_url: null,
+        _thumbnail_url: `https://api.narrowarrow.xyz/level-image/${levelId}.png`,
       });
       
       if (error) throw error;
@@ -1592,7 +1593,7 @@ export default function AdminPage() {
         _name: data.levelInfo?.name || "Unknown Level",
         _author: data.levelInfo?.author || "Unknown",
         _rank_position: targetRank,
-        _thumbnail_url: null,
+        _thumbnail_url: `https://api.narrowarrow.xyz/level-image/${levelId}.png`,
       });
       
       if (error) throw error;
@@ -1893,7 +1894,7 @@ export default function AdminPage() {
           _name: data.levelInfo?.name || "Unknown Level",
           _author: data.levelInfo?.author || "Unknown",
           _rank_position: currentRank,
-          _thumbnail_url: null,
+          _thumbnail_url: `https://api.narrowarrow.xyz/level-image/${levelId}.png`,
         });
         
         if (error) {
@@ -3110,6 +3111,10 @@ export default function AdminPage() {
                   <Package className="w-3 h-3 hidden sm:inline" />
                   Packs
                 </TabsTrigger>
+                <TabsTrigger value="creator-config" className="text-xs sm:text-sm flex-shrink-0">
+                  <Hammer className="w-3 h-3 hidden sm:inline" />
+                  Creator Pts
+                </TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
               <Button
@@ -3793,7 +3798,9 @@ export default function AdminPage() {
                                 {level.name || "Unnamed Level"}
                               </div>
                               <div className="text-xs text-muted-foreground truncate">
-                                {level.author || "Unknown"} • {level.points} pts
+                                {((level as any).creators && (level as any).creators.length > 0
+                                  ? (level as any).creators.join(", ")
+                                  : level.author) || "Unknown"} • {level.points} pts
                               </div>
                             </div>
 
@@ -4081,7 +4088,9 @@ export default function AdminPage() {
                             {level.name || "Unnamed Level"}
                           </div>
                           <div className="text-xs text-muted-foreground truncate">
-                            {level.author || "Unknown"} • {level.points} pts
+                            {((level as any).creators && (level as any).creators.length > 0
+                              ? (level as any).creators.join(", ")
+                              : level.author) || "Unknown"} • {level.points} pts
                           </div>
                         </div>
 
@@ -4826,6 +4835,10 @@ export default function AdminPage() {
 
             <TabsContent value="packs" className="space-y-6">
               <LevelPacksManager />
+            </TabsContent>
+
+            <TabsContent value="creator-config" className="space-y-6">
+              <CreatorPointsConfigPanel />
             </TabsContent>
 
             <TabsContent value="changelog" className="space-y-6">

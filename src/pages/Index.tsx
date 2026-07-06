@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useLevels } from "@/hooks/useLevels";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags } from "@/hooks/useLevelTags";
@@ -381,12 +382,13 @@ const Index = () => {
                             level.author?.toLowerCase().includes(query));
                   })
                   .map((level, index) => (
-                    <div
+                    <Link
                       key={level.id}
-                      className="animate-fade-in"
+                      to={`/level/${level.level_id}`}
+                      className="animate-fade-in group"
                       style={{ animationDelay: `${index * 50}ms` }}
                     >
-                      <div className="rounded-xl bg-card border border-border overflow-hidden hover:border-primary/50 transition-all">
+                      <div className="rounded-xl bg-card border border-border overflow-hidden hover:border-primary/50 hover:scale-[1.02] transition-all">
                         <div className="aspect-video bg-secondary relative">
                           {level.thumbnail_url ? (
                             <img src={level.thumbnail_url} alt={level.name || ""} className="w-full h-full object-cover" />
@@ -400,7 +402,7 @@ const Index = () => {
                           </div>
                         </div>
                         <div className="p-4">
-                          <h3 className="font-display font-bold truncate">{level.name || "Unknown Level"}</h3>
+                          <h3 className="font-display font-bold truncate group-hover:text-primary transition-colors">{level.name || "Unknown Level"}</h3>
                           <p className="text-sm text-muted-foreground">{level.author || "Unknown"}</p>
                           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                             <span>{level.points} pts</span>
@@ -411,7 +413,7 @@ const Index = () => {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
               </div>
             )
