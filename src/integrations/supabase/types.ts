@@ -128,6 +128,30 @@ export type Database = {
           },
         ]
       }
+      creator_points_config: {
+        Row: {
+          default_unrated_rating: number
+          extra_flat_points: number
+          id: boolean
+          main_rating_multiplier: number
+          updated_at: string
+        }
+        Insert: {
+          default_unrated_rating?: number
+          extra_flat_points?: number
+          id?: boolean
+          main_rating_multiplier?: number
+          updated_at?: string
+        }
+        Update: {
+          default_unrated_rating?: number
+          extra_flat_points?: number
+          id?: boolean
+          main_rating_multiplier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deleted_levels: {
         Row: {
           alternative_ids: string[] | null
