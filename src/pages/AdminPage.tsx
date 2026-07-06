@@ -4836,6 +4836,10 @@ export default function AdminPage() {
               <LevelPacksManager />
             </TabsContent>
 
+            <TabsContent value="creator-config" className="space-y-6">
+              <CreatorPointsConfigPanel />
+            </TabsContent>
+
             <TabsContent value="changelog" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
                 <div className="p-4 border-b border-border bg-secondary/30">
