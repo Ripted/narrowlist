@@ -56,7 +56,6 @@ const App = () => (
               <Route path="/guide" element={<GuidePage />} />
               <Route path="/themes" element={<ThemesPage />} />
               <Route path="/statistics" element={<StatisticsPage />} />
-              <Route path="/help-improve" element={<HelpImprovePage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/roulette" element={<LevelRoulettePage />} />
               <Route path="/packs" element={<PacksPage />} />
