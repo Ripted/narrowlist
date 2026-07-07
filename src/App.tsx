@@ -23,7 +23,7 @@ import AdminPage from "./pages/AdminPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import PacksPage from "./pages/PacksPage";
 import HubPage from "./pages/HubPage";
-import HelpImprovePage from "./pages/HelpImprovePage";
+
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
 import NotFound from "./pages/NotFound";
