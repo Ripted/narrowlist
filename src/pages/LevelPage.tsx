@@ -627,25 +627,7 @@ export default function LevelPage() {
             )}
           </div>
 
-          {/* Community Ratings + Tag Votes + Difficulty */}
-          {levelDbId && (
-            <div className="mt-8 grid lg:grid-cols-2 gap-4 sm:gap-6">
-              <LevelRatingPanel
-                levelDbId={levelDbId}
-                levelType={isFromExtendedList ? "extra" : "main"}
-              />
-              <DifficultyVotePanel
-                levelDbId={levelDbId}
-                levelType={isFromExtendedList ? "extra" : "main"}
-              />
-              <div className="lg:col-span-2">
-                <CommunityTagsPanel
-                  levelDbId={levelDbId}
-                  levelType={isFromExtendedList ? "extra" : "main"}
-                />
-              </div>
-            </div>
-          )}
+          {/* Community ratings, difficulty votes, and tag votes were removed */}
 
           {/* Rank History Chart - moved below completions, hidden for Extra List levels */}
           {levelDbId && !isFromExtendedList && (
