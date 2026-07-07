@@ -4806,19 +4806,10 @@ export default function AdminPage() {
                 <BugReportsAdmin />
               </div>
             </TabsContent>
-            <TabsContent value="tags" className="space-y-6">
-              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
-                <TagPresetsManager />
-              </div>
-            </TabsContent>
-
             <TabsContent value="packs" className="space-y-6">
               <LevelPacksManager />
             </TabsContent>
 
-            <TabsContent value="creator-config" className="space-y-6">
-              <CreatorPointsConfigPanel />
-            </TabsContent>
 
             <TabsContent value="changelog" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
