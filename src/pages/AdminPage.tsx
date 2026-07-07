@@ -3948,17 +3948,9 @@ export default function AdminPage() {
                     {filteredFutureLevels.map((level, index) => (
                       <div
                         key={level.id}
-                        draggable
-                        onDragStart={() => handleFutureDragStart(index)}
-                        onDragOver={(e) => handleFutureDragOver(e, index)}
-                        onDrop={() => handleFutureDrop(index)}
-                        onDragEnd={handleFutureDragEnd}
-                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
-                          ${futureDraggedIndex === index ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
-                          ${futureDragOverIndex === index && futureDraggedIndex !== index ? "border-t-2 border-primary" : ""}
-                        `}
+                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all hover:bg-secondary/20`}
                       >
-                        <div className="flex-shrink-0 text-muted-foreground hidden sm:block">
+                        <div className="flex-shrink-0 text-muted-foreground/40 hidden sm:block" title="Reordering disabled — use rank input">
                           <GripVertical className="w-5 h-5" />
                         </div>
 
