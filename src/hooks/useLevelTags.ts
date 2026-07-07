@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+// Community tag feature was removed from the UI.
+// Hooks return empty arrays so any remaining call sites render nothing.
+// The level_tags database table remains intact.
 
 export interface LevelTag {
   id: string;
@@ -12,37 +13,10 @@ export interface LevelTag {
   display_order: number;
 }
 
-export function useLevelTags(levelId?: string) {
-  return useQuery({
-    queryKey: ["level-tags", levelId],
-    queryFn: async () => {
-      if (!levelId) return [];
-      
-      const { data, error } = await supabase
-        .from("level_tags")
-        .select("*")
-        .eq("level_id", levelId)
-        .order("display_order");
-      
-      if (error) throw error;
-      return (data as LevelTag[]) || [];
-    },
-    enabled: !!levelId,
-  });
+export function useLevelTags(_levelId?: string) {
+  return { data: [] as LevelTag[], isLoading: false, error: null } as const;
 }
 
 export function useAllLevelTags() {
-  return useQuery({
-    queryKey: ["all-level-tags"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("level_tags")
-        .select("*")
-        .order("display_order");
-      
-      if (error) throw error;
-      return (data as LevelTag[]) || [];
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+  return { data: [] as LevelTag[], isLoading: false, error: null } as const;
 }
