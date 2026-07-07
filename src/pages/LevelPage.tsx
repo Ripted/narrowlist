@@ -360,10 +360,7 @@ export default function LevelPage() {
                       {formatDate(levelInfo.created_at)}
                     </span>
                   </div>
-                  {/* Tags */}
-                  {levelTags.length > 0 && (
-                    <LevelTagsList tags={levelTags} variant="page" className="mt-2" />
-                  )}
+                  {/* Community tags removed */}
                 </div>
               </div>
 
