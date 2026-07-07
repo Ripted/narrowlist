@@ -5243,11 +5243,6 @@ export default function AdminPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
-              {/* Tags Editor */}
-              <div className="border-t border-border pt-4">
-                <LevelTagAssigner levelId={editingLevel.id} levelType="main" />
-              </div>
             </div>
             
             <div className="flex gap-2 justify-end pt-4">
