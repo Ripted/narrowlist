@@ -11,11 +11,6 @@ import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Ha
 import { LevelFeedbackButton } from "@/components/LevelFeedbackButton";
 import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
 import { WatchlistButton } from "@/components/WatchlistButton";
-import { LevelTagsList } from "@/components/LevelTagBadge";
-import { useLevelTags } from "@/hooks/useLevelTags";
-import { LevelRatingPanel } from "@/components/LevelRatingPanel";
-import { CommunityTagsPanel } from "@/components/CommunityTagsPanel";
-import { DifficultyVotePanel } from "@/components/DifficultyVotePanel";
 import { getPersistedHistoricalDate, subscribeHistoricalDate } from "@/components/HistoricalListViewer";
 
 interface DbProfile {
