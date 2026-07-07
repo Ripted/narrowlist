@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags, LevelTag } from "@/hooks/useLevelTags";
 import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
-import { LevelTagsList } from "@/components/LevelTagBadge";
+
 import { SortControls } from "@/components/SortControls";
 import {
   useAllRatingsAggregate,
