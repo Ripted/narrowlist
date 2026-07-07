@@ -5920,10 +5920,6 @@ export default function AdminPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk Tag Manager */}
-      {bulkTagManagerOpen && (
-        <BulkTagAssigner onClose={() => setBulkTagManagerOpen(false)} />
-      )}
 
       {/* Move to Main Confirmation Dialog */}
       <AlertDialog open={!!moveToMainConfirm} onOpenChange={(open) => !open && setMoveToMainConfirm(null)}>
