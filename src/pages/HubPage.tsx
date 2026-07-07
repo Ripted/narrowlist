@@ -60,7 +60,7 @@ const HubPage = () => {
     { path: "/recent", label: "Recent Runs", description: "Latest completions", icon: Activity, category: "community" },
     { path: "/compare", label: "Compare Players", description: "Side-by-side player stats", icon: GitCompare, category: "community" },
     { path: "/statistics", label: "Statistics", description: "Global metrics & charts", icon: BarChart3, category: "community" },
-    { path: "/help-improve", label: "Help Improve Narrowlist", description: "Levels needing your votes & ratings", icon: Sparkles, category: "community" },
+    
 
     // Tools
     { path: "/submit", label: "Submit", description: "Submit a level or run", icon: Send, category: "tools" },
