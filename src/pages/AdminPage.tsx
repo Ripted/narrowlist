@@ -5597,11 +5597,6 @@ export default function AdminPage() {
                   className="mt-1 bg-secondary border-border min-h-[60px]"
                 />
               </div>
-              
-              {/* Tags Editor */}
-              <div className="border-t border-border pt-4">
-                <LevelTagAssigner levelId={editingExtendedLevel.id} levelType="extra" />
-              </div>
             </div>
             
             <div className="flex gap-2 justify-end pt-4">
