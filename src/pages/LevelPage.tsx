@@ -11,11 +11,6 @@ import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Ha
 import { LevelFeedbackButton } from "@/components/LevelFeedbackButton";
 import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
 import { WatchlistButton } from "@/components/WatchlistButton";
-import { LevelTagsList } from "@/components/LevelTagBadge";
-import { useLevelTags } from "@/hooks/useLevelTags";
-import { LevelRatingPanel } from "@/components/LevelRatingPanel";
-import { CommunityTagsPanel } from "@/components/CommunityTagsPanel";
-import { DifficultyVotePanel } from "@/components/DifficultyVotePanel";
 import { getPersistedHistoricalDate, subscribeHistoricalDate } from "@/components/HistoricalListViewer";
 
 interface DbProfile {
@@ -48,7 +43,7 @@ export default function LevelPage() {
   const [manualRuns, setManualRuns] = useState<ManualRunEntry[]>([]);
   const [sortMode, setSortMode] = useState<"time" | "date">("time");
   const [packsContaining, setPacksContaining] = useState<{ id: string; name: string; cover_url: string | null }[]>([]);
-  const { data: levelTags = [] } = useLevelTags(levelDbId);
+  const levelTags: any[] = [];
   const [historicalCutoff, setHistoricalCutoff] = useState<string | null>(getPersistedHistoricalDate());
 
   useEffect(() => {
@@ -365,10 +360,7 @@ export default function LevelPage() {
                       {formatDate(levelInfo.created_at)}
                     </span>
                   </div>
-                  {/* Tags */}
-                  {levelTags.length > 0 && (
-                    <LevelTagsList tags={levelTags} variant="page" className="mt-2" />
-                  )}
+                  {/* Community tags removed */}
                 </div>
               </div>
 
@@ -635,25 +627,7 @@ export default function LevelPage() {
             )}
           </div>
 
-          {/* Community Ratings + Tag Votes + Difficulty */}
-          {levelDbId && (
-            <div className="mt-8 grid lg:grid-cols-2 gap-4 sm:gap-6">
-              <LevelRatingPanel
-                levelDbId={levelDbId}
-                levelType={isFromExtendedList ? "extra" : "main"}
-              />
-              <DifficultyVotePanel
-                levelDbId={levelDbId}
-                levelType={isFromExtendedList ? "extra" : "main"}
-              />
-              <div className="lg:col-span-2">
-                <CommunityTagsPanel
-                  levelDbId={levelDbId}
-                  levelType={isFromExtendedList ? "extra" : "main"}
-                />
-              </div>
-            </div>
-          )}
+          {/* Community ratings, difficulty votes, and tag votes were removed */}
 
           {/* Rank History Chart - moved below completions, hidden for Extra List levels */}
           {levelDbId && !isFromExtendedList && (

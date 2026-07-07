@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+// Community rating-based creator points were removed.
+// Creator points are now simply 1 per main-list level a creator has.
 
 export interface CreatorPointsConfig {
   main_rating_multiplier: number;
@@ -9,41 +9,26 @@ export interface CreatorPointsConfig {
 
 export const DEFAULT_CREATOR_CONFIG: CreatorPointsConfig = {
   main_rating_multiplier: 1,
-  extra_flat_points: 1,
-  default_unrated_rating: 5,
+  extra_flat_points: 0,
+  default_unrated_rating: 0,
 };
 
 export function useCreatorPointsConfig() {
-  return useQuery({
-    queryKey: ["creator-points-config"],
-    queryFn: async (): Promise<CreatorPointsConfig> => {
-      const { data, error } = await supabase
-        .from("creator_points_config" as any)
-        .select("main_rating_multiplier, extra_flat_points, default_unrated_rating")
-        .maybeSingle();
-      if (error || !data) return DEFAULT_CREATOR_CONFIG;
-      return {
-        main_rating_multiplier: Number((data as any).main_rating_multiplier ?? 1),
-        extra_flat_points: Number((data as any).extra_flat_points ?? 1),
-        default_unrated_rating: Number((data as any).default_unrated_rating ?? 5),
-      };
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  return {
+    data: DEFAULT_CREATOR_CONFIG,
+    isLoading: false,
+    error: null,
+  } as { data: CreatorPointsConfig; isLoading: boolean; error: null };
 }
 
 /**
- * Compute creator points for a single main-list level.
- * If the level has no ratings, treats it as `default_unrated_rating`.
+ * Creator points formula: 1 point per main-list level.
+ * Extra list contributes 0.
  */
 export function mainLevelCreatorPoints(
-  avgRating: number | undefined | null,
-  ratingCount: number | undefined | null,
-  config: CreatorPointsConfig
+  _avgRating: number | undefined | null,
+  _ratingCount: number | undefined | null,
+  _config: CreatorPointsConfig
 ): number {
-  const rating =
-    ratingCount && ratingCount > 0 && typeof avgRating === "number"
-      ? avgRating
-      : config.default_unrated_rating;
-  return rating * config.main_rating_multiplier;
+  return 1;
 }

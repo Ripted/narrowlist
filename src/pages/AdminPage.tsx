@@ -15,11 +15,7 @@ import {
   ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag, Clipboard, ClipboardPaste, Package, Hammer
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
-import { LevelTagAssigner } from "@/components/admin/LevelTagAssigner";
-import { BulkTagAssigner } from "@/components/admin/BulkTagAssigner";
-import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
-import { CreatorPointsConfigPanel } from "@/components/admin/CreatorPointsConfigPanel";
 import { HtsCupManager } from "@/components/admin/HtsCupManager";
 import { BugReportsAdmin } from "@/components/admin/BugReportsAdmin";
 import { extractLevelId } from "@/lib/extractLevelId";
@@ -2567,20 +2563,15 @@ export default function AdminPage() {
     e.preventDefault();
     setFutureDragOverIndex(index);
   };
-  const handleFutureDrop = async (targetIndex: number) => {
-    if (futureDraggedIndex === null || futureDraggedIndex === targetIndex) {
-      setFutureDraggedIndex(null);
-      setFutureDragOverIndex(null);
-      return;
-    }
-    const sorted = [...futureLevels].sort((a, b) => a.rank_position - b.rank_position);
-    const [item] = sorted.splice(futureDraggedIndex, 1);
-    sorted.splice(targetIndex, 0, item);
-    const updated = sorted.map((f, i) => ({ ...f, rank_position: i + 1 }));
-    setFutureLevels(updated);
+  const handleFutureDrop = async (_targetIndex: number) => {
+    // Future list ranks are freeform (e.g. 1, 1, 1, 10, 30) — drag-reorder is disabled.
+    // Use the rank input on each row to change a specific level's estimated rank.
     setFutureDraggedIndex(null);
     setFutureDragOverIndex(null);
-    await updateFutureRanks(updated);
+    toast({
+      title: "Drag disabled on Future List",
+      description: "Edit a level's estimated rank using its rank input instead.",
+    });
   };
   const handleFutureDragEnd = () => {
     setFutureDraggedIndex(null);
@@ -3103,29 +3094,12 @@ export default function AdminPage() {
                   <Bell className="w-3 h-3 hidden sm:inline" />
                   Webhooks
                 </TabsTrigger>
-                <TabsTrigger value="tags" className="text-xs sm:text-sm flex-shrink-0">
-                  <Tag className="w-3 h-3 hidden sm:inline" />
-                  Tag Presets
-                </TabsTrigger>
                 <TabsTrigger value="packs" className="text-xs sm:text-sm flex-shrink-0">
                   <Package className="w-3 h-3 hidden sm:inline" />
                   Packs
                 </TabsTrigger>
-                <TabsTrigger value="creator-config" className="text-xs sm:text-sm flex-shrink-0">
-                  <Hammer className="w-3 h-3 hidden sm:inline" />
-                  Creator Pts
-                </TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setBulkTagManagerOpen(true)}
-                className="gap-1 flex-shrink-0"
-              >
-                <Tag className="w-4 h-4" />
-                <span className="hidden sm:inline">Bulk Tags</span>
-              </Button>
             </div>
 
             {/* Level Submissions Tab */}
@@ -3974,17 +3948,9 @@ export default function AdminPage() {
                     {filteredFutureLevels.map((level, index) => (
                       <div
                         key={level.id}
-                        draggable
-                        onDragStart={() => handleFutureDragStart(index)}
-                        onDragOver={(e) => handleFutureDragOver(e, index)}
-                        onDrop={() => handleFutureDrop(index)}
-                        onDragEnd={handleFutureDragEnd}
-                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
-                          ${futureDraggedIndex === index ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
-                          ${futureDragOverIndex === index && futureDraggedIndex !== index ? "border-t-2 border-primary" : ""}
-                        `}
+                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all hover:bg-secondary/20`}
                       >
-                        <div className="flex-shrink-0 text-muted-foreground hidden sm:block">
+                        <div className="flex-shrink-0 text-muted-foreground/40 hidden sm:block" title="Reordering disabled — use rank input">
                           <GripVertical className="w-5 h-5" />
                         </div>
 
@@ -4827,19 +4793,10 @@ export default function AdminPage() {
                 <BugReportsAdmin />
               </div>
             </TabsContent>
-            <TabsContent value="tags" className="space-y-6">
-              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
-                <TagPresetsManager />
-              </div>
-            </TabsContent>
-
             <TabsContent value="packs" className="space-y-6">
               <LevelPacksManager />
             </TabsContent>
 
-            <TabsContent value="creator-config" className="space-y-6">
-              <CreatorPointsConfigPanel />
-            </TabsContent>
 
             <TabsContent value="changelog" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
@@ -5273,11 +5230,6 @@ export default function AdminPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
-              {/* Tags Editor */}
-              <div className="border-t border-border pt-4">
-                <LevelTagAssigner levelId={editingLevel.id} levelType="main" />
-              </div>
             </div>
             
             <div className="flex gap-2 justify-end pt-4">
@@ -5459,11 +5411,6 @@ export default function AdminPage() {
                   className="mt-1 bg-secondary border-border"
                 />
               </div>
-              
-              {/* Tags Editor */}
-              <div className="border-t border-border pt-4">
-                <LevelTagAssigner levelId={editingFutureLevel.id} levelType="future" />
-              </div>
             </div>
             
             <div className="flex gap-2 justify-end pt-4">
@@ -5626,11 +5573,6 @@ export default function AdminPage() {
                   placeholder="Alternative level IDs (comma or newline separated)&#10;Used for syncing completions from remakes"
                   className="mt-1 bg-secondary border-border min-h-[60px]"
                 />
-              </div>
-              
-              {/* Tags Editor */}
-              <div className="border-t border-border pt-4">
-                <LevelTagAssigner levelId={editingExtendedLevel.id} levelType="extra" />
               </div>
             </div>
             
@@ -5965,10 +5907,6 @@ export default function AdminPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Bulk Tag Manager */}
-      {bulkTagManagerOpen && (
-        <BulkTagAssigner onClose={() => setBulkTagManagerOpen(false)} />
-      )}
 
       {/* Move to Main Confirmation Dialog */}
       <AlertDialog open={!!moveToMainConfirm} onOpenChange={(open) => !open && setMoveToMainConfirm(null)}>

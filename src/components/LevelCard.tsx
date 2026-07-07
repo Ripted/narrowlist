@@ -1,11 +1,9 @@
 import { Link } from "react-router-dom";
 import { LevelDetails, formatTime } from "@/lib/api";
 import { getPointsForRank } from "@/config/levels";
-import { Trophy, User, Clock, Heart, Copy, Play, Shield, Check, Star, Gauge, Users } from "lucide-react";
+import { Trophy, User, Clock, Heart, Copy, Play, Shield, Check, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { LevelTagsList } from "@/components/LevelTagBadge";
-import { LevelTag } from "@/hooks/useLevelTags";
 
 interface LevelCardProps {
   level: LevelDetails;
@@ -14,7 +12,8 @@ interface LevelCardProps {
   verifierUsername?: string;
   isCompleted?: boolean;
   showCompletionStatus?: boolean;
-  tags?: LevelTag[];
+  // Deprecated community fields (still accepted for backward compatibility, ignored).
+  tags?: any[];
   avgRating?: number;
   ratingCount?: number;
   avgDifficulty?: number;
@@ -22,7 +21,7 @@ interface LevelCardProps {
   victorCount?: number;
 }
 
-export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompleted, showCompletionStatus, tags = [], avgRating, ratingCount, avgDifficulty, difficultyCount, victorCount }: LevelCardProps) {
+export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompleted, showCompletionStatus, victorCount }: LevelCardProps) {
   const { toast } = useToast();
   const points = getPointsForRank(rank);
   const { levelInfo, worldRecord } = level;
@@ -139,28 +138,7 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompl
             </p>
           </div>
 
-          {/* Tags - emoji only with text on hover */}
-          {tags.length > 0 && (
-            <LevelTagsList tags={tags} variant="card" emojiOnly={true} />
-          )}
-
-          {/* Rating & Difficulty badges */}
-          {((avgRating !== undefined && (ratingCount ?? 0) > 0) || (avgDifficulty !== undefined && (difficultyCount ?? 0) > 0)) && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {avgRating !== undefined && (ratingCount ?? 0) > 0 && (
-                <div className="flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium" title={`${ratingCount} rating${ratingCount === 1 ? "" : "s"}`}>
-                  <Star className="w-3 h-3 fill-current" />
-                  <span>{avgRating.toFixed(1)}</span>
-                </div>
-              )}
-              {avgDifficulty !== undefined && (difficultyCount ?? 0) > 0 && (
-                <div className="flex items-center gap-1 rounded-full bg-accent/10 text-accent px-2 py-0.5 text-xs font-medium" title={`${difficultyCount} difficulty vote${difficultyCount === 1 ? "" : "s"}`}>
-                  <Gauge className="w-3 h-3" />
-                  <span>D{avgDifficulty.toFixed(1)}</span>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Community tags, ratings, and difficulty badges removed */}
 
           <div className="flex items-center justify-between text-xs">
             <div className="flex items-center gap-3 text-muted-foreground">

@@ -23,7 +23,7 @@ import AdminPage from "./pages/AdminPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import PacksPage from "./pages/PacksPage";
 import HubPage from "./pages/HubPage";
-import HelpImprovePage from "./pages/HelpImprovePage";
+
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
 import NotFound from "./pages/NotFound";
@@ -56,7 +56,6 @@ const App = () => (
               <Route path="/guide" element={<GuidePage />} />
               <Route path="/themes" element={<ThemesPage />} />
               <Route path="/statistics" element={<StatisticsPage />} />
-              <Route path="/help-improve" element={<HelpImprovePage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/roulette" element={<LevelRoulettePage />} />
               <Route path="/packs" element={<PacksPage />} />
