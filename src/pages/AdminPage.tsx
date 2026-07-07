@@ -2563,20 +2563,15 @@ export default function AdminPage() {
     e.preventDefault();
     setFutureDragOverIndex(index);
   };
-  const handleFutureDrop = async (targetIndex: number) => {
-    if (futureDraggedIndex === null || futureDraggedIndex === targetIndex) {
-      setFutureDraggedIndex(null);
-      setFutureDragOverIndex(null);
-      return;
-    }
-    const sorted = [...futureLevels].sort((a, b) => a.rank_position - b.rank_position);
-    const [item] = sorted.splice(futureDraggedIndex, 1);
-    sorted.splice(targetIndex, 0, item);
-    const updated = sorted.map((f, i) => ({ ...f, rank_position: i + 1 }));
-    setFutureLevels(updated);
+  const handleFutureDrop = async (_targetIndex: number) => {
+    // Future list ranks are freeform (e.g. 1, 1, 1, 10, 30) — drag-reorder is disabled.
+    // Use the rank input on each row to change a specific level's estimated rank.
     setFutureDraggedIndex(null);
     setFutureDragOverIndex(null);
-    await updateFutureRanks(updated);
+    toast({
+      title: "Drag disabled on Future List",
+      description: "Edit a level's estimated rank using its rank input instead.",
+    });
   };
   const handleFutureDragEnd = () => {
     setFutureDraggedIndex(null);
