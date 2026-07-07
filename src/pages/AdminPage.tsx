@@ -3099,29 +3099,12 @@ export default function AdminPage() {
                   <Bell className="w-3 h-3 hidden sm:inline" />
                   Webhooks
                 </TabsTrigger>
-                <TabsTrigger value="tags" className="text-xs sm:text-sm flex-shrink-0">
-                  <Tag className="w-3 h-3 hidden sm:inline" />
-                  Tag Presets
-                </TabsTrigger>
                 <TabsTrigger value="packs" className="text-xs sm:text-sm flex-shrink-0">
                   <Package className="w-3 h-3 hidden sm:inline" />
                   Packs
                 </TabsTrigger>
-                <TabsTrigger value="creator-config" className="text-xs sm:text-sm flex-shrink-0">
-                  <Hammer className="w-3 h-3 hidden sm:inline" />
-                  Creator Pts
-                </TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setBulkTagManagerOpen(true)}
-                className="gap-1 flex-shrink-0"
-              >
-                <Tag className="w-4 h-4" />
-                <span className="hidden sm:inline">Bulk Tags</span>
-              </Button>
             </div>
 
             {/* Level Submissions Tab */}
