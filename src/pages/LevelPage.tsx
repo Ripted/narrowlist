@@ -43,7 +43,7 @@ export default function LevelPage() {
   const [manualRuns, setManualRuns] = useState<ManualRunEntry[]>([]);
   const [sortMode, setSortMode] = useState<"time" | "date">("time");
   const [packsContaining, setPacksContaining] = useState<{ id: string; name: string; cover_url: string | null }[]>([]);
-  const { data: levelTags = [] } = useLevelTags(levelDbId);
+  const levelTags: any[] = [];
   const [historicalCutoff, setHistoricalCutoff] = useState<string | null>(getPersistedHistoricalDate());
 
   useEffect(() => {
