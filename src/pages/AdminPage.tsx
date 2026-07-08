@@ -434,6 +434,14 @@ export default function AdminPage() {
   const [mergingProfiles, setMergingProfiles] = useState(false);
   const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
 
+  // Hard delete profile (moderation)
+  const [hardDeleteSearch, setHardDeleteSearch] = useState("");
+  const [hardDeleteSelectedId, setHardDeleteSelectedId] = useState<string | null>(null);
+  const [hardDeleteConfirmOpen, setHardDeleteConfirmOpen] = useState(false);
+  const [hardDeleting, setHardDeleting] = useState(false);
+  const [deletedProfileArchive, setDeletedProfileArchive] = useState<DeletedProfileArchive[]>([]);
+  const [restoringArchiveId, setRestoringArchiveId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && !isAdmin) {
       toast({ title: "Access Denied", description: "Admin privileges required", variant: "destructive" });
