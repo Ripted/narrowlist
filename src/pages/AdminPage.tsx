@@ -136,6 +136,17 @@ interface Profile {
   id: string;
   username: string;
   display_name: string | null;
+  total_points?: number | null;
+  extra_points?: number | null;
+}
+
+interface DeletedProfileArchive {
+  id: string;
+  original_profile_id: string;
+  username: string;
+  deleted_by_email: string | null;
+  deleted_at: string;
+  restored_at: string | null;
 }
 
 interface LevelSubmission {
