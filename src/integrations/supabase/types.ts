@@ -203,6 +203,39 @@ export type Database = {
         }
         Relationships: []
       }
+      deleted_profiles_archive: {
+        Row: {
+          deleted_at: string
+          deleted_by: string | null
+          deleted_by_email: string | null
+          id: string
+          original_profile_id: string
+          restored_at: string | null
+          snapshot: Json
+          username: string
+        }
+        Insert: {
+          deleted_at?: string
+          deleted_by?: string | null
+          deleted_by_email?: string | null
+          id?: string
+          original_profile_id: string
+          restored_at?: string | null
+          snapshot: Json
+          username: string
+        }
+        Update: {
+          deleted_at?: string
+          deleted_by?: string | null
+          deleted_by_email?: string | null
+          id?: string
+          original_profile_id?: string
+          restored_at?: string | null
+          snapshot?: Json
+          username?: string
+        }
+        Relationships: []
+      }
       discord_notifications: {
         Row: {
           completion_id: string
@@ -1237,6 +1270,11 @@ export type Database = {
         }
         Returns: string
       }
+      admin_hard_delete_profile: {
+        Args: { _profile_id: string }
+        Returns: string
+      }
+      admin_restore_profile: { Args: { _archive_id: string }; Returns: string }
       calculate_extra_points_for_rank: {
         Args: { rank_position: number }
         Returns: number
