@@ -5000,6 +5000,11 @@ export default function AdminPage() {
               <LevelPacksManager />
             </TabsContent>
 
+            <TabsContent value="tag-presets" className="space-y-6">
+              <TagPresetsManager />
+            </TabsContent>
+
+
 
             <TabsContent value="changelog" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
