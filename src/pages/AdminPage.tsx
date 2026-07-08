@@ -464,6 +464,7 @@ export default function AdminPage() {
       fetchBannedUsers();
       fetchDeletedLevels();
       fetchWebhookSettings();
+      fetchDeletedProfileArchive();
     }
   }, [isAdmin]);
 
