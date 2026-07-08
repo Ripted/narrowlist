@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
+import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import { HtsCupManager } from "@/components/admin/HtsCupManager";
 import { BugReportsAdmin } from "@/components/admin/BugReportsAdmin";
 import { extractLevelId } from "@/lib/extractLevelId";
@@ -136,6 +137,17 @@ interface Profile {
   id: string;
   username: string;
   display_name: string | null;
+  total_points?: number | null;
+  extra_points?: number | null;
+}
+
+interface DeletedProfileArchive {
+  id: string;
+  original_profile_id: string;
+  username: string;
+  deleted_by_email: string | null;
+  deleted_at: string;
+  restored_at: string | null;
 }
 
 interface LevelSubmission {
@@ -423,6 +435,14 @@ export default function AdminPage() {
   const [mergingProfiles, setMergingProfiles] = useState(false);
   const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
 
+  // Hard delete profile (moderation)
+  const [hardDeleteSearch, setHardDeleteSearch] = useState("");
+  const [hardDeleteSelectedId, setHardDeleteSelectedId] = useState<string | null>(null);
+  const [hardDeleteConfirmOpen, setHardDeleteConfirmOpen] = useState(false);
+  const [hardDeleting, setHardDeleting] = useState(false);
+  const [deletedProfileArchive, setDeletedProfileArchive] = useState<DeletedProfileArchive[]>([]);
+  const [restoringArchiveId, setRestoringArchiveId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && !isAdmin) {
       toast({ title: "Access Denied", description: "Admin privileges required", variant: "destructive" });
@@ -445,6 +465,7 @@ export default function AdminPage() {
       fetchBannedUsers();
       fetchDeletedLevels();
       fetchWebhookSettings();
+      fetchDeletedProfileArchive();
     }
   }, [isAdmin]);
 
@@ -955,10 +976,60 @@ export default function AdminPage() {
   const fetchAllProfiles = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, username, display_name")
+      .select("id, username, display_name, total_points, extra_points")
       .order("username");
     
-    if (data) setAllProfiles(data);
+    if (data) setAllProfiles(data as any);
+  };
+
+  const fetchDeletedProfileArchive = async () => {
+    const { data, error } = await (supabase as any)
+      .from("deleted_profiles_archive")
+      .select("id, original_profile_id, username, deleted_by_email, deleted_at, restored_at")
+      .is("restored_at", null)
+      .order("deleted_at", { ascending: false });
+    if (!error && data) setDeletedProfileArchive(data as DeletedProfileArchive[]);
+  };
+
+  const hardDeleteProfile = async () => {
+    if (!hardDeleteSelectedId) return;
+    setHardDeleting(true);
+    try {
+      const target = allProfiles.find(p => p.id === hardDeleteSelectedId);
+      const { error } = await (supabase as any).rpc("admin_hard_delete_profile", { _profile_id: hardDeleteSelectedId });
+      if (error) throw error;
+      await logAction("Hard-deleted profile", `${target?.username || hardDeleteSelectedId}`);
+      toast({ title: "Profile deleted", description: `${target?.username || hardDeleteSelectedId} and all their runs were removed. Restorable from the archive.` });
+      setHardDeleteSelectedId(null);
+      setHardDeleteSearch("");
+      setHardDeleteConfirmOpen(false);
+      fetchAllProfiles();
+      fetchApprovedPlayers();
+      fetchManualRuns();
+      fetchDeletedProfileArchive();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setHardDeleting(false);
+    }
+  };
+
+  const restoreDeletedProfile = async (archiveId: string, username: string) => {
+    setRestoringArchiveId(archiveId);
+    try {
+      const { error } = await (supabase as any).rpc("admin_restore_profile", { _archive_id: archiveId });
+      if (error) throw error;
+      await logAction("Restored profile", username);
+      toast({ title: "Profile restored", description: `${username} was restored with all their runs.` });
+      fetchAllProfiles();
+      fetchApprovedPlayers();
+      fetchManualRuns();
+      fetchDeletedProfileArchive();
+    } catch (err: any) {
+      toast({ title: "Restore failed", description: err.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setRestoringArchiveId(null);
+    }
   };
 
   const fetchLevelSubmissions = async () => {
@@ -3098,6 +3169,10 @@ export default function AdminPage() {
                   <Package className="w-3 h-3 hidden sm:inline" />
                   Packs
                 </TabsTrigger>
+                <TabsTrigger value="tag-presets" className="text-xs sm:text-sm flex-shrink-0">
+                  <Tag className="w-3 h-3 hidden sm:inline" />
+                  Tag Presets
+                </TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
             </div>
@@ -4432,6 +4507,135 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {/* Hard Delete Profile (Moderation) */}
+              <div className="rounded-lg bg-card border-2 border-destructive/40 p-4 md:p-6">
+                <h2 className="font-display text-lg font-bold mb-2 flex items-center gap-2 text-destructive">
+                  <UserX className="w-5 h-5" />
+                  Hard Delete Profile (Moderation)
+                </h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Removes the profile and ALL their completions, manual runs, extra completions, claim requests, and watchlist entries.
+                  A full snapshot is archived so you can restore later.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2">
+                    <Label className="text-xs text-muted-foreground mb-1 block">
+                      Search player (username / display name). List is ranked by total points.
+                    </Label>
+                    <Input
+                      placeholder="Type a username..."
+                      value={hardDeleteSearch}
+                      onChange={(e) => { setHardDeleteSearch(e.target.value); setHardDeleteSelectedId(null); }}
+                      className="bg-secondary border-border"
+                    />
+                    {(() => {
+                      const ranked = [...allProfiles]
+                        .sort((a, b) => (b.total_points ?? 0) - (a.total_points ?? 0))
+                        .map((p, i) => ({ ...p, rank: i + 1 }));
+                      const q = hardDeleteSearch.trim().toLowerCase();
+                      const matches = q
+                        ? ranked.filter(p =>
+                            p.username.toLowerCase().includes(q) ||
+                            (p.display_name || "").toLowerCase().includes(q)
+                          ).slice(0, 20)
+                        : [];
+                      const selected = ranked.find(p => p.id === hardDeleteSelectedId);
+                      if (selected) {
+                        return (
+                          <div className="mt-2 flex items-center justify-between rounded-md border border-primary/50 bg-primary/5 px-3 py-2 text-sm">
+                            <span>
+                              <span className="font-mono text-primary">#{selected.rank}</span>{" "}
+                              <span className="font-medium">@{selected.username}</span>
+                              {selected.display_name && selected.display_name !== selected.username && (
+                                <span className="text-muted-foreground"> ({selected.display_name})</span>
+                              )}
+                              <span className="text-muted-foreground"> • {selected.total_points ?? 0} pts</span>
+                            </span>
+                            <Button size="sm" variant="ghost" onClick={() => { setHardDeleteSelectedId(null); setHardDeleteSearch(""); }}>
+                              Change
+                            </Button>
+                          </div>
+                        );
+                      }
+                      if (!q) return null;
+                      if (matches.length === 0) {
+                        return <div className="mt-2 text-sm text-muted-foreground">No matches.</div>;
+                      }
+                      return (
+                        <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                          {matches.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => { setHardDeleteSelectedId(p.id); setHardDeleteSearch(p.username); }}
+                              className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-secondary/50"
+                            >
+                              <span className="font-mono text-primary w-12 flex-shrink-0">#{p.rank}</span>
+                              <span className="flex-1 truncate">
+                                <span className="font-medium">@{p.username}</span>
+                                {p.display_name && p.display_name !== p.username && (
+                                  <span className="text-muted-foreground"> ({p.display_name})</span>
+                                )}
+                              </span>
+                              <span className="text-xs text-muted-foreground">{p.total_points ?? 0} pts</span>
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div className="flex items-end">
+                    <Button
+                      variant="destructive"
+                      className="w-full gap-2"
+                      disabled={!hardDeleteSelectedId || hardDeleting}
+                      onClick={() => setHardDeleteConfirmOpen(true)}
+                    >
+                      <UserX className="w-4 h-4" />
+                      {hardDeleting ? "Deleting..." : "Delete Profile + All Runs"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Deleted Profiles Archive (Restore) */}
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-destructive/10 flex items-center justify-between gap-3">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2 text-destructive">
+                    <RotateCcw className="w-5 h-5" />
+                    Deleted Profiles Archive
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                      {deletedProfileArchive.length} archived
+                    </span>
+                  </h2>
+                </div>
+                {deletedProfileArchive.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">No archived profile deletions.</div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {deletedProfileArchive.map((a) => (
+                      <div key={a.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground truncate">@{a.username}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Deleted by {a.deleted_by_email || "unknown"} on {new Date(a.deleted_at).toLocaleString()}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="gap-2 flex-shrink-0"
+                          disabled={restoringArchiveId === a.id}
+                          onClick={() => restoreDeletedProfile(a.id, a.username)}
+                        >
+                          {restoringArchiveId === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                          Restore
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Approved Players List */}
               <div className="rounded-lg bg-card border border-border overflow-hidden">
                 <div className="p-4 border-b border-border bg-secondary/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -4796,6 +5000,11 @@ export default function AdminPage() {
             <TabsContent value="packs" className="space-y-6">
               <LevelPacksManager />
             </TabsContent>
+
+            <TabsContent value="tag-presets" className="space-y-6">
+              <TagPresetsManager />
+            </TabsContent>
+
 
 
             <TabsContent value="changelog" className="space-y-6">
@@ -6037,6 +6246,48 @@ export default function AdminPage() {
               className="bg-primary hover:bg-primary/90"
             >
               {mergingProfiles ? "Merging..." : "Confirm Merge"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Hard Delete Profile Confirmation */}
+      <AlertDialog open={hardDeleteConfirmOpen} onOpenChange={setHardDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Hard Delete Profile
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              {(() => {
+                const selected = allProfiles.find(p => p.id === hardDeleteSelectedId);
+                if (!selected) return <p>No profile selected.</p>;
+                return (
+                  <>
+                    <p>You are about to permanently remove:</p>
+                    <div className="text-center p-3 bg-destructive/10 rounded-lg">
+                      <div className="text-lg font-bold text-destructive">@{selected.username}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {selected.total_points ?? 0} main pts • {selected.extra_points ?? 0} extra pts
+                      </div>
+                    </div>
+                    <p className="text-sm text-destructive">
+                      ⚠️ This deletes the profile plus ALL their completions, manual runs, extra completions, claim requests, and watchlist entries. A snapshot is saved to the archive so you can restore it.
+                    </p>
+                  </>
+                );
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={hardDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={hardDeleteProfile}
+              disabled={hardDeleting || !hardDeleteSelectedId}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {hardDeleting ? "Deleting..." : "Confirm Hard Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
