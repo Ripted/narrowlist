@@ -1040,7 +1040,7 @@ export default function PlayerPage() {
                   <div className="divide-y divide-border">
                     {createdLevels.map((level: any) => (
                       <Link key={level.id} to={`/level/${level.level_id}`} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
-                        <div className="w-12 text-center flex-shrink-0">
+                        <div className="w-16 text-center flex-shrink-0">
                           <span className={`font-display font-bold text-lg ${level.rank_position === 1 ? "rank-gold" : level.rank_position === 2 ? "rank-silver" : level.rank_position === 3 ? "rank-bronze" : "text-muted-foreground"}`}>
                             #{level.rank_position}
                           </span>
@@ -1052,18 +1052,34 @@ export default function PlayerPage() {
                         )}
                         <div className="flex-1 min-w-0">
                           <span className="font-medium text-foreground truncate block">{level.name || level.level_id}</span>
+                          <span className="text-xs text-muted-foreground">Main list</span>
                         </div>
-                        {(() => {
-                          const agg = ratingsAgg?.get(level.id);
-                          const hasRating = !!(agg && agg.count > 0);
-                          const creatorPts = mainLevelCreatorPoints(agg?.avg_overall, agg?.count, creatorConfig);
-                          return (
-                            <div className="flex items-center gap-1 text-primary" title={hasRating ? "Creator points" : `Creator points (unrated → treated as ${creatorConfig.default_unrated_rating}/10)`}>
-                              <Hammer className="w-4 h-4" />
-                              <span className="font-mono font-bold">{creatorPts.toFixed(1)}</span>
-                            </div>
-                          );
-                        })()}
+                        <div className="flex items-center gap-1 text-primary" title="Creator points">
+                          <Hammer className="w-4 h-4" />
+                          <span className="font-mono font-bold">1</span>
+                        </div>
+                      </Link>
+                    ))}
+                    {createdExtraLevels.map((level: any) => (
+                      <Link key={level.id} to={`/level/${level.level_id}`} className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
+                        <div className="w-16 text-center flex-shrink-0">
+                          <span className="font-display font-bold text-sm text-muted-foreground">
+                            Extra #{level.rank_position}
+                          </span>
+                        </div>
+                        {level.thumbnail_url && (
+                          <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0">
+                            <img src={level.thumbnail_url} alt={level.name} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-foreground truncate block">{level.name || level.level_id}</span>
+                          <span className="text-xs text-muted-foreground">Extra list</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-muted-foreground" title="Extra list levels give 0 creator points">
+                          <Hammer className="w-4 h-4" />
+                          <span className="font-mono font-bold">0</span>
+                        </div>
                       </Link>
                     ))}
                   </div>
