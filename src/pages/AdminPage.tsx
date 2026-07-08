@@ -974,10 +974,60 @@ export default function AdminPage() {
   const fetchAllProfiles = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, username, display_name")
+      .select("id, username, display_name, total_points, extra_points")
       .order("username");
     
-    if (data) setAllProfiles(data);
+    if (data) setAllProfiles(data as any);
+  };
+
+  const fetchDeletedProfileArchive = async () => {
+    const { data, error } = await (supabase as any)
+      .from("deleted_profiles_archive")
+      .select("id, original_profile_id, username, deleted_by_email, deleted_at, restored_at")
+      .is("restored_at", null)
+      .order("deleted_at", { ascending: false });
+    if (!error && data) setDeletedProfileArchive(data as DeletedProfileArchive[]);
+  };
+
+  const hardDeleteProfile = async () => {
+    if (!hardDeleteSelectedId) return;
+    setHardDeleting(true);
+    try {
+      const target = allProfiles.find(p => p.id === hardDeleteSelectedId);
+      const { error } = await (supabase as any).rpc("admin_hard_delete_profile", { _profile_id: hardDeleteSelectedId });
+      if (error) throw error;
+      await logAction("Hard-deleted profile", `${target?.username || hardDeleteSelectedId}`);
+      toast({ title: "Profile deleted", description: `${target?.username || hardDeleteSelectedId} and all their runs were removed. Restorable from the archive.` });
+      setHardDeleteSelectedId(null);
+      setHardDeleteSearch("");
+      setHardDeleteConfirmOpen(false);
+      fetchAllProfiles();
+      fetchApprovedPlayers();
+      fetchManualRuns();
+      fetchDeletedProfileArchive();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setHardDeleting(false);
+    }
+  };
+
+  const restoreDeletedProfile = async (archiveId: string, username: string) => {
+    setRestoringArchiveId(archiveId);
+    try {
+      const { error } = await (supabase as any).rpc("admin_restore_profile", { _archive_id: archiveId });
+      if (error) throw error;
+      await logAction("Restored profile", username);
+      toast({ title: "Profile restored", description: `${username} was restored with all their runs.` });
+      fetchAllProfiles();
+      fetchApprovedPlayers();
+      fetchManualRuns();
+      fetchDeletedProfileArchive();
+    } catch (err: any) {
+      toast({ title: "Restore failed", description: err.message || "Unknown error", variant: "destructive" });
+    } finally {
+      setRestoringArchiveId(null);
+    }
   };
 
   const fetchLevelSubmissions = async () => {
