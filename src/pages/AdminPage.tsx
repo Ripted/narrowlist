@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
+import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import { HtsCupManager } from "@/components/admin/HtsCupManager";
 import { BugReportsAdmin } from "@/components/admin/BugReportsAdmin";
 import { extractLevelId } from "@/lib/extractLevelId";
