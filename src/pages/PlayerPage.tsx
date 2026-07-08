@@ -1025,7 +1025,7 @@ export default function PlayerPage() {
               </TabsContent>
             )}
 
-            {createdLevels.length > 0 && (
+            {(createdLevels.length > 0 || createdExtraLevels.length > 0) && (
               <TabsContent value="created" className="mt-0">
                 <div className="rounded-xl bg-card border border-border overflow-hidden">
                   <div className="p-4 border-b border-border bg-secondary/30">
