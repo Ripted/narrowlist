@@ -3168,6 +3168,10 @@ export default function AdminPage() {
                   <Package className="w-3 h-3 hidden sm:inline" />
                   Packs
                 </TabsTrigger>
+                <TabsTrigger value="tag-presets" className="text-xs sm:text-sm flex-shrink-0">
+                  <Tag className="w-3 h-3 hidden sm:inline" />
+                  Tag Presets
+                </TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
             </div>
