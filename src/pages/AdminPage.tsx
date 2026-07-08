@@ -6240,6 +6240,48 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Hard Delete Profile Confirmation */}
+      <AlertDialog open={hardDeleteConfirmOpen} onOpenChange={setHardDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Hard Delete Profile
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              {(() => {
+                const selected = allProfiles.find(p => p.id === hardDeleteSelectedId);
+                if (!selected) return <p>No profile selected.</p>;
+                return (
+                  <>
+                    <p>You are about to permanently remove:</p>
+                    <div className="text-center p-3 bg-destructive/10 rounded-lg">
+                      <div className="text-lg font-bold text-destructive">@{selected.username}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {selected.total_points ?? 0} main pts • {selected.extra_points ?? 0} extra pts
+                      </div>
+                    </div>
+                    <p className="text-sm text-destructive">
+                      ⚠️ This deletes the profile plus ALL their completions, manual runs, extra completions, claim requests, and watchlist entries. A snapshot is saved to the archive so you can restore it.
+                    </p>
+                  </>
+                );
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={hardDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={hardDeleteProfile}
+              disabled={hardDeleting || !hardDeleteSelectedId}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {hardDeleting ? "Deleting..." : "Confirm Hard Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
