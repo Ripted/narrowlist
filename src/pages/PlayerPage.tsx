@@ -825,10 +825,10 @@ export default function PlayerPage() {
                   Extra ({extraCompletions.length})
                 </TabsTrigger>
               )}
-              {createdLevels.length > 0 && (
+              {(createdLevels.length > 0 || createdExtraLevels.length > 0) && (
                 <TabsTrigger value="created" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                   <Hammer className="w-4 h-4" />
-                  Created ({createdLevels.length})
+                  Created ({createdLevels.length + createdExtraLevels.length})
                 </TabsTrigger>
               )}
             </TabsList>
