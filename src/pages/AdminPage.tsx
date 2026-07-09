@@ -451,35 +451,10 @@ export default function AdminPage() {
       fetchRunSubmissions();
       fetchBannedUsers();
       fetchDeletedLevels();
-      fetchWebhookSettings();
       fetchDeletedProfileArchive();
     }
   }, [isAdmin]);
 
-  const fetchWebhookSettings = async () => {
-    const { data } = await supabase
-      .from("webhook_settings")
-      .select("*")
-      .order("webhook_type");
-    
-    if (data) setWebhookSettings(data as WebhookSettings[]);
-  };
-
-  const updateWebhookSetting = async (id: string, updates: Partial<WebhookSettings>) => {
-    setSavingWebhook(id);
-    const { error } = await supabase
-      .from("webhook_settings")
-      .update(updates)
-      .eq("id", id);
-    
-    if (error) {
-      toast({ title: "Error", description: "Failed to update webhook settings", variant: "destructive" });
-    } else {
-      toast({ title: "Saved", description: "Webhook settings updated" });
-      fetchWebhookSettings();
-    }
-    setSavingWebhook(null);
-  };
 
   const sendAdminNotification = async (eventType: string, levelName: string, oldRank?: number, newRank?: number, listType?: string, action?: string) => {
     try {
