@@ -407,10 +407,6 @@ export default function AdminPage() {
   const [addingManualRun, setAddingManualRun] = useState(false);
   const manualRunProofInputRef = useRef<HTMLInputElement>(null);
   
-  // Webhook settings
-  const [webhookSettings, setWebhookSettings] = useState<WebhookSettings[]>([]);
-  const [savingWebhook, setSavingWebhook] = useState<string | null>(null);
-  const [webhookLocalEdits, setWebhookLocalEdits] = useState<Record<string, { webhook_url?: string; custom_message_template?: string | null }>>({});
   
   // Rank confirmation dialog
   const [rankConfirmLevel, setRankConfirmLevel] = useState<Level | null>(null);
