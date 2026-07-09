@@ -27,7 +27,7 @@ import HubPage from "./pages/HubPage";
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
 import NotFound from "./pages/NotFound";
-import { BugReportButton } from "./components/BugReportButton";
+
 
 const queryClient = new QueryClient();
 
