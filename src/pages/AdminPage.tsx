@@ -3141,8 +3141,6 @@ export default function AdminPage() {
                     </span>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
-                <TabsTrigger value="bugs" className="text-xs sm:text-sm flex-shrink-0">Bugs</TabsTrigger>
                 <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
                 <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Lists</span>
                 <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
