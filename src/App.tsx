@@ -27,7 +27,7 @@ import HubPage from "./pages/HubPage";
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
 import NotFound from "./pages/NotFound";
-import { BugReportButton } from "./components/BugReportButton";
+
 
 const queryClient = new QueryClient();
 
@@ -65,7 +65,7 @@ const App = () => (
               <Route path="/admin" element={<AdminPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            <BugReportButton />
+            
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

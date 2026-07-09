@@ -14,11 +14,9 @@ import {
   ImagePlus, Loader2, UserCheck, UserX, Clock, Users, Mail, Hourglass, History,
   ListCollapse, List, Play, Send, MessageSquare, ExternalLink, FileVideo, Search, RotateCcw, Bell, Settings, Tag, Clipboard, ClipboardPaste, Package, Hammer
 } from "lucide-react";
-import { LevelFeedbackAdmin } from "@/components/admin/LevelFeedbackAdmin";
 import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
 import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import { HtsCupManager } from "@/components/admin/HtsCupManager";
-import { BugReportsAdmin } from "@/components/admin/BugReportsAdmin";
 import { extractLevelId } from "@/lib/extractLevelId";
 import {
   AlertDialog,
@@ -207,13 +205,6 @@ interface DeletedLevel {
   deleted_by_email: string;
 }
 
-interface WebhookSettings {
-  id: string;
-  webhook_type: string;
-  webhook_url: string;
-  enabled: boolean;
-  custom_message_template: string | null;
-}
 
 interface AdminLevelApiResponse {
   levelInfo?: {
@@ -416,10 +407,6 @@ export default function AdminPage() {
   const [addingManualRun, setAddingManualRun] = useState(false);
   const manualRunProofInputRef = useRef<HTMLInputElement>(null);
   
-  // Webhook settings
-  const [webhookSettings, setWebhookSettings] = useState<WebhookSettings[]>([]);
-  const [savingWebhook, setSavingWebhook] = useState<string | null>(null);
-  const [webhookLocalEdits, setWebhookLocalEdits] = useState<Record<string, { webhook_url?: string; custom_message_template?: string | null }>>({});
   
   // Rank confirmation dialog
   const [rankConfirmLevel, setRankConfirmLevel] = useState<Level | null>(null);
@@ -464,35 +451,10 @@ export default function AdminPage() {
       fetchRunSubmissions();
       fetchBannedUsers();
       fetchDeletedLevels();
-      fetchWebhookSettings();
       fetchDeletedProfileArchive();
     }
   }, [isAdmin]);
 
-  const fetchWebhookSettings = async () => {
-    const { data } = await supabase
-      .from("webhook_settings")
-      .select("*")
-      .order("webhook_type");
-    
-    if (data) setWebhookSettings(data as WebhookSettings[]);
-  };
-
-  const updateWebhookSetting = async (id: string, updates: Partial<WebhookSettings>) => {
-    setSavingWebhook(id);
-    const { error } = await supabase
-      .from("webhook_settings")
-      .update(updates)
-      .eq("id", id);
-    
-    if (error) {
-      toast({ title: "Error", description: "Failed to update webhook settings", variant: "destructive" });
-    } else {
-      toast({ title: "Saved", description: "Webhook settings updated" });
-      fetchWebhookSettings();
-    }
-    setSavingWebhook(null);
-  };
 
   const sendAdminNotification = async (eventType: string, levelName: string, oldRank?: number, newRank?: number, listType?: string, action?: string) => {
     try {
@@ -3143,8 +3105,6 @@ export default function AdminPage() {
                     </span>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="feedback" className="text-xs sm:text-sm flex-shrink-0">Feedback</TabsTrigger>
-                <TabsTrigger value="bugs" className="text-xs sm:text-sm flex-shrink-0">Bugs</TabsTrigger>
                 <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
                 <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Lists</span>
                 <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
@@ -3161,10 +3121,6 @@ export default function AdminPage() {
                 <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
                 <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
                 <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">System</span>
-                <TabsTrigger value="webhooks" className="text-xs sm:text-sm flex-shrink-0">
-                  <Bell className="w-3 h-3 hidden sm:inline" />
-                  Webhooks
-                </TabsTrigger>
                 <TabsTrigger value="packs" className="text-xs sm:text-sm flex-shrink-0">
                   <Package className="w-3 h-3 hidden sm:inline" />
                   Packs
@@ -3173,6 +3129,7 @@ export default function AdminPage() {
                   <Tag className="w-3 h-3 hidden sm:inline" />
                   Tag Presets
                 </TabsTrigger>
+                <TabsTrigger value="htscup" className="text-xs sm:text-sm flex-shrink-0">HTS Cup</TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
             </div>
@@ -4450,10 +4407,6 @@ export default function AdminPage() {
               </div>
             </TabsContent>
 
-            {/* Feedback Tab */}
-            <TabsContent value="feedback" className="space-y-6">
-              <LevelFeedbackAdmin />
-            </TabsContent>
 
             <TabsContent value="players" className="space-y-6">
               {/* Profile Merge Tool */}
@@ -4828,155 +4781,8 @@ export default function AdminPage() {
               </div>
             </TabsContent>
 
-            {/* Webhooks Tab */}
-            <TabsContent value="webhooks" className="space-y-6">
-              <div className="rounded-lg bg-card border border-border overflow-hidden">
-                <div className="p-4 border-b border-border bg-secondary/30">
-                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-primary" />
-                    Discord Webhook Settings
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Configure individual Discord webhooks for each event type with customizable message templates
-                  </p>
-                </div>
-
-                <div className="p-4 space-y-6">
-                  {webhookSettings.map((webhook) => {
-                    const typeLabels: Record<string, { label: string; description: string; icon: React.ReactNode }> = {
-                      main_completions: { label: 'Main List Completions', description: 'Completions & verifications on the main list (ranks 1-100)', icon: <Play className="w-5 h-5 text-primary" /> },
-                      extended_completions: { label: 'Extended List Completions', description: 'Completions on levels ranked 101+', icon: <List className="w-5 h-5 text-accent" /> },
-                      extra_completions: { label: 'Extra List Completions', description: 'Completions on Extra List levels', icon: <ListCollapse className="w-5 h-5 text-accent" /> },
-                      rank_changes: { label: 'Rank Changes & Admin Actions', description: 'Level rank changes, additions, deletions, transfers', icon: <Settings className="w-5 h-5 text-accent" /> },
-                    };
-                    const info = typeLabels[webhook.webhook_type] || { label: webhook.webhook_type, description: '', icon: <Bell className="w-5 h-5" /> };
-                    
-                    return (
-                      <div key={webhook.id} className="p-4 bg-secondary/30 rounded-lg space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-primary/20">
-                              {info.icon}
-                            </div>
-                            <div>
-                              <h3 className="font-display font-semibold">{info.label}</h3>
-                              <p className="text-xs text-muted-foreground">{info.description}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs px-2 py-1 rounded ${webhook.enabled ? 'bg-green-500/20 text-green-500' : 'bg-muted text-muted-foreground'}`}>
-                              {webhook.enabled ? 'Enabled' : 'Disabled'}
-                            </span>
-                            <Button
-                              size="sm"
-                              variant={webhook.enabled ? "outline" : "default"}
-                              onClick={() => updateWebhookSetting(webhook.id, { enabled: !webhook.enabled })}
-                              disabled={savingWebhook === webhook.id}
-                            >
-                              {webhook.enabled ? 'Disable' : 'Enable'}
-                            </Button>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3">
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Webhook URL</Label>
-                            <Input
-                              value={webhookLocalEdits[webhook.id]?.webhook_url ?? webhook.webhook_url}
-                              onChange={(e) => setWebhookLocalEdits(prev => ({
-                                ...prev,
-                                [webhook.id]: { ...prev[webhook.id], webhook_url: e.target.value }
-                              }))}
-                              className="mt-1 bg-background border-border text-xs font-mono"
-                              placeholder="https://discord.com/api/webhooks/..."
-                            />
-                          </div>
-
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Message Template</Label>
-                            <Textarea
-                              value={webhookLocalEdits[webhook.id]?.custom_message_template ?? webhook.custom_message_template ?? ""}
-                              onChange={(e) => setWebhookLocalEdits(prev => ({
-                                ...prev,
-                                [webhook.id]: { ...prev[webhook.id], custom_message_template: e.target.value || null }
-                              }))}
-                              className="mt-1 bg-background border-border text-xs font-mono min-h-[80px]"
-                              placeholder="Enter a message template using variables below..."
-                            />
-                            <div className="mt-2 p-3 bg-muted/50 rounded-lg">
-                              <Label className="text-xs text-muted-foreground block mb-2">Available Variables:</Label>
-                              <div className="grid grid-cols-2 gap-1 text-xs">
-                                {webhook.webhook_type.includes('completions') ? (
-                                  <>
-                                    <span className="font-mono text-primary">{'{user}'}</span>
-                                    <span className="text-muted-foreground">Player username</span>
-                                    <span className="font-mono text-primary">{'{levelName}'}</span>
-                                    <span className="text-muted-foreground">Level name</span>
-                                    <span className="font-mono text-primary">{'{levelRank}'}</span>
-                                    <span className="text-muted-foreground">Level rank position</span>
-                                    <span className="font-mono text-primary">{'{completionTime}'}</span>
-                                    <span className="text-muted-foreground">Formatted time</span>
-                                    <span className="font-mono text-primary">{'{arrow}'}</span>
-                                    <span className="text-muted-foreground">Arrow emoji</span>
-                                    <span className="font-mono text-primary">{'{action}'}</span>
-                                    <span className="text-muted-foreground">"completed" or "verified"</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="font-mono text-primary">{'{levelName}'}</span>
-                                    <span className="text-muted-foreground">Level name</span>
-                                    <span className="font-mono text-primary">{'{oldRank}'}</span>
-                                    <span className="text-muted-foreground">Previous rank</span>
-                                    <span className="font-mono text-primary">{'{newRank}'}</span>
-                                    <span className="text-muted-foreground">New rank</span>
-                                    <span className="font-mono text-primary">{'{emoji}'}</span>
-                                    <span className="text-muted-foreground">Auto emoji based on event</span>
-                                    <span className="font-mono text-primary">{'{listType}'}</span>
-                                    <span className="text-muted-foreground">Main, Extended, or Extra</span>
-                                    <span className="font-mono text-primary">{'{action}'}</span>
-                                    <span className="text-muted-foreground">added, deleted, moved, transferred</span>
-                                    <span className="font-mono text-primary">{'{adminEmail}'}</span>
-                                    <span className="text-muted-foreground">Admin who performed action</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Save button for URL/template changes */}
-                          {webhookLocalEdits[webhook.id] && (
-                            <div className="flex justify-end pt-2">
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  const edits = webhookLocalEdits[webhook.id];
-                                  updateWebhookSetting(webhook.id, edits);
-                                  setWebhookLocalEdits(prev => {
-                                    const next = { ...prev };
-                                    delete next[webhook.id];
-                                    return next;
-                                  });
-                                }}
-                                disabled={savingWebhook === webhook.id}
-                              >
-                                {savingWebhook === webhook.id ? "Saving..." : "Save Changes"}
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {webhookSettings.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No webhook settings found
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* HTS Cup Section */}
+            {/* HTS Cup Tab */}
+            <TabsContent value="htscup" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
                 <div className="p-4 border-b border-border bg-secondary/30">
                   <h2 className="font-display text-lg font-bold flex items-center gap-2">
@@ -4990,11 +4796,6 @@ export default function AdminPage() {
                 <div className="p-4">
                   <HtsCupManager />
                 </div>
-              </div>
-            </TabsContent>
-            <TabsContent value="bugs" className="space-y-6">
-              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
-                <BugReportsAdmin />
               </div>
             </TabsContent>
             <TabsContent value="packs" className="space-y-6">
