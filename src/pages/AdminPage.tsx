@@ -3165,6 +3165,7 @@ export default function AdminPage() {
                   <Tag className="w-3 h-3 hidden sm:inline" />
                   Tag Presets
                 </TabsTrigger>
+                <TabsTrigger value="htscup" className="text-xs sm:text-sm flex-shrink-0">HTS Cup</TabsTrigger>
                 <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
               </TabsList>
             </div>
