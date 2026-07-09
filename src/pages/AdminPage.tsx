@@ -4986,11 +4986,6 @@ export default function AdminPage() {
                 </div>
               </div>
             </TabsContent>
-            <TabsContent value="bugs" className="space-y-6">
-              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
-                <BugReportsAdmin />
-              </div>
-            </TabsContent>
             <TabsContent value="packs" className="space-y-6">
               <LevelPacksManager />
             </TabsContent>
