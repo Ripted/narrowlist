@@ -41,48 +41,6 @@ export type Database = {
         }
         Relationships: []
       }
-      bug_reports: {
-        Row: {
-          admin_note: string | null
-          created_at: string
-          description: string
-          id: string
-          page_url: string | null
-          reporter_email: string | null
-          severity: string
-          status: string
-          title: string
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          admin_note?: string | null
-          created_at?: string
-          description: string
-          id?: string
-          page_url?: string | null
-          reporter_email?: string | null
-          severity?: string
-          status?: string
-          title: string
-          updated_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          admin_note?: string | null
-          created_at?: string
-          description?: string
-          id?: string
-          page_url?: string | null
-          reporter_email?: string | null
-          severity?: string
-          status?: string
-          title?: string
-          updated_at?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       completions: {
         Row: {
           arrow_name: string | null
@@ -501,47 +459,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      level_feedback: {
-        Row: {
-          created_at: string
-          feedback_text: string | null
-          id: string
-          level_id: string
-          level_rank_at_feedback: number | null
-          rating: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          feedback_text?: string | null
-          id?: string
-          level_id: string
-          level_rank_at_feedback?: number | null
-          rating: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          feedback_text?: string | null
-          id?: string
-          level_id?: string
-          level_rank_at_feedback?: number | null
-          rating?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "level_feedback_level_id_fkey"
-            columns: ["level_id"]
-            isOneToOne: false
-            referencedRelation: "levels"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       level_pack_items: {
         Row: {
