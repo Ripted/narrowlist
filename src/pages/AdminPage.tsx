@@ -4448,10 +4448,6 @@ export default function AdminPage() {
               </div>
             </TabsContent>
 
-            {/* Feedback Tab */}
-            <TabsContent value="feedback" className="space-y-6">
-              <LevelFeedbackAdmin />
-            </TabsContent>
 
             <TabsContent value="players" className="space-y-6">
               {/* Profile Merge Tool */}
