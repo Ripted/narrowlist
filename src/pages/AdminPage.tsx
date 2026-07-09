@@ -205,13 +205,6 @@ interface DeletedLevel {
   deleted_by_email: string;
 }
 
-interface WebhookSettings {
-  id: string;
-  webhook_type: string;
-  webhook_url: string;
-  enabled: boolean;
-  custom_message_template: string | null;
-}
 
 interface AdminLevelApiResponse {
   levelInfo?: {
