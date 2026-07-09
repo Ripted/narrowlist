@@ -3157,7 +3157,6 @@ export default function AdminPage() {
                 <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
                 <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
                 <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">System</span>
-                </TabsTrigger>
                 <TabsTrigger value="packs" className="text-xs sm:text-sm flex-shrink-0">
                   <Package className="w-3 h-3 hidden sm:inline" />
                   Packs
