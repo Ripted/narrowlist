@@ -1687,6 +1687,7 @@ export default function AdminPage() {
         undefined,
         "Future",
         "deleted",
+        deleteConfirmFutureLevel,
       );
       fetchFutureLevels();
       fetchChangelog();
@@ -1736,6 +1737,13 @@ export default function AdminPage() {
           newRank,
           "Future",
           "moved",
+          {
+            ...editingFutureLevel,
+            name: editFutureName || editingFutureLevel.name,
+            author: editFutureAuthor || editingFutureLevel.author,
+            thumbnail_url: editFutureThumbnailUrl || editingFutureLevel.thumbnail_url,
+            rank_position: newRank,
+          },
         );
       }
       setEditingFutureLevel(null);
@@ -1904,6 +1912,7 @@ export default function AdminPage() {
       if (deleteError) throw deleteError;
       
       await logAction("Moved future level to main", `${futureLevel.name || futureLevel.level_id} at rank #${targetRank}`);
+      await sendAdminNotification("future_to_main", futureLevel.name || futureLevel.level_id, futureLevel.rank_position, targetRank, "Future", "moved to Main", futureLevel);
       toast({ title: "Success", description: `Level moved to main list at rank #${targetRank}` });
       fetchLevels();
       fetchFutureLevels();
@@ -1991,7 +2000,7 @@ export default function AdminPage() {
       toast({ title: "Success", description: "Level removed" });
       const remaining = levels.filter(l => l.id !== deleteConfirmLevel.id);
       await updateRanks(remaining.map((l, i) => ({ ...l, rank_position: i + 1 })));
-      await sendAdminNotification("level_deletion", deletedName, deletedRank, undefined, "Main", "deleted");
+      await sendAdminNotification("level_deletion", deletedName, deletedRank, undefined, "Main", "deleted", deleteConfirmLevel);
       fetchLevels();
       fetchChangelog();
     }
@@ -2019,7 +2028,7 @@ export default function AdminPage() {
     
     setLevels(updatedLevels);
     await updateRanks(updatedLevels);
-    await sendAdminNotification("rank_change", movingLevel.name || movingLevel.level_id, oldRank, newRank, "Main", "moved");
+    await sendAdminNotification("rank_change", movingLevel.name || movingLevel.level_id, oldRank, newRank, "Main", "moved", movingLevel);
     fetchChangelog();
   };
 
@@ -2095,7 +2104,7 @@ export default function AdminPage() {
     await updateRanks(updatedLevels);
     
     // Send admin notification
-    await sendAdminNotification("rank_change", rankConfirmLevel.name || rankConfirmLevel.level_id, oldRank, pendingNewRank, "Main", "moved");
+    await sendAdminNotification("rank_change", rankConfirmLevel.name || rankConfirmLevel.level_id, oldRank, pendingNewRank, "Main", "moved", rankConfirmLevel);
     
     fetchChangelog();
   };
