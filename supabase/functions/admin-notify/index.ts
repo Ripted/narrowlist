@@ -17,7 +17,10 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
-    const { event_type, admin_email, level_name, old_rank, new_rank, details, list_type, action } = body;
+    const {
+      event_type, admin_email, level_name, old_rank, new_rank, details, list_type, action,
+      level_id, thumbnail_url, author, rank_position, points, dry_run,
+    } = body;
 
     console.log('Admin-notify delegating to discord-notify:', { event_type, level_name });
 
@@ -30,9 +33,15 @@ Deno.serve(async (req) => {
         old_rank,
         new_rank,
         details,
+        level_id,
+        thumbnail_url,
+        author,
+        rank_position,
+        points,
         list_type: list_type || 'Main',
         action: action || event_type,
         admin_email: admin_email || 'unknown',
+        dry_run,
       },
     });
 

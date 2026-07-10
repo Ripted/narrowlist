@@ -456,7 +456,15 @@ export default function AdminPage() {
   }, [isAdmin]);
 
 
-  const sendAdminNotification = async (eventType: string, levelName: string, oldRank?: number, newRank?: number, listType?: string, action?: string) => {
+  const sendAdminNotification = async (
+    eventType: string,
+    levelName: string,
+    oldRank?: number,
+    newRank?: number,
+    listType?: string,
+    action?: string,
+    levelDetails?: { level_id?: string; thumbnail_url?: string | null; author?: string | null; rank_position?: number; points?: number }
+  ) => {
     try {
       await supabase.functions.invoke("admin-notify", {
         body: {
@@ -467,6 +475,7 @@ export default function AdminPage() {
           new_rank: newRank,
           list_type: listType || "Main",
           action: action || eventType,
+          ...levelDetails,
         },
       });
     } catch (error) {
@@ -673,7 +682,12 @@ export default function AdminPage() {
       await logAction("Added extra level", `${levelName} at rank #${targetRank}`);
       
       // Send webhook notification
-      await sendAdminNotification("extra_level_added", levelName, undefined, targetRank, "Extra", "added");
+      await sendAdminNotification("extra_level_added", levelName, undefined, targetRank, "Extra", "added", {
+        level_id: levelId,
+        thumbnail_url: levelData?.levelInfo?.thumbnail_url || `https://api.narrowarrow.xyz/level-image/${levelId}.png`,
+        author: levelData?.levelInfo?.author || null,
+        rank_position: targetRank,
+      });
       
       toast({ title: "Success", description: `Extra level added at rank #${targetRank}` });
       setNewExtendedLevelId("");
@@ -708,7 +722,7 @@ export default function AdminPage() {
       await supabase.from("extended_levels").update({ rank_position: newRank }).eq("id", currentLevel.id);
 
       await logAction("Moved extra level", `${currentLevel.name || currentLevel.level_id} ${direction}`);
-      await sendAdminNotification("rank_change", currentLevel.name || currentLevel.level_id, oldRank, newRank, "Extra", "moved");
+      await sendAdminNotification("rank_change", currentLevel.name || currentLevel.level_id, oldRank, newRank, "Extra", "moved", currentLevel);
       fetchExtendedLevels();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -814,7 +828,7 @@ export default function AdminPage() {
       await logAction("Transferred to main list", `${levelName} moved to main list at rank #${targetRank}`);
       
       // Send webhook notification
-      await sendAdminNotification("extra_to_main", levelName, level.rank_position, targetRank, "Extra", "transferred to Main");
+      await sendAdminNotification("extra_to_main", levelName, level.rank_position, targetRank, "Extra", "transferred to Main", level);
       
       toast({ title: "Success", description: `${levelName} moved to main list` });
       fetchLevels();
@@ -869,7 +883,7 @@ export default function AdminPage() {
       }
 
       await logAction("Transferred to extra list", `${level.name || level.level_id} moved to extra list at rank #${targetRank}`);
-      await sendAdminNotification("level_to_extended", level.name || level.level_id, level.rank_position, targetRank, "Main", "transferred to Extra");
+      await sendAdminNotification("level_to_extended", level.name || level.level_id, level.rank_position, targetRank, "Main", "transferred to Extra", level);
       toast({ title: "Success", description: `${level.name || level.level_id} moved to extra list` });
       fetchLevels();
       fetchExtendedLevels();
@@ -1593,7 +1607,12 @@ export default function AdminPage() {
       toast({ title: "Success", description: `Level added at rank #${targetRank}` });
       
       // Send admin notification
-      await sendAdminNotification("level_addition", data.levelInfo?.name || levelId, undefined, targetRank, "Main", "added");
+      await sendAdminNotification("level_addition", data.levelInfo?.name || levelId, undefined, targetRank, "Main", "added", {
+        level_id: levelId,
+        thumbnail_url: `https://api.narrowarrow.xyz/level-image/${levelId}.png`,
+        author: data.levelInfo?.author || null,
+        rank_position: targetRank,
+      });
       
       setNewLevelId("");
       setNewLevelRank("");
@@ -1631,7 +1650,12 @@ export default function AdminPage() {
       toast({ title: "Success", description: `Future level added with estimated rank #${targetRank}` });
       
       // Send admin notification
-      await sendAdminNotification("future_level", data.levelInfo?.name || levelId, undefined, targetRank, "Future", "added");
+      await sendAdminNotification("future_level", data.levelInfo?.name || levelId, undefined, targetRank, "Future", "added", {
+        level_id: levelId,
+        thumbnail_url: `https://api.narrowarrow.xyz/level-image/${levelId}.png`,
+        author: data.levelInfo?.author || null,
+        rank_position: targetRank,
+      });
       
       setNewFutureLevelId("");
       setNewFutureLevelRank("");
@@ -1663,6 +1687,7 @@ export default function AdminPage() {
         undefined,
         "Future",
         "deleted",
+        deleteConfirmFutureLevel,
       );
       fetchFutureLevels();
       fetchChangelog();
@@ -1712,6 +1737,13 @@ export default function AdminPage() {
           newRank,
           "Future",
           "moved",
+          {
+            level_id: editingFutureLevel.level_id,
+            author: editFutureAuthor || editingFutureLevel.author,
+            thumbnail_url: editFutureThumbnail || editingFutureLevel.thumbnail_url,
+            rank_position: newRank,
+            points: parseInt(editFuturePoints) || editingFutureLevel.points,
+          },
         );
       }
       setEditingFutureLevel(null);
@@ -1880,6 +1912,7 @@ export default function AdminPage() {
       if (deleteError) throw deleteError;
       
       await logAction("Moved future level to main", `${futureLevel.name || futureLevel.level_id} at rank #${targetRank}`);
+      await sendAdminNotification("future_to_main", futureLevel.name || futureLevel.level_id, futureLevel.rank_position, targetRank, "Future", "moved to Main", futureLevel);
       toast({ title: "Success", description: `Level moved to main list at rank #${targetRank}` });
       fetchLevels();
       fetchFutureLevels();
@@ -1967,7 +2000,7 @@ export default function AdminPage() {
       toast({ title: "Success", description: "Level removed" });
       const remaining = levels.filter(l => l.id !== deleteConfirmLevel.id);
       await updateRanks(remaining.map((l, i) => ({ ...l, rank_position: i + 1 })));
-      await sendAdminNotification("level_deletion", deletedName, deletedRank, undefined, "Main", "deleted");
+      await sendAdminNotification("level_deletion", deletedName, deletedRank, undefined, "Main", "deleted", deleteConfirmLevel);
       fetchLevels();
       fetchChangelog();
     }
@@ -1995,7 +2028,7 @@ export default function AdminPage() {
     
     setLevels(updatedLevels);
     await updateRanks(updatedLevels);
-    await sendAdminNotification("rank_change", movingLevel.name || movingLevel.level_id, oldRank, newRank, "Main", "moved");
+    await sendAdminNotification("rank_change", movingLevel.name || movingLevel.level_id, oldRank, newRank, "Main", "moved", movingLevel);
     fetchChangelog();
   };
 
@@ -2071,7 +2104,7 @@ export default function AdminPage() {
     await updateRanks(updatedLevels);
     
     // Send admin notification
-    await sendAdminNotification("rank_change", rankConfirmLevel.name || rankConfirmLevel.level_id, oldRank, pendingNewRank, "Main", "moved");
+    await sendAdminNotification("rank_change", rankConfirmLevel.name || rankConfirmLevel.level_id, oldRank, pendingNewRank, "Main", "moved", rankConfirmLevel);
     
     fetchChangelog();
   };

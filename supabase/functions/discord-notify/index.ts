@@ -131,7 +131,13 @@ Deno.serve(async (req) => {
       if (thumbnail) embed.thumbnail = { url: thumbnail }
       if (url) embed.footer = { text: 'narrowarrow.xyz' }
 
-      await postWebhook(COMPLETIONS_URL, { content: null, embeds: [embed], allowed_mentions: { parse: [] } })
+      const payload = { content: null, embeds: [embed], allowed_mentions: { parse: [] } }
+      if (body.dry_run) {
+        return new Response(JSON.stringify({ success: true, dry_run: true, payload }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      await postWebhook(COMPLETIONS_URL, payload)
 
       await supabase.from('discord_notifications').insert({
         completion_type, completion_id: String(completion_id), profile_id, level_id,
@@ -143,14 +149,17 @@ Deno.serve(async (req) => {
 
     // ============ ADMIN / RANK CHANGES ============
     if (webhook_type === 'rank_changes') {
-      const { event_type, level_name, old_rank, new_rank, list_type, details, admin_email, level_id: bodyLevelId } = body
+      const {
+        event_type, level_name, old_rank, new_rank, list_type, details, admin_email, level_id: bodyLevelId,
+        thumbnail_url: bodyThumbnailUrl, author: bodyAuthor, rank_position: bodyRankPosition, points: bodyPoints,
+      } = body
 
       // Try to resolve level thumbnail + string level_id for embeds
-      let thumbnail: string | null = null
+      let thumbnail: string | null = bodyThumbnailUrl || null
       let stringLevelId: string | null = bodyLevelId || null
-      let levelAuthor: string | null = null
-      let levelRank: number | null = null
-      let levelPoints: number | null = null
+      let levelAuthor: string | null = bodyAuthor || null
+      let levelRank: number | null = typeof bodyRankPosition === 'number' ? bodyRankPosition : null
+      let levelPoints: number | null = typeof bodyPoints === 'number' ? bodyPoints : null
       if (level_name) {
         // best effort: search main list, then extended
         const { data: main } = await supabase.from('levels')
@@ -277,7 +286,13 @@ Deno.serve(async (req) => {
       if (thumbnail) embed.thumbnail = { url: thumbnail }
       embed.footer = { text: 'narrowarrow.xyz' }
 
-      await postWebhook(ADMIN_URL, { content: null, embeds: [embed], allowed_mentions: { parse: [] } })
+      const payload = { content: null, embeds: [embed], allowed_mentions: { parse: [] } }
+      if (body.dry_run) {
+        return new Response(JSON.stringify({ success: true, dry_run: true, payload }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      await postWebhook(ADMIN_URL, payload)
 
       return new Response(JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
