@@ -30,7 +30,8 @@ const COMPLETIONS_URL = Deno.env.get('DISCORD_WEBHOOK_COMPLETIONS') ?? ''
 const ADMIN_URL = Deno.env.get('DISCORD_WEBHOOK_ADMIN') ?? ''
 
 function formatTime(seconds: number): string {
-  return `${seconds.toFixed(3)}s`
+  const value = Number(seconds)
+  return Number.isFinite(value) ? `${value.toFixed(3)}s` : '—'
 }
 
 function getArrowEmoji(arrowName: string | null): string {
@@ -130,7 +131,7 @@ Deno.serve(async (req) => {
       if (thumbnail) embed.thumbnail = { url: thumbnail }
       if (url) embed.footer = { text: 'narrowarrow.xyz' }
 
-      await postWebhook(COMPLETIONS_URL, { embeds: [embed] })
+      await postWebhook(COMPLETIONS_URL, { content: null, embeds: [embed], allowed_mentions: { parse: [] } })
 
       await supabase.from('discord_notifications').insert({
         completion_type, completion_id: String(completion_id), profile_id, level_id,
@@ -147,15 +148,30 @@ Deno.serve(async (req) => {
       // Try to resolve level thumbnail + string level_id for embeds
       let thumbnail: string | null = null
       let stringLevelId: string | null = bodyLevelId || null
+      let levelAuthor: string | null = null
+      let levelRank: number | null = null
+      let levelPoints: number | null = null
       if (level_name) {
         // best effort: search main list, then extended
         const { data: main } = await supabase.from('levels')
-          .select('level_id, thumbnail_url').eq('name', level_name).maybeSingle()
-        if (main) { thumbnail = main.thumbnail_url; stringLevelId = stringLevelId || main.level_id }
+          .select('level_id, thumbnail_url, author, rank_position, points').eq('name', level_name).maybeSingle()
+        if (main) {
+          thumbnail = main.thumbnail_url
+          stringLevelId = stringLevelId || main.level_id
+          levelAuthor = main.author
+          levelRank = main.rank_position
+          levelPoints = main.points
+        }
         if (!thumbnail) {
           const { data: ext } = await supabase.from('extended_levels')
-            .select('level_id, thumbnail_url').eq('name', level_name).maybeSingle()
-          if (ext) { thumbnail = ext.thumbnail_url; stringLevelId = stringLevelId || ext.level_id }
+            .select('level_id, thumbnail_url, author, rank_position, points').eq('name', level_name).maybeSingle()
+          if (ext) {
+            thumbnail = ext.thumbnail_url
+            stringLevelId = stringLevelId || ext.level_id
+            levelAuthor = ext.author
+            levelRank = ext.rank_position
+            levelPoints = ext.points
+          }
         }
       }
 
@@ -240,6 +256,9 @@ Deno.serve(async (req) => {
 
       const fields: { name: string; value: string; inline?: boolean }[] = []
       if (stringLevelId) fields.push({ name: 'Level ID', value: `\`${stringLevelId}\``, inline: true })
+      if (levelAuthor) fields.push({ name: 'Author', value: levelAuthor, inline: true })
+      if (levelRank !== null) fields.push({ name: 'Current Rank', value: `#${levelRank}`, inline: true })
+      if (levelPoints !== null) fields.push({ name: 'Points', value: String(levelPoints), inline: true })
       if (old_rank && new_rank) fields.push({ name: 'Rank', value: `#${old_rank} → #${new_rank}`, inline: true })
       else if (new_rank) fields.push({ name: 'Rank', value: `#${new_rank}`, inline: true })
       fields.push({ name: 'List', value: listLabel, inline: true })
@@ -258,7 +277,7 @@ Deno.serve(async (req) => {
       if (thumbnail) embed.thumbnail = { url: thumbnail }
       embed.footer = { text: 'narrowarrow.xyz' }
 
-      await postWebhook(ADMIN_URL, { embeds: [embed] })
+      await postWebhook(ADMIN_URL, { content: null, embeds: [embed], allowed_mentions: { parse: [] } })
 
       return new Response(JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
