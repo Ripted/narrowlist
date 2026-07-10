@@ -131,7 +131,13 @@ Deno.serve(async (req) => {
       if (thumbnail) embed.thumbnail = { url: thumbnail }
       if (url) embed.footer = { text: 'narrowarrow.xyz' }
 
-      await postWebhook(COMPLETIONS_URL, { content: null, embeds: [embed], allowed_mentions: { parse: [] } })
+      const payload = { content: null, embeds: [embed], allowed_mentions: { parse: [] } }
+      if (body.dry_run) {
+        return new Response(JSON.stringify({ success: true, dry_run: true, payload }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      await postWebhook(COMPLETIONS_URL, payload)
 
       await supabase.from('discord_notifications').insert({
         completion_type, completion_id: String(completion_id), profile_id, level_id,
@@ -277,7 +283,13 @@ Deno.serve(async (req) => {
       if (thumbnail) embed.thumbnail = { url: thumbnail }
       embed.footer = { text: 'narrowarrow.xyz' }
 
-      await postWebhook(ADMIN_URL, { content: null, embeds: [embed], allowed_mentions: { parse: [] } })
+      const payload = { content: null, embeds: [embed], allowed_mentions: { parse: [] } }
+      if (body.dry_run) {
+        return new Response(JSON.stringify({ success: true, dry_run: true, payload }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+
+      await postWebhook(ADMIN_URL, payload)
 
       return new Response(JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
