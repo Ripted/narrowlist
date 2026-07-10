@@ -2933,6 +2933,11 @@ export default function AdminPage() {
           try {
             await supabase.functions.invoke("discord-notify", {
               body: {
+                webhook_type: manualRunListType === "extra"
+                  ? "extra_completions"
+                  : levelInfo.rank_position <= 100
+                    ? "main_completions"
+                    : "extended_completions",
                 completion_type: manualRunListType === "extra" ? "extra_manual_run" : "manual_run",
                 completion_id: insertedRun?.id || `manual-${Date.now()}`,
                 profile_id: manualRunProfile,
