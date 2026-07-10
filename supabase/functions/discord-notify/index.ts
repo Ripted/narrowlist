@@ -149,14 +149,17 @@ Deno.serve(async (req) => {
 
     // ============ ADMIN / RANK CHANGES ============
     if (webhook_type === 'rank_changes') {
-      const { event_type, level_name, old_rank, new_rank, list_type, details, admin_email, level_id: bodyLevelId } = body
+      const {
+        event_type, level_name, old_rank, new_rank, list_type, details, admin_email, level_id: bodyLevelId,
+        thumbnail_url: bodyThumbnailUrl, author: bodyAuthor, rank_position: bodyRankPosition, points: bodyPoints,
+      } = body
 
       // Try to resolve level thumbnail + string level_id for embeds
-      let thumbnail: string | null = null
+      let thumbnail: string | null = bodyThumbnailUrl || null
       let stringLevelId: string | null = bodyLevelId || null
-      let levelAuthor: string | null = null
-      let levelRank: number | null = null
-      let levelPoints: number | null = null
+      let levelAuthor: string | null = bodyAuthor || null
+      let levelRank: number | null = typeof bodyRankPosition === 'number' ? bodyRankPosition : null
+      let levelPoints: number | null = typeof bodyPoints === 'number' ? bodyPoints : null
       if (level_name) {
         // best effort: search main list, then extended
         const { data: main } = await supabase.from('levels')
