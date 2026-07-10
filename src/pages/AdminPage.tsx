@@ -1738,11 +1738,11 @@ export default function AdminPage() {
           "Future",
           "moved",
           {
-            ...editingFutureLevel,
-            name: editFutureName || editingFutureLevel.name,
+            level_id: editingFutureLevel.level_id,
             author: editFutureAuthor || editingFutureLevel.author,
-            thumbnail_url: editFutureThumbnailUrl || editingFutureLevel.thumbnail_url,
+            thumbnail_url: editFutureThumbnail || editingFutureLevel.thumbnail_url,
             rank_position: newRank,
+            points: parseInt(editFuturePoints) || editingFutureLevel.points,
           },
         );
       }
