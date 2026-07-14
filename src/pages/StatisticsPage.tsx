@@ -1063,24 +1063,7 @@ export default function StatisticsPage() {
         {/* New stats sections */}
         <div className="grid lg:grid-cols-2 gap-6 mt-8">
           <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
-            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-              <Star className="w-5 h-5 text-amber-400" /> Highest Rated Levels
-            </h3>
-            {highestRatedLevels.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Not enough ratings yet.</p>
-            ) : (
-              <ol className="space-y-2">
-                {highestRatedLevels.map((l, i) => (
-                  <li key={l.id} className="flex items-center justify-between text-sm">
-                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>#{l.info!.rank} {l.info!.name} <span className="text-xs text-muted-foreground">({l.info!.type})</span></span>
-                    <span className="font-mono text-amber-400 ml-2 shrink-0">{l.avg.toFixed(2)} · {l.count}r</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Award className="w-5 h-5 text-primary" /> Top Verifiers
             </h3>
