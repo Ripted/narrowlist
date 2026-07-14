@@ -111,25 +111,59 @@ Deno.serve(async (req) => {
       const action = is_verifier ? 'verified' : 'completed'
       const listLabel = webhook_type === 'main_completions' ? 'Main'
         : webhook_type === 'extended_completions' ? 'Extended' : 'Extra'
-      const color = webhook_type === 'main_completions' ? COLOR.green
-        : webhook_type === 'extended_completions' ? COLOR.blue : COLOR.purple
+      // Verifications get a distinct color; regular completions use per-list color
+      const color = is_verifier
+        ? COLOR.yellow
+        : webhook_type === 'main_completions' ? COLOR.green
+        : webhook_type === 'extended_completions' ? COLOR.blue
+        : COLOR.purple
+
+      // Compute player's leaderboard rank on this level (by fastest completion time)
+      let leaderboardRank: number | null = null
+      try {
+        const completionsTable = webhook_type === 'extra_completions' ? 'extra_completions' : 'completions'
+        const { data: allTimes } = await supabase
+          .from(completionsTable)
+          .select('profile_id, completion_time')
+          .eq('level_id', level_id)
+          .order('completion_time', { ascending: true })
+        if (allTimes && allTimes.length) {
+          // Best time per profile
+          const bestByProfile = new Map<string, number>()
+          for (const row of allTimes) {
+            const t = Number(row.completion_time)
+            if (!Number.isFinite(t)) continue
+            const prev = bestByProfile.get(row.profile_id)
+            if (prev === undefined || t < prev) bestByProfile.set(row.profile_id, t)
+          }
+          const sorted = [...bestByProfile.entries()].sort((a, b) => a[1] - b[1])
+          const idx = sorted.findIndex(([pid]) => pid === profile_id)
+          if (idx >= 0) leaderboardRank = idx + 1
+        }
+      } catch (e) {
+        console.error('Failed to compute leaderboard rank:', e)
+      }
 
       const url = levelUrl(stringLevelId)
       const title = `${arrowEmoji} ${player_name || 'Unknown'} ${action} #${level_rank || '?'} ${level_name || 'Unknown Level'}`.trim()
+
+      const fields: { name: string; value: string; inline?: boolean }[] = [
+        { name: 'Time', value: formatTime(completion_time), inline: true },
+        { name: 'List', value: listLabel, inline: true },
+        { name: 'Arrow', value: arrow_name || '—', inline: true },
+      ]
+      if (leaderboardRank !== null) {
+        fields.push({ name: 'Leaderboard Rank', value: `#${leaderboardRank}`, inline: true })
+      }
 
       const embed: Record<string, unknown> = {
         title,
         url: url || undefined,
         color,
-        fields: [
-          { name: 'Time', value: formatTime(completion_time), inline: true },
-          { name: 'List', value: listLabel, inline: true },
-          { name: 'Arrow', value: arrow_name || '—', inline: true },
-        ],
+        fields,
         timestamp: new Date().toISOString(),
       }
       if (thumbnail) embed.thumbnail = { url: thumbnail }
-      if (url) embed.footer = { text: 'narrowarrow.xyz' }
 
       const payload = { content: null, embeds: [embed], allowed_mentions: { parse: [] } }
       if (body.dry_run) {
