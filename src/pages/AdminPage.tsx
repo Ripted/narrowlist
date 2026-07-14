@@ -773,6 +773,7 @@ export default function AdminPage() {
       }
 
       await logAction("Deleted extra level", level.name || level.level_id);
+      await sendAdminNotification("extra_level_deleted", level.name || level.level_id, level.rank_position, undefined, "Extra", "deleted", level);
       toast({ title: "Deleted", description: "Extra level removed and ranks updated" });
       fetchExtendedLevels();
       fetchChangelog();
