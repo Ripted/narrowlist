@@ -240,6 +240,11 @@ Deno.serve(async (req) => {
           title = `${emoji} Level added to the Extra List`
           description = `**${level_name}** was added at **#${new_rank}**.`
           break
+        case 'extra_level_deleted':
+          emoji = '🗑️'; color = COLOR.red
+          title = `${emoji} Level removed from the Extra List`
+          description = `**${level_name}** was removed from the Extra List${old_rank ? ` (was **#${old_rank}**)` : ''}.`
+          break
         case 'future_to_main':
           emoji = '🚀'; color = COLOR.green
           title = `${emoji} Level promoted to Main List`
