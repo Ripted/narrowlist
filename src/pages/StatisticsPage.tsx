@@ -374,38 +374,6 @@ export default function StatisticsPage() {
 
   // ===== Additional stats =====
 
-  // Hardest levels: top 10 by avg difficulty (min 3 votes)
-  const { data: hardestLevels = [] } = useQuery({
-    queryKey: ["stats-hardest-levels"],
-    queryFn: async () => {
-      const [{ data: votes }, { data: mains }, { data: extras }] = await Promise.all([
-        supabase.from("level_difficulty_votes").select("level_id, difficulty"),
-        supabase.from("levels").select("id, name, rank_position"),
-        supabase.from("extended_levels").select("id, name, rank_position"),
-      ]);
-      const nameMap = new Map<string, { name: string; rank: number; type: string }>();
-      mains?.forEach(l => nameMap.set(l.id, { name: l.name || "Unknown", rank: l.rank_position, type: "Main" }));
-      extras?.forEach(l => nameMap.set(l.id, { name: l.name || "Unknown", rank: l.rank_position, type: "Extra" }));
-      const grouped: Record<string, number[]> = {};
-      votes?.forEach(v => {
-        if (!grouped[v.level_id]) grouped[v.level_id] = [];
-        grouped[v.level_id].push(Number(v.difficulty));
-      });
-      return Object.entries(grouped)
-        .filter(([, arr]) => arr.length >= 3)
-        .map(([id, arr]) => ({
-          id,
-          info: nameMap.get(id),
-          avg: arr.reduce((a, b) => a + b, 0) / arr.length,
-          votes: arr.length,
-        }))
-        .filter(r => r.info)
-        .sort((a, b) => b.avg - a.avg)
-        .slice(0, 10);
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
   // Highest rated levels: top 10 by avg overall rating (min 3 ratings)
   const { data: highestRatedLevels = [] } = useQuery({
     queryKey: ["stats-highest-rated"],
@@ -1125,24 +1093,6 @@ export default function StatisticsPage() {
 
         {/* New stats sections */}
         <div className="grid lg:grid-cols-2 gap-6 mt-8">
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
-            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-              <Flame className="w-5 h-5 text-foreground" /> Hardest Levels
-            </h3>
-            {hardestLevels.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Not enough difficulty votes yet.</p>
-            ) : (
-              <ol className="space-y-2">
-                {hardestLevels.map((l, i) => (
-                  <li key={l.id} className="flex items-center justify-between text-sm">
-                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>#{l.info!.rank} {l.info!.name} <span className="text-xs text-muted-foreground">({l.info!.type})</span></span>
-                    <span className="font-mono text-foreground ml-2 shrink-0">D{l.avg.toFixed(1)} · {l.votes}v</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
-
           <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Star className="w-5 h-5 text-amber-400" /> Highest Rated Levels
