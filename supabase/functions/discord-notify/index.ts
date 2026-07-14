@@ -310,7 +310,6 @@ Deno.serve(async (req) => {
       if (old_rank && new_rank) fields.push({ name: 'Rank', value: `#${old_rank} → #${new_rank}`, inline: true })
       else if (new_rank) fields.push({ name: 'Rank', value: `#${new_rank}`, inline: true })
       fields.push({ name: 'List', value: listLabel, inline: true })
-      if (admin_email) fields.push({ name: 'By', value: admin_email, inline: false })
       if (details && event_type !== 'pack_updated') fields.push({ name: 'Details', value: details, inline: false })
 
       const url = levelUrl(stringLevelId)
@@ -323,7 +322,6 @@ Deno.serve(async (req) => {
         timestamp: new Date().toISOString(),
       }
       if (thumbnail) embed.thumbnail = { url: thumbnail }
-      embed.footer = { text: 'narrowarrow.xyz' }
 
       const payload = { content: null, embeds: [embed], allowed_mentions: { parse: [] } }
       if (body.dry_run) {
