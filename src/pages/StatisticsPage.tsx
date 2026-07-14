@@ -374,38 +374,7 @@ export default function StatisticsPage() {
 
   // ===== Additional stats =====
 
-  // Highest rated levels: top 10 by avg overall rating (min 3 ratings)
-  const { data: highestRatedLevels = [] } = useQuery({
-    queryKey: ["stats-highest-rated"],
-    queryFn: async () => {
-      const [{ data: ratings }, { data: mains }, { data: extras }] = await Promise.all([
-        supabase.from("level_ratings").select("level_id, enjoyment, design, decoration, gameplay"),
-        supabase.from("levels").select("id, name, rank_position"),
-        supabase.from("extended_levels").select("id, name, rank_position"),
-      ]);
-      const nameMap = new Map<string, { name: string; rank: number; type: string }>();
-      mains?.forEach(l => nameMap.set(l.id, { name: l.name || "Unknown", rank: l.rank_position, type: "Main" }));
-      extras?.forEach(l => nameMap.set(l.id, { name: l.name || "Unknown", rank: l.rank_position, type: "Extra" }));
-      const grouped: Record<string, number[]> = {};
-      ratings?.forEach(r => {
-        const overall = (Number(r.enjoyment) + Number(r.design) + Number(r.decoration) + Number(r.gameplay)) / 4;
-        if (!grouped[r.level_id]) grouped[r.level_id] = [];
-        grouped[r.level_id].push(overall);
-      });
-      return Object.entries(grouped)
-        .filter(([, arr]) => arr.length >= 3)
-        .map(([id, arr]) => ({
-          id,
-          info: nameMap.get(id),
-          avg: arr.reduce((a, b) => a + b, 0) / arr.length,
-          count: arr.length,
-        }))
-        .filter(r => r.info)
-        .sort((a, b) => b.avg - a.avg)
-        .slice(0, 10);
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+
 
   // Top verifiers
   const { data: topVerifiers = [] } = useQuery({
@@ -1094,24 +1063,7 @@ export default function StatisticsPage() {
         {/* New stats sections */}
         <div className="grid lg:grid-cols-2 gap-6 mt-8">
           <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
-            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-              <Star className="w-5 h-5 text-amber-400" /> Highest Rated Levels
-            </h3>
-            {highestRatedLevels.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Not enough ratings yet.</p>
-            ) : (
-              <ol className="space-y-2">
-                {highestRatedLevels.map((l, i) => (
-                  <li key={l.id} className="flex items-center justify-between text-sm">
-                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>#{l.info!.rank} {l.info!.name} <span className="text-xs text-muted-foreground">({l.info!.type})</span></span>
-                    <span className="font-mono text-amber-400 ml-2 shrink-0">{l.avg.toFixed(2)} · {l.count}r</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Award className="w-5 h-5 text-primary" /> Top Verifiers
             </h3>
