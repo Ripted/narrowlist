@@ -39,6 +39,16 @@ interface ProfileData {
 const ITEMS_PER_PAGE = 10;
 const SHOW_ALL_ITEMS = 999999;
 
+const safeExternalUrl = (u?: string | null): string | null => {
+  if (!u) return null;
+  try {
+    const parsed = new URL(u);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : null;
+  } catch {
+    return null;
+  }
+};
+
 export default function PlayerPage() {
   const { username } = useParams<{ username: string }>();
   const [searchParams] = useSearchParams();
@@ -665,7 +675,7 @@ export default function PlayerPage() {
 
                 {/* Socials */}
                 {(() => {
-                  const hasAny = !!(profileData?.discord_url || profileData?.tiktok_url || profileData?.youtube_url);
+                  const hasAny = !!(safeExternalUrl(profileData?.discord_url) || safeExternalUrl(profileData?.tiktok_url) || safeExternalUrl(profileData?.youtube_url));
                   const ownerOnlyEdit = isOwner; // socials are owner-only per spec
                   if (!hasAny && !ownerOnlyEdit) return null;
                   return (
@@ -696,18 +706,18 @@ export default function PlayerPage() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 flex-wrap">
-                          {profileData?.discord_url && (
-                            <a href={profileData.discord_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-accent/20 text-xs text-foreground transition-colors">
+                          {safeExternalUrl(profileData?.discord_url) && (
+                            <a href={safeExternalUrl(profileData.discord_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-accent/20 text-xs text-foreground transition-colors">
                               <MessageCircle className="w-3.5 h-3.5" /> Discord
                             </a>
                           )}
-                          {profileData?.tiktok_url && (
-                            <a href={profileData.tiktok_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-accent/20 text-xs text-foreground transition-colors">
+                          {safeExternalUrl(profileData?.tiktok_url) && (
+                            <a href={safeExternalUrl(profileData.tiktok_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-accent/20 text-xs text-foreground transition-colors">
                               <Music2 className="w-3.5 h-3.5" /> TikTok
                             </a>
                           )}
-                          {profileData?.youtube_url && (
-                            <a href={profileData.youtube_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-accent/20 text-xs text-foreground transition-colors">
+                          {safeExternalUrl(profileData?.youtube_url) && (
+                            <a href={safeExternalUrl(profileData.youtube_url)!} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-secondary hover:bg-accent/20 text-xs text-foreground transition-colors">
                               <Youtube className="w-3.5 h-3.5" /> YouTube
                             </a>
                           )}

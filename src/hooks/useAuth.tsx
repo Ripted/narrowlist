@@ -14,9 +14,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Admin emails with full permissions
-const ADMIN_EMAILS = ["sirsamyou@gmail.com", "narrow.ripted@gmail.com"];
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -53,13 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkAdminRole = async (currentUser: User) => {
     try {
-      // Check if user is in admin emails list (simplified - no head admin distinction)
-      if (currentUser.email && ADMIN_EMAILS.includes(currentUser.email)) {
-        setIsAdmin(true);
-        return;
-      }
-
-      // Check admin role in database as fallback
+      // Admin status is determined solely by the database role
       const { data, error } = await supabase
         .from("user_roles")
         .select("role")
