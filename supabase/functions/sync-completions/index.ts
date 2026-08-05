@@ -3,7 +3,7 @@ import { requireAdminOrInternal } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
 const API_BASE = "https://api.narrowarrow.xyz";
@@ -71,6 +71,7 @@ async function sendDiscordNotification(
 
     // Delegate to discord-notify edge function
     await supabase.functions.invoke('discord-notify', {
+      headers: { 'x-internal-secret': Deno.env.get('INTERNAL_FUNCTION_SECRET') ?? '' },
       body: {
         webhook_type: webhookType,
         completion_type: webhookType,

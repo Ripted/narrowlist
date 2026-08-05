@@ -3,7 +3,7 @@ import { requireAdminOrInternal } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret',
 }
 
 // This function now delegates to discord-notify with webhook_type='rank_changes'
@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
 
     // Delegate to discord-notify with rank_changes webhook type
     const { data, error } = await supabase.functions.invoke('discord-notify', {
+      headers: { 'x-internal-secret': Deno.env.get('INTERNAL_FUNCTION_SECRET') ?? '' },
       body: {
         webhook_type: 'rank_changes',
         event_type,
