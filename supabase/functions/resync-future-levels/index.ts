@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAdminOrInternal } from "../_shared/auth.ts";
+import { isValidUsername, isValidCompletionTime, isValidName, isValidHttpUrl, sanitizeText } from "../_shared/validate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,16 +62,16 @@ Deno.serve(async (req) => {
         const updates: Record<string, unknown> = {};
         
         // Only update name/author if currently NULL to preserve manual edits
-        if (!level.name && levelInfo.name) {
-          updates.name = levelInfo.name;
+        if (!level.name && isValidName(levelInfo.name)) {
+          updates.name = sanitizeText(levelInfo.name, 200);
         }
         
-        if (!level.author && levelInfo.author) {
-          updates.author = levelInfo.author;
+        if (!level.author && isValidName(levelInfo.author, 100)) {
+          updates.author = sanitizeText(levelInfo.author, 100);
         }
 
         // Fetch thumbnail if not set
-        if (!level.thumbnail_url && data.thumbnail) {
+        if (!level.thumbnail_url && isValidHttpUrl(data.thumbnail)) {
           updates.thumbnail_url = data.thumbnail;
         }
 

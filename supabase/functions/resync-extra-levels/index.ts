@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireAdminOrInternal } from "../_shared/auth.ts";
+import { isValidUsername, isValidCompletionTime, isValidName, isValidHttpUrl, sanitizeText } from "../_shared/validate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,12 +65,12 @@ serve(async (req) => {
         const updates: Record<string, unknown> = {};
         
         // Only populate name/author if currently NULL (don't overwrite manual edits)
-        if (!level.name && levelInfo.name) {
-          updates.name = levelInfo.name;
+        if (!level.name && isValidName(levelInfo.name)) {
+          updates.name = sanitizeText(levelInfo.name, 200);
         }
         
-        if (!level.author && levelInfo.author) {
-          updates.author = levelInfo.author;
+        if (!level.author && isValidName(levelInfo.author, 100)) {
+          updates.author = sanitizeText(levelInfo.author, 100);
         }
 
         // Only update if there are changes
