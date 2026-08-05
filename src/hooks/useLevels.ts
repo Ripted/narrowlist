@@ -302,7 +302,7 @@ async function fetchPlayerStatsData(): Promise<PlayerStats[]> {
       .from("completions")
       .select("profile_id, level_id, completed_at, completion_time"),
     supabase
-      .from("manual_runs")
+      .from("manual_runs_public")
       .select("profile_id, level_id, completed_at, completion_time"),
   ]);
 

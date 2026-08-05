@@ -1,14 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdminOrInternal } from "../_shared/auth.ts";
+import { isValidUsername, isValidCompletionTime, isValidName, isValidHttpUrl, sanitizeText } from "../_shared/validate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const authError = await requireAdminOrInternal(req);
+  if (authError) return authError;
 
   try {
     const supabaseClient = createClient(
@@ -57,16 +62,16 @@ Deno.serve(async (req) => {
         const updates: Record<string, unknown> = {};
         
         // Only populate name/author if currently NULL (don't overwrite manual edits)
-        if (!level.name && levelInfo.name) {
-          updates.name = levelInfo.name;
+        if (!level.name && isValidName(levelInfo.name)) {
+          updates.name = sanitizeText(levelInfo.name, 200);
         }
         
-        if (!level.author && levelInfo.author) {
-          updates.author = levelInfo.author;
+        if (!level.author && isValidName(levelInfo.author, 100)) {
+          updates.author = sanitizeText(levelInfo.author, 100);
         }
 
         // Fetch thumbnail if not set
-        if (!level.thumbnail_url && data.thumbnail) {
+        if (!level.thumbnail_url && isValidHttpUrl(data.thumbnail)) {
           updates.thumbnail_url = data.thumbnail;
         }
 

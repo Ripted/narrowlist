@@ -1,8 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAdminOrInternal } from "../_shared/auth.ts";
+import { isValidUsername, isValidCompletionTime, isValidName, isValidHttpUrl, sanitizeText } from "../_shared/validate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-internal-secret",
 };
 
 const API_BASE = "https://api.narrowarrow.xyz";
@@ -70,6 +72,7 @@ async function sendDiscordNotification(
 
     // Delegate to discord-notify edge function
     await supabase.functions.invoke('discord-notify', {
+      headers: { 'x-internal-secret': Deno.env.get('INTERNAL_FUNCTION_SECRET') ?? '' },
       body: {
         webhook_type: webhookType,
         completion_type: webhookType,
@@ -222,6 +225,9 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const authError = await requireAdminOrInternal(req);
+  if (authError) return authError;
+
   try {
     console.log("Starting sync-completions...");
 
@@ -261,6 +267,14 @@ Deno.serve(async (req) => {
           console.log(`Found ${leaderboard.length} entries for ${currentLevelId}`);
 
           for (const entry of leaderboard) {
+            // Reject malformed entries from the external API
+            if (!isValidUsername(entry.username) || !isValidCompletionTime(entry.completion_time)) {
+              console.warn("Skipping invalid leaderboard entry", entry?.run_id);
+              continue;
+            }
+            entry.username = entry.username.trim();
+            entry.arrow_name = sanitizeText(entry.arrow_name, 50) ?? "";
+
             // Look up profile by current API username
             let { data: profile } = await supabase
               .from("profiles")

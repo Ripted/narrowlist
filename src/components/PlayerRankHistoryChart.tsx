@@ -46,7 +46,7 @@ export function PlayerRankHistoryChart({ profileId, currentRank }: PlayerRankHis
         .eq("profile_id", profileId);
 
       const { data: manualRuns, error: manualError } = await supabase
-        .from("manual_runs")
+        .from("manual_runs_public")
         .select("level_id, completed_at")
         .eq("profile_id", profileId);
 

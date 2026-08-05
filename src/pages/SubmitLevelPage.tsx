@@ -308,7 +308,7 @@ export default function SubmitLevelPage() {
       }
 
       const { data: existingSubmission } = await supabase
-        .from("level_submissions")
+        .from("level_submissions_public")
         .select("id, status")
         .eq("level_id", levelId.trim())
         .eq("status", "pending")
@@ -387,7 +387,7 @@ export default function SubmitLevelPage() {
     try {
       // Check for existing pending submission
       const { data: existingSubmission } = await supabase
-        .from("run_submissions")
+        .from("run_submissions_public")
         .select("id")
         .eq("level_id", runLevelId.trim())
         .eq("username", runUsername.trim())

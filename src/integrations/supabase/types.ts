@@ -1154,7 +1154,140 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      level_submissions_public: {
+        Row: {
+          approved_list: string | null
+          author: string | null
+          created_at: string | null
+          final_rank: number | null
+          id: string | null
+          level_id: string | null
+          level_name: string | null
+          reviewed_at: string | null
+          status: string | null
+          suggested_rank: number | null
+          target_list: string | null
+          thumbnail_url: string | null
+        }
+        Insert: {
+          approved_list?: string | null
+          author?: string | null
+          created_at?: string | null
+          final_rank?: number | null
+          id?: string | null
+          level_id?: string | null
+          level_name?: string | null
+          reviewed_at?: string | null
+          status?: string | null
+          suggested_rank?: number | null
+          target_list?: string | null
+          thumbnail_url?: string | null
+        }
+        Update: {
+          approved_list?: string | null
+          author?: string | null
+          created_at?: string | null
+          final_rank?: number | null
+          id?: string | null
+          level_id?: string | null
+          level_name?: string | null
+          reviewed_at?: string | null
+          status?: string | null
+          suggested_rank?: number | null
+          target_list?: string | null
+          thumbnail_url?: string | null
+        }
+        Relationships: []
+      }
+      manual_runs_public: {
+        Row: {
+          arrow_name: string | null
+          completed_at: string | null
+          completion_time: number | null
+          created_at: string | null
+          id: string | null
+          is_verifier: boolean | null
+          level_id: string | null
+          list_type: string | null
+          note: string | null
+          profile_id: string | null
+          proof_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          arrow_name?: string | null
+          completed_at?: string | null
+          completion_time?: number | null
+          created_at?: string | null
+          id?: string | null
+          is_verifier?: boolean | null
+          level_id?: string | null
+          list_type?: string | null
+          note?: string | null
+          profile_id?: string | null
+          proof_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          arrow_name?: string | null
+          completed_at?: string | null
+          completion_time?: number | null
+          created_at?: string | null
+          id?: string | null
+          is_verifier?: boolean | null
+          level_id?: string | null
+          list_type?: string | null
+          note?: string | null
+          profile_id?: string | null
+          proof_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_runs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      run_submissions_public: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_verifier: boolean | null
+          level_id: string | null
+          level_name: string | null
+          proof_url: string | null
+          reviewed_at: string | null
+          status: string | null
+          username: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          is_verifier?: boolean | null
+          level_id?: string | null
+          level_name?: string | null
+          proof_url?: string | null
+          reviewed_at?: string | null
+          status?: string | null
+          username?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          is_verifier?: boolean | null
+          level_id?: string | null
+          level_name?: string | null
+          proof_url?: string | null
+          reviewed_at?: string | null
+          status?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       admin_add_extra_level: {

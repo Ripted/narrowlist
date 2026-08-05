@@ -79,7 +79,7 @@ export default function AuthPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-primary to-accent mb-4 glow-primary">
             <Trophy className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="font-display text-2xl font-bold gradient-text">HARDEST LIST</h1>
+          <h1 className="font-display text-2xl font-bold gradient-text">NARROWLIST</h1>
         </div>
 
         {/* Auth Card */}

@@ -166,7 +166,7 @@ export default function LeaderboardPage() {
 
         // Get manual runs before the selected date
         const { data: manualRuns } = await supabase
-          .from("manual_runs")
+          .from("manual_runs_public")
           .select("profile_id, level_id, completed_at")
           .lte("completed_at", historicalDate);
 
