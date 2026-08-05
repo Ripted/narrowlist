@@ -69,7 +69,7 @@ export default function ComparePage() {
     const [apiMain, apiExtra, manual] = await Promise.all([
       supabase.from("completions").select("level_id, completion_time, completed_at").eq("profile_id", profile.id),
       supabase.from("extra_completions").select("level_id, completion_time, completed_at").eq("profile_id", profile.id),
-      supabase.from("manual_runs").select("level_id, completion_time, completed_at, list_type").eq("profile_id", profile.id),
+      supabase.from("manual_runs_public").select("level_id, completion_time, completed_at, list_type").eq("profile_id", profile.id),
     ]);
 
     const mainRaw = (apiMain.data || []).map(c => ({ ...c, list: "main" as const }));

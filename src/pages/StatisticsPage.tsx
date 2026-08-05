@@ -86,7 +86,7 @@ export default function StatisticsPage() {
     queryFn: async () => {
       const [apiCompletions, manualRuns] = await Promise.all([
         supabase.from("completions").select("*", { count: "exact", head: true }),
-        supabase.from("manual_runs").select("*", { count: "exact", head: true }),
+        supabase.from("manual_runs_public").select("id", { count: "exact", head: true }),
       ]);
       return {
         api: apiCompletions.count || 0,
@@ -255,7 +255,7 @@ export default function StatisticsPage() {
         .select("arrow_name");
       
       const { data: manualRuns } = await supabase
-        .from("manual_runs")
+        .from("manual_runs_public")
         .select("arrow_name");
       
       const allRuns = [...(completions || []), ...(manualRuns || [])];

@@ -115,7 +115,7 @@ export default function LevelPage() {
       if (!levelDbId) return;
       
       const { data } = await supabase
-        .from("manual_runs")
+        .from("manual_runs_public")
         .select("*, profiles(username)")
         .eq("level_id", levelDbId);
       

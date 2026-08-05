@@ -65,7 +65,7 @@ export function useUserCompletions() {
 
       // Get user's manual runs
       const { data: manualRuns } = await supabase
-        .from("manual_runs")
+        .from("manual_runs_public")
         .select("level_id")
         .eq("profile_id", profile.id);
 

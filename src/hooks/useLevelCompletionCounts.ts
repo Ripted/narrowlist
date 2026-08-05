@@ -9,7 +9,7 @@ async function fetchCounts(): Promise<Map<string, number>> {
   const PAGE_SIZE = 1000;
 
   const fetchAll = async (
-    table: "completions" | "manual_runs" | "extra_completions",
+    table: "completions" | "manual_runs_public" | "extra_completions",
     listType?: "main" | "extra"
   ): Promise<{ profile_id: string; level_id: string }[]> => {
     const all: { profile_id: string; level_id: string }[] = [];
@@ -17,7 +17,7 @@ async function fetchCounts(): Promise<Map<string, number>> {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const baseQuery: any = supabase.from(table).select("profile_id, level_id");
-      const query = listType && table === "manual_runs" ? baseQuery.eq("list_type", listType) : baseQuery;
+      const query = listType && table === "manual_runs_public" ? baseQuery.eq("list_type", listType) : baseQuery;
       const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
       if (error || !data || data.length === 0) break;
       all.push(...(data as { profile_id: string; level_id: string }[]));
@@ -29,9 +29,9 @@ async function fetchCounts(): Promise<Map<string, number>> {
 
   const [completions, mainManual, extraComps, extraManual] = await Promise.all([
     fetchAll("completions"),
-    fetchAll("manual_runs", "main"),
+    fetchAll("manual_runs_public", "main"),
     fetchAll("extra_completions"),
-    fetchAll("manual_runs", "extra"),
+    fetchAll("manual_runs_public", "extra"),
   ]);
 
   // Deduplicate per (profile_id, level_id) across sources
