@@ -16,7 +16,7 @@ async function fetchCounts(): Promise<Map<string, number>> {
     let from = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      const baseQuery: any = supabase.from(table).select("profile_id, level_id");
+      const baseQuery: any = (supabase.from as any)(table).select("profile_id, level_id");
       const query = listType && table === "manual_runs_public" ? baseQuery.eq("list_type", listType) : baseQuery;
       const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
       if (error || !data || data.length === 0) break;
