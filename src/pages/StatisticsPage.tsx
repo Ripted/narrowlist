@@ -50,6 +50,8 @@ interface StatCard {
   gradient: string;
 }
 
+import { useIsMobile } from "@/hooks/use-mobile";
+
 export default function StatisticsPage() {
   const isMobile = useIsMobile();
   // Fetch total players
