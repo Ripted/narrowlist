@@ -1070,8 +1070,8 @@ export default function StatisticsPage() {
         </div>
 
         {/* New stats sections */}
-        <div className="grid lg:grid-cols-2 gap-6 mt-8">
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+        <div className="grid lg:grid-cols-2 gap-6 mt-8 px-4 lg:px-0">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
 
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Award className="w-5 h-5 text-primary" /> Top Verifiers
@@ -1090,7 +1090,7 @@ export default function StatisticsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Activity className="w-5 h-5 text-accent" /> Most Active (30d)
             </h3>
@@ -1108,7 +1108,7 @@ export default function StatisticsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" /> Country Distribution
             </h3>
@@ -1125,7 +1125,7 @@ export default function StatisticsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" /> Recent Runs (7d)
             </h3>
