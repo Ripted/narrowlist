@@ -620,7 +620,7 @@ export default function StatisticsPage() {
             </div>
 
             {/* Level Distribution Pie */}
-            <div className="rounded-xl border border-border bg-card p-6">
+            <div className="rounded-xl border border-border bg-card p-6 overflow-hidden">
               <div className="flex items-center gap-2 mb-6">
                 <Target className="w-5 h-5 text-accent" />
                 <h2 className="font-display text-lg font-bold">Level Distribution</h2>
@@ -632,12 +632,12 @@ export default function StatisticsPage() {
                       data={levelDistribution}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
+                      innerRadius={isMobile ? 45 : 60}
+                      outerRadius={isMobile ? 65 : 80}
                       paddingAngle={5}
                       dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}`}
-                      labelLine={{ stroke: "hsl(var(--muted-foreground))" }}
+                      label={isMobile ? false : ({ name, value }) => `${name}: ${value}`}
+                      labelLine={isMobile ? false : { stroke: "hsl(var(--muted-foreground))" }}
                     >
                       {levelDistribution.map((entry, index) => (
                         <Cell 
