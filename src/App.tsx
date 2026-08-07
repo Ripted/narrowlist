@@ -27,6 +27,8 @@ import HubPage from "./pages/HubPage";
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
 import NotFound from "./pages/NotFound";
+import { ScrollToTop } from "@/components/ScrollToTop";
+import { BackToTop } from "@/components/BackToTop";
 
 
 const queryClient = new QueryClient();
@@ -39,6 +41,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <ScrollToTop />
             <Routes>
               <Route path="/" element={<HubPage />} />
               <Route path="/hub" element={<HubPage />} />
@@ -65,7 +68,7 @@ const App = () => (
               <Route path="/admin" element={<AdminPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            
+            <BackToTop />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

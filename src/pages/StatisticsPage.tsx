@@ -50,7 +50,10 @@ interface StatCard {
   gradient: string;
 }
 
+import { useIsMobile } from "@/hooks/use-mobile";
+
 export default function StatisticsPage() {
+  const isMobile = useIsMobile();
   // Fetch total players
   const { data: playersCount = 0 } = useQuery({
     queryKey: ["stats-players"],
@@ -620,7 +623,7 @@ export default function StatisticsPage() {
             </div>
 
             {/* Level Distribution Pie */}
-            <div className="rounded-xl border border-border bg-card p-6">
+            <div className="rounded-xl border border-border bg-card p-6 overflow-hidden">
               <div className="flex items-center gap-2 mb-6">
                 <Target className="w-5 h-5 text-accent" />
                 <h2 className="font-display text-lg font-bold">Level Distribution</h2>
@@ -632,12 +635,12 @@ export default function StatisticsPage() {
                       data={levelDistribution}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={80}
+                      innerRadius={isMobile ? 45 : 60}
+                      outerRadius={isMobile ? 65 : 80}
                       paddingAngle={5}
                       dataKey="value"
-                      label={({ name, value }) => `${name}: ${value}`}
-                      labelLine={{ stroke: "hsl(var(--muted-foreground))" }}
+                      label={isMobile ? false : ({ name, value }) => `${name}: ${value}`}
+                      labelLine={isMobile ? false : { stroke: "hsl(var(--muted-foreground))" }}
                     >
                       {levelDistribution.map((entry, index) => (
                         <Cell 
@@ -727,10 +730,10 @@ export default function StatisticsPage() {
                         data={arrowDistribution}
                         cx="50%"
                         cy="50%"
-                        outerRadius={80}
+                        outerRadius={isMobile ? 70 : 80}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                        labelLine={{ stroke: "hsl(var(--muted-foreground))" }}
+                        label={isMobile ? false : ({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        labelLine={isMobile ? false : { stroke: "hsl(var(--muted-foreground))" }}
                       >
                         {arrowDistribution.map((entry, index) => (
                           <Cell 
@@ -750,6 +753,12 @@ export default function StatisticsPage() {
                         }}
                         formatter={(value: number) => [`${value} runs`, "Count"]}
                       />
+                      {isMobile && (
+                        <Legend
+                          verticalAlign="bottom"
+                          formatter={(value) => <span className="text-foreground text-xs">{value}</span>}
+                        />
+                      )}
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -1061,8 +1070,8 @@ export default function StatisticsPage() {
         </div>
 
         {/* New stats sections */}
-        <div className="grid lg:grid-cols-2 gap-6 mt-8">
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+        <div className="grid lg:grid-cols-2 gap-6 mt-8 px-4 lg:px-0">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
 
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Award className="w-5 h-5 text-primary" /> Top Verifiers
@@ -1081,7 +1090,7 @@ export default function StatisticsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Activity className="w-5 h-5 text-accent" /> Most Active (30d)
             </h3>
@@ -1099,7 +1108,7 @@ export default function StatisticsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" /> Country Distribution
             </h3>
@@ -1116,7 +1125,7 @@ export default function StatisticsPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" /> Recent Runs (7d)
             </h3>
