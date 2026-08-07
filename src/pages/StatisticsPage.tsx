@@ -51,6 +51,7 @@ interface StatCard {
 }
 
 export default function StatisticsPage() {
+  const isMobile = useIsMobile();
   // Fetch total players
   const { data: playersCount = 0 } = useQuery({
     queryKey: ["stats-players"],
