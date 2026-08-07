@@ -68,7 +68,7 @@ const App = () => (
               <Route path="/admin" element={<AdminPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            
+            <BackToTop />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
