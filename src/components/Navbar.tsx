@@ -130,34 +130,32 @@ export function Navbar() {
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
       {mobile ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {groups.map((group) =>
             group.items.length === 0 ? (
               <Link key={group.key} to={group.path} onClick={() => setMobileOpen(false)}>
                 <Button
                   variant={isGroupActive(group) ? "default" : "ghost"}
-                  size="sm"
-                  className="gap-2 font-medium w-full justify-start"
+                  className="gap-3 font-medium w-full justify-start h-11 text-[15px]"
                 >
-                  <group.icon className="w-4 h-4" />
+                  <group.icon className="w-5 h-5" />
                   {group.label}
                 </Button>
               </Link>
             ) : (
               <div key={group.key} className="flex flex-col gap-1">
-                <span className="px-3 text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+                <span className="px-3 pb-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
                   {group.label}
                 </span>
                 {group.items.map(({ path, label, icon: Icon }) => (
                   <Link key={path} to={path} onClick={() => setMobileOpen(false)}>
                     <Button
                       variant={isActive(path) ? "default" : "ghost"}
-                      size="sm"
-                      className={`gap-2 font-medium w-full justify-start ${
+                      className={`gap-3 font-medium w-full justify-start h-11 text-[15px] ${
                         isActive(path) ? "glow-primary" : "hover:bg-secondary"
                       }`}
                     >
-                      <Icon className="w-4 h-4" />
+                      <Icon className="w-5 h-5" />
                       {label}
                     </Button>
                   </Link>
@@ -169,10 +167,9 @@ export function Navbar() {
             <Link to={adminItem.path} onClick={() => setMobileOpen(false)}>
               <Button
                 variant={isActive(adminItem.path) ? "default" : "ghost"}
-                size="sm"
-                className="gap-2 font-medium w-full justify-start text-accent"
+                className="gap-3 font-medium w-full justify-start h-11 text-[15px] text-accent"
               >
-                <Shield className="w-4 h-4" />
+                <Shield className="w-5 h-5" />
                 {adminItem.label}
               </Button>
             </Link>
