@@ -56,6 +56,12 @@ export function Navbar() {
 
   const [openGroup, setOpenGroup] = useState<string | null>(null);
 
+  // Close the mobile sheet whenever the route changes
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+
   type NavItem = { path: string; label: string; icon: typeof List };
   type NavGroup = { key: string; label: string; icon: typeof List; path: string; items: NavItem[] };
 
