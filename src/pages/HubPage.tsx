@@ -20,6 +20,8 @@ import {
   Shield,
   Target,
   Sparkles,
+  Dice5,
+
   LucideIcon,
 } from "lucide-react";
 
@@ -28,7 +30,7 @@ interface HubItem {
   label: string;
   description: string;
   icon: LucideIcon;
-  category: "lists" | "community" | "tools" | "account" | "admin";
+  category: "lists" | "leaderboards" | "activity" | "tools" | "account" | "admin";
 }
 
 const HubPage = () => {
