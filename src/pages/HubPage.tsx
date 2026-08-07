@@ -51,20 +51,24 @@ const HubPage = () => {
   const items: HubItem[] = [
     // Lists
     { path: "/main", label: "Main List", description: "Top 100 hardest levels", icon: Target, category: "lists" },
+    { path: "/extended-list", label: "Extended List", description: "Ranks 101 and beyond", icon: List, category: "lists" },
     { path: "/extra-list", label: "Extra List", description: "Levels with extra points", icon: List, category: "lists" },
     { path: "/future-list", label: "Future List", description: "Upcoming & inactive levels", icon: Clock, category: "lists" },
     { path: "/packs", label: "Level Packs", description: "Curated level collections", icon: Package, category: "lists" },
 
-    // Community
-    { path: "/leaderboard", label: "Leaderboard", description: "Top players & creators", icon: Trophy, category: "community" },
-    { path: "/recent", label: "Recent Runs", description: "Latest completions", icon: Activity, category: "community" },
-    { path: "/compare", label: "Compare Players", description: "Side-by-side player stats", icon: GitCompare, category: "community" },
-    { path: "/statistics", label: "Statistics", description: "Global metrics & charts", icon: BarChart3, category: "community" },
-    
+    // Leaderboards
+    { path: "/leaderboard", label: "Leaderboard", description: "Top players & creators", icon: Trophy, category: "leaderboards" },
+    { path: "/compare", label: "Compare Players", description: "Side-by-side player stats", icon: GitCompare, category: "leaderboards" },
+
+    // Activity
+    { path: "/recent", label: "Recent Runs", description: "Latest completions", icon: Activity, category: "activity" },
+    { path: "/recently-added", label: "Recently Added", description: "Newest levels on the lists", icon: Sparkles, category: "activity" },
+    { path: "/statistics", label: "Statistics", description: "Global metrics & charts", icon: BarChart3, category: "activity" },
 
     // Tools
     { path: "/submit", label: "Submit", description: "Submit a level or run", icon: Send, category: "tools" },
     { path: "/guide", label: "Guide", description: "How everything works", icon: BookOpen, category: "tools" },
+    { path: "/roulette", label: "Level Roulette", description: "Random level challenges", icon: Dice5, category: "tools" },
     { path: "/themes", label: "Themes", description: "Customize site appearance", icon: Palette, category: "tools" },
   ];
 
@@ -80,11 +84,13 @@ const HubPage = () => {
 
   const categories: { key: HubItem["category"]; title: string }[] = [
     { key: "lists", title: "Lists" },
-    { key: "community", title: "Community" },
+    { key: "leaderboards", title: "Leaderboards" },
+    { key: "activity", title: "Activity" },
     { key: "tools", title: "Tools" },
     { key: "account", title: "Your Account" },
     { key: "admin", title: "Admin" },
   ];
+
 
   return (
     <div className="min-h-screen bg-background">
