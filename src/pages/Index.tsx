@@ -229,7 +229,7 @@ const Index = () => {
                   }}
                 />
               )}
-              <div className="relative flex-1 sm:w-64">
+              <div className="relative w-full basis-full sm:basis-auto sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search levels..."
