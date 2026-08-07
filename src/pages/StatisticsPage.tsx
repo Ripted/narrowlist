@@ -730,10 +730,10 @@ export default function StatisticsPage() {
                         data={arrowDistribution}
                         cx="50%"
                         cy="50%"
-                        outerRadius={80}
+                        outerRadius={isMobile ? 70 : 80}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                        labelLine={{ stroke: "hsl(var(--muted-foreground))" }}
+                        label={isMobile ? false : ({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        labelLine={isMobile ? false : { stroke: "hsl(var(--muted-foreground))" }}
                       >
                         {arrowDistribution.map((entry, index) => (
                           <Cell 
