@@ -27,6 +27,8 @@ import HubPage from "./pages/HubPage";
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
 import NotFound from "./pages/NotFound";
+import { ScrollToTop } from "@/components/ScrollToTop";
+import { BackToTop } from "@/components/BackToTop";
 
 
 const queryClient = new QueryClient();
