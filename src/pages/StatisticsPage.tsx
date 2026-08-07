@@ -753,6 +753,12 @@ export default function StatisticsPage() {
                         }}
                         formatter={(value: number) => [`${value} runs`, "Count"]}
                       />
+                      {isMobile && (
+                        <Legend
+                          verticalAlign="bottom"
+                          formatter={(value) => <span className="text-foreground text-xs">{value}</span>}
+                        />
+                      )}
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
