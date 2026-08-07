@@ -54,131 +54,205 @@ export function Navbar() {
     }
   }, [user]);
 
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
-  const mainNavItems = [
-    { path: "/", label: "Explore", icon: LayoutGrid },
-    { path: "/main", label: "Main List", icon: List },
-    { path: "/future-list", label: "Future List", icon: Clock },
-    { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  type NavItem = { path: string; label: string; icon: typeof List };
+  type NavGroup = { key: string; label: string; icon: typeof List; path: string; items: NavItem[] };
+
+  const groups: NavGroup[] = [
+    {
+      key: "explore",
+      label: "Explore",
+      icon: LayoutGrid,
+      path: "/",
+      items: [],
+    },
+    {
+      key: "lists",
+      label: "Lists",
+      icon: List,
+      path: "/main",
+      items: [
+        { path: "/main", label: "Main List", icon: List },
+        { path: "/extended-list", label: "Extended List", icon: List },
+        { path: "/extra-list", label: "Extra List", icon: List },
+        { path: "/future-list", label: "Future List", icon: Clock },
+        { path: "/packs", label: "Level Packs", icon: Package },
+      ],
+    },
+    {
+      key: "leaderboards",
+      label: "Leaderboards",
+      icon: Trophy,
+      path: "/leaderboard",
+      items: [
+        { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
+        { path: "/compare", label: "Compare Players", icon: GitCompare },
+      ],
+    },
+    {
+      key: "activity",
+      label: "Activity",
+      icon: Activity,
+      path: "/recent",
+      items: [
+        { path: "/recent", label: "Recent Runs", icon: Activity },
+        { path: "/recently-added", label: "Recently Added", icon: Clock },
+        { path: "/statistics", label: "Statistics", icon: BarChart3 },
+      ],
+    },
+    {
+      key: "tools",
+      label: "Tools",
+      icon: Package,
+      path: "/guide",
+      items: [
+        { path: "/submit", label: "Submit", icon: Send },
+        { path: "/guide", label: "Guide", icon: BookOpen },
+        { path: "/roulette", label: "Level Roulette", icon: Dice5 },
+        { path: "/themes", label: "Themes", icon: Palette },
+        ...(user ? [{ path: "/watchlist", label: "Watchlist", icon: Bookmark }] : []),
+        ...(playerUsername
+          ? [{ path: `/player/${playerUsername}`, label: "My Profile", icon: User }]
+          : []),
+      ],
+    },
   ];
 
-  // Admin is now a main item (not in more)
   const adminItem = isAdmin ? { path: "/admin", label: "Admin", icon: Shield } : null;
 
-  const getMoreNavItems = () => {
-    const items = [
-      { path: "/extra-list", label: "Extra List", icon: List },
-      { path: "/roulette", label: "Level Roulette", icon: Dice5 },
-      { path: "/packs", label: "Level Packs", icon: Package },
-      { path: "/recent", label: "Recent Runs", icon: Activity },
-      { path: "/recently-added", label: "Recently Added", icon: Clock },
-      { path: "/compare", label: "Compare Players", icon: GitCompare },
-      { path: "/statistics", label: "Statistics", icon: BarChart3 },
-      { path: "/submit", label: "Submit", icon: Send },
-      { path: "/guide", label: "Guide", icon: BookOpen },
-      { path: "/themes", label: "Themes", icon: Palette },
-    ];
-    
-    if (user) {
-      items.push({ path: "/watchlist", label: "Watchlist", icon: Bookmark });
-    }
-    
-    if (playerUsername) {
-      items.push({ path: `/player/${playerUsername}`, label: "Profile", icon: User });
-    }
-    
-    return items;
-  };
-
-  const moreNavItems = getMoreNavItems();
-
   const isActive = (path: string) => location.pathname === path;
-  const isMoreActive = moreNavItems.some(item => isActive(item.path)) || location.pathname.startsWith('/player/');
+  const isGroupActive = (group: NavGroup) =>
+    group.items.length === 0
+      ? location.pathname === group.path || location.pathname === "/hub"
+      : group.items.some((i) => isActive(i.path));
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (
     <>
-      {mainNavItems.map(({ path, label, icon: Icon }) => (
-        <Link key={path} to={path} onClick={() => mobile && setMobileOpen(false)}>
-          <Button
-            variant={isActive(path) ? "default" : "ghost"}
-            size="sm"
-            className={`gap-2 font-medium w-full justify-start ${
-              isActive(path) ? "glow-primary" : "hover:bg-secondary"
-            }`}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </Button>
-        </Link>
-      ))}
-
-      {/* Admin button - separate from more menu */}
-      {adminItem && (
-        <Link to={adminItem.path} onClick={() => mobile && setMobileOpen(false)}>
-          <Button
-            variant={isActive(adminItem.path) ? "default" : "ghost"}
-            size="sm"
-            className={`gap-2 font-medium w-full justify-start ${
-              isActive(adminItem.path) ? "glow-accent" : "hover:bg-secondary"
-            } text-accent`}
-          >
-            <Shield className="w-4 h-4" />
-            {adminItem.label}
-          </Button>
-        </Link>
-      )}
-
-      {/* More dropdown - Desktop only */}
-      {!mobile && (
-        <DropdownMenu open={moreOpen} onOpenChange={setMoreOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant={isMoreActive ? "default" : "ghost"}
-              size="sm"
-              className={`gap-2 font-medium transition-all duration-200 ${isMoreActive ? "glow-primary" : "hover:bg-secondary"}`}
-            >
-              <MoreHorizontal className={`w-4 h-4 transition-transform duration-200 ${moreOpen ? "rotate-90" : ""}`} />
-              More
-              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${moreOpen ? "rotate-180" : ""}`} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            align="end" 
-            className="w-48 bg-card border-border z-50 animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-200"
-          >
-            {moreNavItems.map(({ path, label, icon: Icon }) => (
-              <DropdownMenuItem key={path} asChild className="transition-colors duration-150">
-                <Link 
-                  to={path} 
-                  className={`flex items-center gap-2 cursor-pointer ${isActive(path) || location.pathname === path ? "text-primary" : ""}`}
+      {mobile ? (
+        <div className="flex flex-col gap-4">
+          {groups.map((group) =>
+            group.items.length === 0 ? (
+              <Link key={group.key} to={group.path} onClick={() => setMobileOpen(false)}>
+                <Button
+                  variant={isGroupActive(group) ? "default" : "ghost"}
+                  size="sm"
+                  className="gap-2 font-medium w-full justify-start"
                 >
-                  <Icon className="w-4 h-4" />
-                  {label}
-                </Link>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+                  <group.icon className="w-4 h-4" />
+                  {group.label}
+                </Button>
+              </Link>
+            ) : (
+              <div key={group.key} className="flex flex-col gap-1">
+                <span className="px-3 text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+                  {group.label}
+                </span>
+                {group.items.map(({ path, label, icon: Icon }) => (
+                  <Link key={path} to={path} onClick={() => setMobileOpen(false)}>
+                    <Button
+                      variant={isActive(path) ? "default" : "ghost"}
+                      size="sm"
+                      className={`gap-2 font-medium w-full justify-start ${
+                        isActive(path) ? "glow-primary" : "hover:bg-secondary"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            ),
+          )}
+          {adminItem && (
+            <Link to={adminItem.path} onClick={() => setMobileOpen(false)}>
+              <Button
+                variant={isActive(adminItem.path) ? "default" : "ghost"}
+                size="sm"
+                className="gap-2 font-medium w-full justify-start text-accent"
+              >
+                <Shield className="w-4 h-4" />
+                {adminItem.label}
+              </Button>
+            </Link>
+          )}
+        </div>
+      ) : (
+        <>
+          {groups.map((group) =>
+            group.items.length === 0 ? (
+              <Link key={group.key} to={group.path}>
+                <Button
+                  variant={isGroupActive(group) ? "default" : "ghost"}
+                  size="sm"
+                  className={`gap-2 font-medium ${isGroupActive(group) ? "glow-primary" : "hover:bg-secondary"}`}
+                >
+                  <group.icon className="w-4 h-4" />
+                  {group.label}
+                </Button>
+              </Link>
+            ) : (
+              <DropdownMenu
+                key={group.key}
+                open={openGroup === group.key}
+                onOpenChange={(o) => setOpenGroup(o ? group.key : null)}
+              >
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={isGroupActive(group) ? "default" : "ghost"}
+                    size="sm"
+                    className={`gap-2 font-medium transition-all duration-200 ${
+                      isGroupActive(group) ? "glow-primary" : "hover:bg-secondary"
+                    }`}
+                  >
+                    <group.icon className="w-4 h-4" />
+                    {group.label}
+                    <ChevronDown
+                      className={`w-3 h-3 transition-transform duration-200 ${
+                        openGroup === group.key ? "rotate-180" : ""
+                      }`}
+                    />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  className="w-52 bg-card border-border z-50 animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-200"
+                >
+                  {group.items.map(({ path, label, icon: Icon }) => (
+                    <DropdownMenuItem key={path} asChild className="transition-colors duration-150">
+                      <Link
+                        to={path}
+                        className={`flex items-center gap-2 cursor-pointer ${isActive(path) ? "text-primary" : ""}`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ),
+          )}
+          {adminItem && (
+            <Link to={adminItem.path}>
+              <Button
+                variant={isActive(adminItem.path) ? "default" : "ghost"}
+                size="sm"
+                className={`gap-2 font-medium ${
+                  isActive(adminItem.path) ? "glow-accent" : "hover:bg-secondary"
+                } text-accent`}
+              >
+                <Shield className="w-4 h-4" />
+                {adminItem.label}
+              </Button>
+            </Link>
+          )}
+        </>
       )}
-
-      {/* More items - Mobile (flat list) */}
-      {mobile && moreNavItems.map(({ path, label, icon: Icon }) => (
-        <Link key={path} to={path} onClick={() => setMobileOpen(false)}>
-          <Button
-            variant={isActive(path) || location.pathname === path ? "default" : "ghost"}
-            size="sm"
-            className={`gap-2 font-medium w-full justify-start ${
-              isActive(path) || location.pathname === path ? "glow-primary" : "hover:bg-secondary"
-            }`}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </Button>
-        </Link>
-      ))}
     </>
   );
+
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
