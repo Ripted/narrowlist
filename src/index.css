@@ -99,6 +99,11 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
@@ -107,6 +112,8 @@
       radial-gradient(ellipse at top, hsl(var(--primary) / 0.03) 0%, transparent 50%),
       radial-gradient(ellipse at bottom right, hsl(var(--accent) / 0.02) 0%, transparent 50%);
     min-height: 100vh;
+    /* Decorative blurred orbs must never create a horizontal scrollbar on mobile */
+    overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -116,6 +123,16 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  /* Prevent iOS from zooming in when focusing form fields */
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
+  }
+
 }
 
 @layer utilities {
