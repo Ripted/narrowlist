@@ -1615,6 +1615,20 @@ export default function AdminPage() {
     );
   }, [levels, levelSearchQuery]);
 
+  const filteredExtendedLevels = useMemo(() => {
+    const sorted = [...extendedLevels].sort((a, b) => a.rank_position - b.rank_position);
+    if (!extendedSearchQuery.trim()) return sorted;
+    const query = extendedSearchQuery.toLowerCase();
+    return sorted.filter(l =>
+      l.name?.toLowerCase().includes(query) ||
+      l.author?.toLowerCase().includes(query) ||
+      l.level_id.toLowerCase().includes(query) ||
+      l.rank_position.toString().includes(query)
+    );
+  }, [extendedLevels, extendedSearchQuery]);
+
+
+
   const filteredFutureLevels = useMemo(() => {
     if (!futureSearchQuery.trim()) return futureLevels;
     const query = futureSearchQuery.toLowerCase();
