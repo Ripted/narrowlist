@@ -1209,11 +1209,11 @@ export default function AdminPage() {
           // Don't throw - the run was approved, just notification failed
         }
 
-        await logAction("Approved run submission", `${submission.username} on ${level.name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
+        await logAction("Approved run submission", `${submission.username} on ${level.name || submission.level_id} (submitted by ${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
         toast({ title: "Run Approved", description: `Added as manual run for ${submission.username}` });
         fetchManualRuns();
       } else {
-        await logAction("Rejected run submission", `${submission.username} on ${submission.level_name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
+        await logAction("Rejected run submission", `${submission.username} on ${submission.level_name || submission.level_id} (submitted by ${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
         toast({ title: "Run Rejected" });
       }
 
@@ -1391,7 +1391,7 @@ export default function AdminPage() {
           fetchFutureLevels();
         }
       } else {
-        await logAction("Rejected level submission", `${submission.level_name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
+        await logAction("Rejected level submission", `${submission.level_name || submission.level_id} (submitted by ${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
         toast({ title: "Submission Rejected" });
       }
 
@@ -2912,7 +2912,7 @@ export default function AdminPage() {
       
       if (error) throw error;
       
-      await logAction(`${action === "approved" ? "Approved" : "Rejected"} claim request`, `Profile: ${request.profile_username}, Email: ${request.email}`);
+      await logAction(`${action === "approved" ? "Approved" : "Rejected"} claim request`, `Profile: ${request.profile_username}`);
       
       toast({ 
         title: action === "approved" ? "Claim Approved" : "Claim Rejected",
@@ -3389,7 +3389,7 @@ export default function AdminPage() {
                                         .from("level_submissions")
                                         .update({ status: "read" })
                                         .eq("id", submission.id);
-                                      await logAction("Marked level submission as read", `${submission.level_name || submission.level_id} (${submission.submitted_by_email})`);
+                                      await logAction("Marked level submission as read", `${submission.level_name || submission.level_id} (${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
                                       toast({ title: "Marked as Read" });
                                       fetchLevelSubmissions();
                                       fetchChangelog();
@@ -3468,7 +3468,7 @@ export default function AdminPage() {
                                           .from("level_submissions")
                                           .delete()
                                           .eq("id", submission.id);
-                                        await logAction("Deleted submission", `${submission.level_name || submission.level_id} (${submission.submitted_by_email})`);
+                                        await logAction("Deleted submission", `${submission.level_name || submission.level_id} (${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
                                         toast({ title: "Submission Deleted" });
                                         fetchLevelSubmissions();
                                         fetchChangelog();
@@ -4909,7 +4909,7 @@ export default function AdminPage() {
                     {bannedUsers.map((banned) => (
                       <div key={banned.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-foreground">{banned.email}</div>
+                          <div className="font-medium text-foreground">{displaySubmitter(banned.user_id, banned.email)}</div>
                           {banned.reason && (
                             <div className="text-sm text-muted-foreground">Reason: {banned.reason}</div>
                           )}
