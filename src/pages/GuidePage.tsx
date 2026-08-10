@@ -740,6 +740,12 @@ export default function GuidePage() {
                   avatarUrl={admins.ripted?.avatar_url}
                   role="Admin"
                 />
+                <ProfileLink 
+                  username="M4zyxx" 
+                  displayName={admins.mazyx?.display_name}
+                  avatarUrl={admins.mazyx?.avatar_url}
+                  role="Admin"
+                />
               </div>
             </div>
           </CardContent>
