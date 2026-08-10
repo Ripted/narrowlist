@@ -804,6 +804,85 @@ export default function AdminPage() {
     }
   };
 
+  const startExtendedRankEdit = (level: ExtendedLevel) => {
+    setExtendedRankInputId(level.id);
+    setExtendedRankInputValue(String(level.rank_position));
+  };
+
+  const confirmExtendedRankChange = () => {
+    if (!extendedRankInputId) return;
+    const newRank = parseInt(extendedRankInputValue);
+    if (isNaN(newRank) || newRank < 1 || newRank > extendedLevels.length) {
+      toast({ title: "Invalid rank", description: `Enter a number between 1 and ${extendedLevels.length}`, variant: "destructive" });
+      return;
+    }
+    const level = extendedLevels.find((l) => l.id === extendedRankInputId);
+    if (!level) return;
+    if (level.rank_position === newRank) {
+      setExtendedRankInputId(null);
+      return;
+    }
+    setExtendedRankConfirmLevel(level);
+    setPendingExtendedRank(newRank);
+  };
+
+  const executeExtendedRankChange = async () => {
+    if (!extendedRankConfirmLevel || pendingExtendedRank === null) return;
+    const sorted = [...extendedLevels].sort((a, b) => a.rank_position - b.rank_position);
+    const currentIndex = sorted.findIndex((l) => l.id === extendedRankConfirmLevel.id);
+    if (currentIndex === -1) return;
+    const oldRank = extendedRankConfirmLevel.rank_position;
+    const [moved] = sorted.splice(currentIndex, 1);
+    sorted.splice(pendingExtendedRank - 1, 0, moved);
+
+    try {
+      await updateExtendedRanksSafely(sorted);
+      await logAction("Changed extra level rank", `${extendedRankConfirmLevel.name || extendedRankConfirmLevel.level_id} from #${oldRank} to #${pendingExtendedRank}`);
+      await sendAdminNotification("rank_change", extendedRankConfirmLevel.name || extendedRankConfirmLevel.level_id, oldRank, pendingExtendedRank, "Extra", "moved", extendedRankConfirmLevel);
+      toast({ title: "Saved", description: "Extra list rankings updated" });
+      fetchExtendedLevels();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setExtendedRankInputId(null);
+      setExtendedRankConfirmLevel(null);
+      setPendingExtendedRank(null);
+    }
+  };
+
+  const saveExtendedRowThumbnail = async (levelId: string, file: File) => {
+    setUploadingExtendedRowThumb(levelId);
+    try {
+      const fileName = `extended-${levelId}-${Date.now()}.${file.name.split(".").pop()}`;
+      const { data, error } = await supabase.storage.from("level-thumbnails").upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("level-thumbnails").getPublicUrl(data.path);
+      const { error: updErr } = await supabase.from("extended_levels").update({ thumbnail_url: publicUrl }).eq("id", levelId);
+      if (updErr) throw updErr;
+      setExtendedLevels((prev) => prev.map((l) => (l.id === levelId ? { ...l, thumbnail_url: publicUrl } : l)));
+      toast({ title: "Success", description: "Thumbnail updated" });
+    } catch (err: any) {
+      toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingExtendedRowThumb(null);
+    }
+  };
+
+  const handleQuickExtendedThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>, levelId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await saveExtendedRowThumbnail(levelId, file);
+    e.target.value = "";
+  };
+
+  const handleQuickPasteExtendedThumbnail = async (levelId: string) => {
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    await saveExtendedRowThumbnail(levelId, file);
+  };
+
+
   const transferExtendedToMain = async (level: ExtendedLevel) => {
     try {
       // Get the next rank in main list
