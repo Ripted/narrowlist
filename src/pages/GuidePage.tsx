@@ -247,14 +247,20 @@ export default function GuidePage() {
               <FeatureCard
                 icon={Tag}
                 title="Tags & Filters"
-                description="Filter the main list by any combination of community tags to find your style."
+                description="Filter the Main and Extra lists by tags and sort by rank, points or completions."
                 onClick={() => navigate("/main")}
               />
               <FeatureCard
-                icon={Award}
-                title="Ratings & Difficulty"
-                description="Vote on enjoyment, gameplay, design, decoration and difficulty of completed levels."
-                onClick={() => navigate("/main")}
+                icon={Target}
+                title="Level Roulette"
+                description="Get a random challenge set from any rank range, with customizable skips and level counts."
+                onClick={() => navigate("/roulette")}
+              />
+              <FeatureCard
+                icon={ListPlus}
+                title="Recently Added"
+                description="See which levels were added to the lists most recently, across Main, Extra and Future."
+                onClick={() => navigate("/recently-added")}
               />
               <FeatureCard
                 icon={Palette}
