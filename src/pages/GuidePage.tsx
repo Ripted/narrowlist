@@ -493,17 +493,7 @@ export default function GuidePage() {
                   <CommunityRow
                     icon={Send}
                     title="Submit levels & runs"
-                    description="Suggest levels for the list or send proof of your manual completions."
-                  />
-                  <CommunityRow
-                    icon={Award}
-                    title="Rate & vote on difficulty"
-                    description="Once you complete a level you can rate enjoyment, gameplay, design and difficulty."
-                  />
-                  <CommunityRow
-                    icon={Tag}
-                    title="Tag levels"
-                    description="Help describe levels (e.g. spam, memory, tech) so others can find their favorite styles."
+                    description="Suggest levels for the list or send video proof of your manual completions."
                   />
                   <CommunityRow
                     icon={Activity}
@@ -516,14 +506,25 @@ export default function GuidePage() {
                     description="Bookmark levels you want to attempt next so you don't lose track of them."
                   />
                   <CommunityRow
+                    icon={Package}
+                    title="Explore level packs"
+                    description="Work through curated collections of levels grouped by theme, creator or difficulty step-up."
+                  />
+                  <CommunityRow
+                    icon={Target}
+                    title="Spin the Level Roulette"
+                    description="Get a random challenge set from any rank range and track your runs locally."
+                  />
+                  <CommunityRow
                     icon={Shield}
                     title="Report issues"
-                    description="Spotted a wrong rank, duplicate run or broken thumbnail? Ping an admin on Discord."
+                    description="Spotted a wrong rank, duplicate run or broken thumbnail? Use the bug report button or ping an admin on Discord."
                   />
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
+
 
           {/* FAQ Tab */}
           <TabsContent value="faq" className="space-y-6">
