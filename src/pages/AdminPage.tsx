@@ -6101,6 +6101,47 @@ export default function AdminPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Extra List Rank Change Confirmation */}
+      <AlertDialog open={!!extendedRankConfirmLevel} onOpenChange={(open) => { if (!open) { setExtendedRankConfirmLevel(null); setPendingExtendedRank(null); } }}>
+        <AlertDialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              Confirm Rank Change
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to change the rank of <strong className="text-foreground">{extendedRankConfirmLevel?.name || extendedRankConfirmLevel?.level_id}</strong> on the Extra List
+              </p>
+              <div className="flex items-center justify-center gap-4 py-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-muted-foreground">#{extendedRankConfirmLevel?.rank_position}</div>
+                  <div className="text-xs text-muted-foreground">Current</div>
+                </div>
+                <ArrowUpDown className="w-6 h-6 text-primary" />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">#{pendingExtendedRank}</div>
+                  <div className="text-xs text-muted-foreground">New</div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This will update all affected Extra List rankings and point values. This action will be logged and a Discord notification will be sent.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setExtendedRankConfirmLevel(null); setPendingExtendedRank(null); }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={executeExtendedRankChange} className="bg-primary hover:bg-primary/90">
+              Confirm Change
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
+
 
       {/* Move to Main Confirmation Dialog */}
       <AlertDialog open={!!moveToMainConfirm} onOpenChange={(open) => !open && setMoveToMainConfirm(null)}>
