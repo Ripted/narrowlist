@@ -260,6 +260,11 @@ export default function AdminPage() {
   const [extendedSearchQuery, setExtendedSearchQuery] = useState("");
   const [fetchingExtendedLevelInfo, setFetchingExtendedLevelInfo] = useState(false);
   const [extendedLevelPreview, setExtendedLevelPreview] = useState<{ name: string; author: string } | null>(null);
+  const [extendedRankInputId, setExtendedRankInputId] = useState<string | null>(null);
+  const [extendedRankInputValue, setExtendedRankInputValue] = useState("");
+  const [extendedRankConfirmLevel, setExtendedRankConfirmLevel] = useState<ExtendedLevel | null>(null);
+  const [pendingExtendedRank, setPendingExtendedRank] = useState<number | null>(null);
+  const [uploadingExtendedRowThumb, setUploadingExtendedRowThumb] = useState<string | null>(null);
   const [resyncingExtraLevels, setResyncingExtraLevels] = useState(false);
   const [resyncingMainLevels, setResyncingMainLevels] = useState(false);
   const [resyncingFutureLevels, setResyncingFutureLevels] = useState(false);
