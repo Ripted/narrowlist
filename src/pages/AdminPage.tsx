@@ -1037,7 +1037,7 @@ export default function AdminPage() {
   const fetchAllProfiles = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, username, display_name, total_points, extra_points")
+      .select("id, username, display_name, total_points, extra_points, user_id")
       .order("username");
     
     if (data) setAllProfiles(data as any);
