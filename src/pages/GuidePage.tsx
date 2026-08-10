@@ -6,7 +6,7 @@ import {
   BookOpen, Trophy, List, Clock, Users, Send, GitCompare, 
   HelpCircle, Star, Heart, Zap, ChevronRight, ArrowRight,
   Play, UserPlus, MapPin, Medal, Target, Eye, ListPlus,
-  MessageCircle, Tag, Package, Shield, Award, Bookmark, Activity, Palette
+  MessageCircle, Tag, Package, Shield, Bookmark, Activity, Palette
 } from "lucide-react";
 import {
   Accordion,
@@ -29,9 +29,14 @@ export default function GuidePage() {
   const [founders, setFounders] = useState<{ sqm: FounderProfile | null }>({
     sqm: null,
   });
-  const [admins, setAdmins] = useState<{ champy: FounderProfile | null; ripted: FounderProfile | null }>({
+  const [admins, setAdmins] = useState<{
+    champy: FounderProfile | null;
+    ripted: FounderProfile | null;
+    mazyx: FounderProfile | null;
+  }>({
     champy: null,
     ripted: null,
+    mazyx: null,
   });
   const [activeTab, setActiveTab] = useState("getting-started");
 
@@ -40,7 +45,7 @@ export default function GuidePage() {
       const { data } = await supabase
         .from("profiles")
         .select("username, display_name, avatar_url")
-        .in("username", ["sqm", "Ripted", "Ch4mpY"]);
+        .in("username", ["sqm", "Ripted", "Ch4mpY", "M4zyxx"]);
       
       if (data) {
         setFounders({
@@ -49,6 +54,7 @@ export default function GuidePage() {
         setAdmins({
           champy: data.find(p => p.username.toLowerCase() === "ch4mpy") || null,
           ripted: data.find(p => p.username.toLowerCase() === "ripted") || null,
+          mazyx: data.find(p => p.username.toLowerCase() === "m4zyxx") || null,
         });
       }
     }
@@ -125,7 +131,7 @@ export default function GuidePage() {
                 title="3. Wait for Sync"
                 description="Completions are automatically synced every 3 minutes from the game."
                 action="Check Recent Runs"
-                onClick={() => navigate("/recent-runs")}
+                onClick={() => navigate("/recent")}
               />
               <InteractiveCard
                 icon={UserPlus}
@@ -241,14 +247,20 @@ export default function GuidePage() {
               <FeatureCard
                 icon={Tag}
                 title="Tags & Filters"
-                description="Filter the main list by any combination of community tags to find your style."
+                description="Filter the Main and Extra lists by tags and sort by rank, points or completions."
                 onClick={() => navigate("/main")}
               />
               <FeatureCard
-                icon={Award}
-                title="Ratings & Difficulty"
-                description="Vote on enjoyment, gameplay, design, decoration and difficulty of completed levels."
-                onClick={() => navigate("/main")}
+                icon={Target}
+                title="Level Roulette"
+                description="Get a random challenge set from any rank range, with customizable skips and level counts."
+                onClick={() => navigate("/roulette")}
+              />
+              <FeatureCard
+                icon={ListPlus}
+                title="Recently Added"
+                description="See which levels were added to the lists most recently, across Main, Extra and Future."
+                onClick={() => navigate("/recently-added")}
               />
               <FeatureCard
                 icon={Palette}
@@ -360,15 +372,15 @@ export default function GuidePage() {
                   Difficulty Rating System
                 </CardTitle>
                 <CardDescription>
-                  Community-driven difficulty scores from D0 (easiest) to D8 (hardest), in 0.1 increments.
+                  A shared reference scale from D0 (easiest) to D8 (hardest), used when discussing levels.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Every level on the Main and Extra lists can receive a difficulty
-                  vote. Each vote is a single number from <span className="text-foreground font-mono">0.0</span> to
-                  <span className="text-foreground font-mono"> 8.0</span>. The displayed difficulty is the
-                  <span className="text-foreground font-medium"> average of all votes</span>.
+                  D-ratings describe roughly how hard a level is in practice, from
+                  <span className="text-foreground font-mono"> D0</span> to
+                  <span className="text-foreground font-mono"> D8</span>. They are set by the
+                  <span className="text-foreground font-medium"> admin team</span> using completion data and player feedback.
                 </p>
                 <div className="space-y-2">
                   {[
@@ -395,29 +407,16 @@ export default function GuidePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="w-5 h-5 text-primary" />
-                  Who Can Vote?
+                  Who Decides a Level's D-Rating?
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>• Players who have <span className="text-foreground font-medium">completed</span> the level (manual or synced run).</p>
-                <p>• <span className="text-foreground font-medium">Admins</span> can vote on any level and adjust ratings.</p>
-                <p>• Each user's vote can be updated or removed at any time.</p>
+                <p>• The <span className="text-foreground font-medium">admin team</span> assigns difficulty tiers, based on completion data and feedback from experienced players.</p>
+                <p>• Public difficulty voting was removed — the scale above is a shared reference, not a poll.</p>
+                <p>• Think a level sits in the wrong tier? Bring it up in the Narrow List Discord.</p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  Where It Shows
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>• On every level page in the <span className="text-foreground">Difficulty</span> panel.</p>
-                <p>• Sortable on the Main and Extra list pages.</p>
-                <p>• Aggregated on the Statistics page (Hardest Levels).</p>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Community Tab */}
@@ -487,17 +486,7 @@ export default function GuidePage() {
                   <CommunityRow
                     icon={Send}
                     title="Submit levels & runs"
-                    description="Suggest levels for the list or send proof of your manual completions."
-                  />
-                  <CommunityRow
-                    icon={Award}
-                    title="Rate & vote on difficulty"
-                    description="Once you complete a level you can rate enjoyment, gameplay, design and difficulty."
-                  />
-                  <CommunityRow
-                    icon={Tag}
-                    title="Tag levels"
-                    description="Help describe levels (e.g. spam, memory, tech) so others can find their favorite styles."
+                    description="Suggest levels for the list or send video proof of your manual completions."
                   />
                   <CommunityRow
                     icon={Activity}
@@ -510,14 +499,25 @@ export default function GuidePage() {
                     description="Bookmark levels you want to attempt next so you don't lose track of them."
                   />
                   <CommunityRow
+                    icon={Package}
+                    title="Explore level packs"
+                    description="Work through curated collections of levels grouped by theme, creator or difficulty step-up."
+                  />
+                  <CommunityRow
+                    icon={Target}
+                    title="Spin the Level Roulette"
+                    description="Get a random challenge set from any rank range and track your runs locally."
+                  />
+                  <CommunityRow
                     icon={Shield}
                     title="Report issues"
-                    description="Spotted a wrong rank, duplicate run or broken thumbnail? Ping an admin on Discord."
+                    description="Spotted a wrong rank, duplicate run or broken thumbnail? Use the bug report button or ping an admin on Discord."
                   />
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
+
 
           {/* FAQ Tab */}
           <TabsContent value="faq" className="space-y-6">
@@ -532,7 +532,7 @@ export default function GuidePage() {
                     Make sure you're using the same username in both the game and on Narrowlist.
                   </p>
                   <Button 
-                    onClick={() => navigate("/recent-runs")} 
+                    onClick={() => navigate("/recent")} 
                     variant="link" 
                     className="h-auto p-0 text-primary"
                   >
@@ -640,25 +640,27 @@ export default function GuidePage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
                   <p>
-                    Creator points depend only on community ratings — not on where your level sits on the list.
-                    Each main-list level you made contributes its average rating (unrated levels are treated as 5/10),
-                    and each extra-list level grants a flat bonus. Admins can tune the multiplier and flat amount.
+                    Creator points are based purely on how many ranked levels you've made:
+                    <strong className="text-foreground"> 1 point per Main List level</strong> you created.
+                    Where the level sits on the list doesn't matter. You can see the standings on the
+                    Creators leaderboard.
                   </p>
                 </AccordionContent>
               </AccordionItem>
 
               <AccordionItem value="item-9">
                 <AccordionTrigger className="text-left">
-                  How do I rate or vote on the difficulty of a level?
+                  What do the D0–D8 difficulty ratings mean?
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
                   <p>
-                    Open the level page after you've completed it. You'll see panels to rate
-                    enjoyment, gameplay, design and decoration, and to vote on the difficulty (D-rating).
-                    Only completed levels are eligible to keep ratings honest.
+                    D-ratings are a shared reference scale for how hard a level is, from D0 (very easy)
+                    to D8 (not humanly possible). They're set by the admin team — public difficulty
+                    voting and level ratings were removed from the site. See the Difficulty tab for the full scale.
                   </p>
                 </AccordionContent>
               </AccordionItem>
+
 
               <AccordionItem value="item-10">
                 <AccordionTrigger className="text-left">
@@ -732,6 +734,12 @@ export default function GuidePage() {
                   username="Ripted" 
                   displayName={admins.ripted?.display_name}
                   avatarUrl={admins.ripted?.avatar_url}
+                  role="Admin"
+                />
+                <ProfileLink 
+                  username="M4zyxx" 
+                  displayName={admins.mazyx?.display_name}
+                  avatarUrl={admins.mazyx?.avatar_url}
                   role="Admin"
                 />
               </div>

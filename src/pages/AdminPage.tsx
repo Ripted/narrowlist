@@ -260,6 +260,11 @@ export default function AdminPage() {
   const [extendedSearchQuery, setExtendedSearchQuery] = useState("");
   const [fetchingExtendedLevelInfo, setFetchingExtendedLevelInfo] = useState(false);
   const [extendedLevelPreview, setExtendedLevelPreview] = useState<{ name: string; author: string } | null>(null);
+  const [extendedRankInputId, setExtendedRankInputId] = useState<string | null>(null);
+  const [extendedRankInputValue, setExtendedRankInputValue] = useState("");
+  const [extendedRankConfirmLevel, setExtendedRankConfirmLevel] = useState<ExtendedLevel | null>(null);
+  const [pendingExtendedRank, setPendingExtendedRank] = useState<number | null>(null);
+  const [uploadingExtendedRowThumb, setUploadingExtendedRowThumb] = useState<string | null>(null);
   const [resyncingExtraLevels, setResyncingExtraLevels] = useState(false);
   const [resyncingMainLevels, setResyncingMainLevels] = useState(false);
   const [resyncingFutureLevels, setResyncingFutureLevels] = useState(false);
@@ -799,6 +804,85 @@ export default function AdminPage() {
     }
   };
 
+  const startExtendedRankEdit = (level: ExtendedLevel) => {
+    setExtendedRankInputId(level.id);
+    setExtendedRankInputValue(String(level.rank_position));
+  };
+
+  const confirmExtendedRankChange = () => {
+    if (!extendedRankInputId) return;
+    const newRank = parseInt(extendedRankInputValue);
+    if (isNaN(newRank) || newRank < 1 || newRank > extendedLevels.length) {
+      toast({ title: "Invalid rank", description: `Enter a number between 1 and ${extendedLevels.length}`, variant: "destructive" });
+      return;
+    }
+    const level = extendedLevels.find((l) => l.id === extendedRankInputId);
+    if (!level) return;
+    if (level.rank_position === newRank) {
+      setExtendedRankInputId(null);
+      return;
+    }
+    setExtendedRankConfirmLevel(level);
+    setPendingExtendedRank(newRank);
+  };
+
+  const executeExtendedRankChange = async () => {
+    if (!extendedRankConfirmLevel || pendingExtendedRank === null) return;
+    const sorted = [...extendedLevels].sort((a, b) => a.rank_position - b.rank_position);
+    const currentIndex = sorted.findIndex((l) => l.id === extendedRankConfirmLevel.id);
+    if (currentIndex === -1) return;
+    const oldRank = extendedRankConfirmLevel.rank_position;
+    const [moved] = sorted.splice(currentIndex, 1);
+    sorted.splice(pendingExtendedRank - 1, 0, moved);
+
+    try {
+      await updateExtendedRanksSafely(sorted);
+      await logAction("Changed extra level rank", `${extendedRankConfirmLevel.name || extendedRankConfirmLevel.level_id} from #${oldRank} to #${pendingExtendedRank}`);
+      await sendAdminNotification("rank_change", extendedRankConfirmLevel.name || extendedRankConfirmLevel.level_id, oldRank, pendingExtendedRank, "Extra", "moved", extendedRankConfirmLevel);
+      toast({ title: "Saved", description: "Extra list rankings updated" });
+      fetchExtendedLevels();
+      fetchChangelog();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setExtendedRankInputId(null);
+      setExtendedRankConfirmLevel(null);
+      setPendingExtendedRank(null);
+    }
+  };
+
+  const saveExtendedRowThumbnail = async (levelId: string, file: File) => {
+    setUploadingExtendedRowThumb(levelId);
+    try {
+      const fileName = `extended-${levelId}-${Date.now()}.${file.name.split(".").pop()}`;
+      const { data, error } = await supabase.storage.from("level-thumbnails").upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from("level-thumbnails").getPublicUrl(data.path);
+      const { error: updErr } = await supabase.from("extended_levels").update({ thumbnail_url: publicUrl }).eq("id", levelId);
+      if (updErr) throw updErr;
+      setExtendedLevels((prev) => prev.map((l) => (l.id === levelId ? { ...l, thumbnail_url: publicUrl } : l)));
+      toast({ title: "Success", description: "Thumbnail updated" });
+    } catch (err: any) {
+      toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingExtendedRowThumb(null);
+    }
+  };
+
+  const handleQuickExtendedThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>, levelId: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await saveExtendedRowThumbnail(levelId, file);
+    e.target.value = "";
+  };
+
+  const handleQuickPasteExtendedThumbnail = async (levelId: string) => {
+    const file = await readImageFromClipboard();
+    if (!file) return;
+    await saveExtendedRowThumbnail(levelId, file);
+  };
+
+
   const transferExtendedToMain = async (level: ExtendedLevel) => {
     try {
       // Get the next rank in main list
@@ -953,7 +1037,7 @@ export default function AdminPage() {
   const fetchAllProfiles = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("id, username, display_name, total_points, extra_points")
+      .select("id, username, display_name, total_points, extra_points, user_id")
       .order("username");
     
     if (data) setAllProfiles(data as any);
@@ -1125,11 +1209,11 @@ export default function AdminPage() {
           // Don't throw - the run was approved, just notification failed
         }
 
-        await logAction("Approved run submission", `${submission.username} on ${level.name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
+        await logAction("Approved run submission", `${submission.username} on ${level.name || submission.level_id} (submitted by ${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
         toast({ title: "Run Approved", description: `Added as manual run for ${submission.username}` });
         fetchManualRuns();
       } else {
-        await logAction("Rejected run submission", `${submission.username} on ${submission.level_name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
+        await logAction("Rejected run submission", `${submission.username} on ${submission.level_name || submission.level_id} (submitted by ${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
         toast({ title: "Run Rejected" });
       }
 
@@ -1307,7 +1391,7 @@ export default function AdminPage() {
           fetchFutureLevels();
         }
       } else {
-        await logAction("Rejected level submission", `${submission.level_name || submission.level_id} (submitted by ${submission.submitted_by_email})`);
+        await logAction("Rejected level submission", `${submission.level_name || submission.level_id} (submitted by ${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
         toast({ title: "Submission Rejected" });
       }
 
@@ -1519,6 +1603,25 @@ export default function AdminPage() {
     return 1;
   };
 
+  /** Privacy helpers: prefer usernames, never show a full email address in the UI. */
+  const maskEmail = (email?: string | null) => {
+    if (!email) return "unknown";
+    const [local] = email.split("@");
+    return local || "unknown";
+  };
+
+  const usernameByUserId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of allProfiles as any[]) {
+      if (p.user_id) map[p.user_id] = p.username;
+    }
+    return map;
+  }, [allProfiles]);
+
+  const displaySubmitter = (userId?: string | null, email?: string | null) =>
+    (userId && usernameByUserId[userId]) || maskEmail(email);
+
+
   // Filtered and paginated data
   const filteredLevels = useMemo(() => {
     if (!levelSearchQuery.trim()) return levels;
@@ -1530,6 +1633,20 @@ export default function AdminPage() {
       l.rank_position.toString().includes(query)
     );
   }, [levels, levelSearchQuery]);
+
+  const filteredExtendedLevels = useMemo(() => {
+    const sorted = [...extendedLevels].sort((a, b) => a.rank_position - b.rank_position);
+    if (!extendedSearchQuery.trim()) return sorted;
+    const query = extendedSearchQuery.toLowerCase();
+    return sorted.filter(l =>
+      l.name?.toLowerCase().includes(query) ||
+      l.author?.toLowerCase().includes(query) ||
+      l.level_id.toLowerCase().includes(query) ||
+      l.rank_position.toString().includes(query)
+    );
+  }, [extendedLevels, extendedSearchQuery]);
+
+
 
   const filteredFutureLevels = useMemo(() => {
     if (!futureSearchQuery.trim()) return futureLevels;
@@ -2795,7 +2912,7 @@ export default function AdminPage() {
       
       if (error) throw error;
       
-      await logAction(`${action === "approved" ? "Approved" : "Rejected"} claim request`, `Profile: ${request.profile_username}, Email: ${request.email}`);
+      await logAction(`${action === "approved" ? "Approved" : "Rejected"} claim request`, `Profile: ${request.profile_username}`);
       
       toast({ 
         title: action === "approved" ? "Claim Approved" : "Claim Rejected",
@@ -3100,7 +3217,7 @@ export default function AdminPage() {
                         {request.profile_display_name || request.profile_username}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Email: {request.email} • Requested: {new Date(request.created_at).toLocaleDateString()}
+                        Requested: {new Date(request.created_at).toLocaleDateString()}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -3218,7 +3335,7 @@ export default function AdminPage() {
                                 by {submission.author || "Unknown"} • Suggested: #{submission.suggested_rank}
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                Submitted by {submission.submitted_by_email} • {new Date(submission.created_at).toLocaleDateString()}
+                                Submitted by {displaySubmitter(submission.submitted_by, submission.submitted_by_email)} • {new Date(submission.created_at).toLocaleDateString()}
                               </div>
                             </div>
                           </div>
@@ -3272,7 +3389,7 @@ export default function AdminPage() {
                                         .from("level_submissions")
                                         .update({ status: "read" })
                                         .eq("id", submission.id);
-                                      await logAction("Marked level submission as read", `${submission.level_name || submission.level_id} (${submission.submitted_by_email})`);
+                                      await logAction("Marked level submission as read", `${submission.level_name || submission.level_id} (${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
                                       toast({ title: "Marked as Read" });
                                       fetchLevelSubmissions();
                                       fetchChangelog();
@@ -3351,7 +3468,7 @@ export default function AdminPage() {
                                           .from("level_submissions")
                                           .delete()
                                           .eq("id", submission.id);
-                                        await logAction("Deleted submission", `${submission.level_name || submission.level_id} (${submission.submitted_by_email})`);
+                                        await logAction("Deleted submission", `${submission.level_name || submission.level_id} (${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
                                         toast({ title: "Submission Deleted" });
                                         fetchLevelSubmissions();
                                         fetchChangelog();
@@ -3459,7 +3576,7 @@ export default function AdminPage() {
                                 Level: {submission.level_name || submission.level_id}
                               </div>
                               <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                                <span>Submitted by {submission.submitted_by_email}</span>
+                                <span>Submitted by {displaySubmitter(submission.submitted_by, submission.submitted_by_email)}</span>
                                 <span>•</span>
                                 <span>{new Date(submission.created_at).toLocaleDateString()}</span>
                                 <a 
@@ -4180,44 +4297,21 @@ export default function AdminPage() {
 
             {/* Extended List Tab */}
             <TabsContent value="extended" className="space-y-6">
+              {/* Add New Extra Level */}
               <div className="rounded-lg bg-card border border-border p-4 md:p-6">
-                <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
-                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
-                    <List className="w-5 h-5 text-primary" />
-                    Extra List
-                  </h2>
-                  <div className="flex flex-wrap items-center gap-2 flex-1">
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search extra levels..."
-                        value={extendedSearchQuery}
-                        onChange={(e) => setExtendedSearchQuery(e.target.value)}
-                        className="pl-9 bg-secondary border-border h-9"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Add Extra Level */}
-                <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-secondary/30 rounded-lg">
-                  <div className="flex-1 min-w-[200px]">
+                <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-primary" />
+                  Add New Extra Level
+                </h2>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
                     <Input
-                      placeholder="Level ID or paste link"
+                      placeholder="Enter level ID or paste link"
                       value={newExtendedLevelId}
-                      onChange={(e) => {
-                        const cleaned = extractLevelId(e.target.value);
-                        setNewExtendedLevelId(cleaned);
-                        // Debounce fetch preview
-                        setTimeout(() => {
-                          if (cleaned && cleaned.length > 5) {
-                            fetchExtendedLevelPreview(cleaned);
-                          }
-                        }, 500);
-                      }}
+                      onChange={(e) => setNewExtendedLevelId(extractLevelId(e.target.value))}
                       onPaste={(e) => handleLevelIdPaste(e, setNewExtendedLevelId, fetchExtendedLevelPreview)}
                       onBlur={() => fetchExtendedLevelPreview(newExtendedLevelId)}
-                      className="bg-card border-border h-8"
+                      className="bg-secondary border-border"
                     />
                     {fetchingExtendedLevelInfo && (
                       <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
@@ -4231,145 +4325,215 @@ export default function AdminPage() {
                     )}
                   </div>
                   <Input
-                    placeholder="Rank"
-                    type="number"
+                    placeholder={`Rank (1-${extendedLevels.length + 1})`}
                     value={newExtendedLevelRank}
                     onChange={(e) => setNewExtendedLevelRank(e.target.value)}
-                    className="w-20 bg-card border-border h-8"
+                    className="w-full sm:w-32 bg-secondary border-border"
+                    type="number"
+                    min={1}
+                    max={extendedLevels.length + 1}
                   />
-                  <Button
-                    size="sm"
-                    onClick={addExtendedLevel}
-                    disabled={addingExtendedLevel || !newExtendedLevelId.trim()}
-                    className="gap-1"
-                  >
-                    {addingExtendedLevel ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                    Add
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={resyncExtraLevels}
-                    disabled={resyncingExtraLevels}
-                    className="gap-1"
-                  >
-                    {resyncingExtraLevels ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    Resync All
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={syncExtraCompletions}
-                    disabled={syncingExtraCompletions}
-                    className="gap-1"
-                  >
-                    {syncingExtraCompletions ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    Sync Completions
+                  <Button onClick={addExtendedLevel} disabled={addingExtendedLevel || !newExtendedLevelId.trim()}>
+                    {addingExtendedLevel ? "Adding..." : "Add Level"}
                   </Button>
                 </div>
+              </div>
 
-                {/* Extra Level List */}
-                {extendedLevels.filter(l => 
-                  !extendedSearchQuery.trim() ||
-                  l.name?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
-                  l.author?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
-                  l.level_id.toLowerCase().includes(extendedSearchQuery.toLowerCase())
-                ).length === 0 ? (
+              {/* Extra Level List */}
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                      <ArrowUpDown className="w-5 h-5 text-primary" />
+                      Extra List Rankings
+                      <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                        {filteredExtendedLevels.length}{extendedSearchQuery ? ` of ${extendedLevels.length}` : ""} levels
+                      </span>
+                    </h2>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={resyncExtraLevels}
+                        disabled={resyncingExtraLevels}
+                        className="gap-1 text-xs"
+                      >
+                        {resyncingExtraLevels ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        Resync All
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search levels by name, author, or ID..."
+                      value={extendedSearchQuery}
+                      onChange={(e) => setExtendedSearchQuery(e.target.value)}
+                      className="pl-9 bg-secondary border-border h-8 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {filteredExtendedLevels.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
                     {extendedSearchQuery ? "No matching levels found." : "No extra levels yet."}
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {extendedLevels.filter(l => 
-                      !extendedSearchQuery.trim() ||
-                      l.name?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
-                      l.author?.toLowerCase().includes(extendedSearchQuery.toLowerCase()) ||
-                      l.level_id.toLowerCase().includes(extendedSearchQuery.toLowerCase())
-                    ).map((level, filteredIndex) => {
-                      const actualIndex = extendedLevels.findIndex(l => l.id === level.id);
+                  <div className="divide-y divide-border">
+                    {filteredExtendedLevels.map((level) => {
+                      const actualIndex = extendedLevels.findIndex((l) => l.id === level.id);
                       return (
-                      <div key={level.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                        {/* Move up/down buttons */}
-                        <div className="flex flex-col gap-0.5">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-5 w-5"
-                            onClick={() => moveExtendedLevel(actualIndex, "up")}
-                            disabled={actualIndex === 0}
-                          >
-                            <ChevronUp className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-5 w-5"
-                            onClick={() => moveExtendedLevel(actualIndex, "down")}
-                            disabled={actualIndex === extendedLevels.length - 1}
-                          >
-                            <ChevronDown className="w-3 h-3" />
-                          </Button>
-                        </div>
-                        <div className="w-10 text-center font-display font-bold text-muted-foreground">
-                          #{level.rank_position}
-                        </div>
-                        <div className="w-16 h-10 rounded overflow-hidden flex-shrink-0 bg-secondary">
-                          {level.thumbnail_url ? (
-                            <img src={level.thumbnail_url} alt={level.name || ""} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Image className="w-4 h-4 text-muted-foreground" />
+                        <div
+                          key={level.id}
+                          className="flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all hover:bg-secondary/20"
+                        >
+                          <div className="w-12 md:w-16 flex-shrink-0">
+                            {extendedRankInputId === level.id ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={extendedLevels.length}
+                                  value={extendedRankInputValue}
+                                  onChange={(e) => setExtendedRankInputValue(e.target.value)}
+                                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); (e.target as HTMLInputElement).blur(); setTimeout(() => confirmExtendedRankChange(), 50); } }}
+                                  className="w-12 h-8 text-center p-1 bg-secondary"
+                                  autoFocus
+                                />
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={confirmExtendedRankChange}>
+                                  <Check className="w-3 h-3 text-green-500" />
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setExtendedRankInputId(null)}>
+                                  <X className="w-3 h-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => startExtendedRankEdit(level)}
+                                className="font-display font-bold text-lg text-foreground hover:text-primary transition-colors"
+                                title="Click to change rank"
+                              >
+                                #{level.rank_position}
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="w-16 md:w-20 h-10 md:h-12 rounded bg-secondary overflow-hidden flex-shrink-0 relative group">
+                            {uploadingExtendedRowThumb === level.id ? (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                              </div>
+                            ) : (
+                              <>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  id={`extra-thumb-upload-${level.id}`}
+                                  onChange={(e) => handleQuickExtendedThumbnailUpload(e, level.id)}
+                                />
+                                <div className="w-full h-full relative">
+                                  {level.thumbnail_url ? (
+                                    <img
+                                      src={level.thumbnail_url}
+                                      alt={level.name || "Level"}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Image className="w-4 h-4 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                                    <button
+                                      onClick={() => document.getElementById(`extra-thumb-upload-${level.id}`)?.click()}
+                                      className="p-1 rounded bg-primary/80 hover:bg-primary"
+                                      title="Upload image"
+                                    >
+                                      <ImagePlus className="w-3 h-3 text-primary-foreground" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleQuickPasteExtendedThumbnail(level.id)}
+                                      className="p-1 rounded bg-secondary/80 hover:bg-secondary"
+                                      title="Paste image from clipboard"
+                                    >
+                                      <ClipboardPaste className="w-3 h-3 text-foreground" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-foreground truncate text-sm md:text-base">
+                              {level.name || "Unnamed Level"}
                             </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-foreground truncate">{level.name || level.level_id}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {level.creators && level.creators.length > 0 
-                              ? level.creators.join(", ") 
-                              : level.author || "Unknown"}
+                            <div className="text-xs text-muted-foreground truncate">
+                              {(level.creators && level.creators.length > 0
+                                ? level.creators.join(", ")
+                                : level.author) || "Unknown"} • {level.points} pts
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moveExtendedLevel(actualIndex, "up")}
+                              disabled={actualIndex === 0}
+                              className="h-8 w-8 hidden sm:flex"
+                              title="Move up"
+                            >
+                              <ChevronUp className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moveExtendedLevel(actualIndex, "down")}
+                              disabled={actualIndex === extendedLevels.length - 1}
+                              className="h-8 w-8 hidden sm:flex"
+                              title="Move down"
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditExtendedLevel(level)}
+                              className="h-8 w-8"
+                              title="Edit details"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setMoveToMainConfirm(level)}
+                              className="h-8 px-2 text-xs text-muted-foreground hover:text-primary gap-1"
+                              title="Move to Main List"
+                            >
+                              <ArrowUpDown className="w-3 h-3" />
+                              Main
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteExtendedLevel(level)}
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              title="Remove level"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-accent">
-                          <span className="font-mono text-xs">{level.points} pts</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-2 gap-1"
-                            onClick={() => openEditExtendedLevel(level)}
-                            title="Edit"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                            <span className="hidden sm:inline text-xs">Edit</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-2 gap-1 text-primary border-primary/50 hover:bg-primary/10"
-                            onClick={() => setMoveToMainConfirm(level)}
-                            title="Move to Main List"
-                          >
-                            <ArrowUpDown className="w-3 h-3" />
-                            <span className="hidden sm:inline text-xs">Main</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            onClick={() => deleteExtendedLevel(level)}
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )})}
+                      );
+                    })}
                   </div>
                 )}
               </div>
             </TabsContent>
+
 
             <TabsContent value="manual-runs" className="space-y-6">
               {/* Add Manual Run */}
@@ -4417,7 +4581,7 @@ export default function AdminPage() {
                             {run.level_name} • {run.completion_time}s • {run.arrow_name}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Completed: {new Date(run.completed_at).toLocaleDateString()} • Added by: {run.added_by_admin_email}
+                            Completed: {new Date(run.completed_at).toLocaleDateString()} • Added by: {maskEmail(run.added_by_admin_email)}
                             {run.note && <span className="ml-2 italic">• {run.note}</span>}
                           </div>
                         </div>
@@ -4668,7 +4832,7 @@ export default function AdminPage() {
                                 <span>•</span>
                                 <span className="flex items-center gap-1">
                                   <Mail className="w-3 h-3" />
-                                  {player.email}
+                                  {maskEmail(player.email)}
                                 </span>
                               </>
                             )}
@@ -4745,12 +4909,12 @@ export default function AdminPage() {
                     {bannedUsers.map((banned) => (
                       <div key={banned.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-foreground">{banned.email}</div>
+                          <div className="font-medium text-foreground">{displaySubmitter(banned.user_id, banned.email)}</div>
                           {banned.reason && (
                             <div className="text-sm text-muted-foreground">Reason: {banned.reason}</div>
                           )}
                           <div className="text-xs text-muted-foreground">
-                            Banned by {banned.banned_by_email} • {new Date(banned.created_at).toLocaleDateString()}
+                            Banned by {maskEmail(banned.banned_by_email)} • {new Date(banned.created_at).toLocaleDateString()}
                           </div>
                         </div>
                         <Button
@@ -4796,7 +4960,7 @@ export default function AdminPage() {
                               #{level.rank_position} - {level.name || level.level_id}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              Deleted by {level.deleted_by_email} on {new Date(level.deleted_at).toLocaleString()}
+                              Deleted by {maskEmail(level.deleted_by_email)} on {new Date(level.deleted_at).toLocaleString()}
                             </div>
                           </div>
                         </div>
@@ -4876,7 +5040,7 @@ export default function AdminPage() {
                             )}
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <div className="text-sm text-foreground">{entry.admin_email}</div>
+                            <div className="text-sm text-foreground">{maskEmail(entry.admin_email)}</div>
                             <div className="text-xs text-muted-foreground">
                               {new Date(entry.created_at).toLocaleString()}
                             </div>
@@ -5689,7 +5853,7 @@ export default function AdminPage() {
                   by {reviewingSubmission.author || "Unknown"}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Submitted by {reviewingSubmission.submitted_by_email}
+                  Submitted by {displaySubmitter(reviewingSubmission.submitted_by, reviewingSubmission.submitted_by_email)}
                 </div>
               </div>
 
@@ -5783,7 +5947,7 @@ export default function AdminPage() {
                   Level: {reviewingRunSubmission.level_name || reviewingRunSubmission.level_id}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Submitted by {reviewingRunSubmission.submitted_by_email}
+                  Submitted by {displaySubmitter(reviewingRunSubmission.submitted_by, reviewingRunSubmission.submitted_by_email)}
                 </div>
                 <a 
                   href={reviewingRunSubmission.proof_url} 
@@ -5955,6 +6119,47 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Extra List Rank Change Confirmation */}
+      <AlertDialog open={!!extendedRankConfirmLevel} onOpenChange={(open) => { if (!open) { setExtendedRankConfirmLevel(null); setPendingExtendedRank(null); } }}>
+        <AlertDialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              Confirm Rank Change
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to change the rank of <strong className="text-foreground">{extendedRankConfirmLevel?.name || extendedRankConfirmLevel?.level_id}</strong> on the Extra List
+              </p>
+              <div className="flex items-center justify-center gap-4 py-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-muted-foreground">#{extendedRankConfirmLevel?.rank_position}</div>
+                  <div className="text-xs text-muted-foreground">Current</div>
+                </div>
+                <ArrowUpDown className="w-6 h-6 text-primary" />
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">#{pendingExtendedRank}</div>
+                  <div className="text-xs text-muted-foreground">New</div>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This will update all affected Extra List rankings and point values. This action will be logged and a Discord notification will be sent.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setExtendedRankConfirmLevel(null); setPendingExtendedRank(null); }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={executeExtendedRankChange} className="bg-primary hover:bg-primary/90">
+              Confirm Change
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
 
 
       {/* Move to Main Confirmation Dialog */}
