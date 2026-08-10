@@ -29,9 +29,14 @@ export default function GuidePage() {
   const [founders, setFounders] = useState<{ sqm: FounderProfile | null }>({
     sqm: null,
   });
-  const [admins, setAdmins] = useState<{ champy: FounderProfile | null; ripted: FounderProfile | null }>({
+  const [admins, setAdmins] = useState<{
+    champy: FounderProfile | null;
+    ripted: FounderProfile | null;
+    mazyx: FounderProfile | null;
+  }>({
     champy: null,
     ripted: null,
+    mazyx: null,
   });
   const [activeTab, setActiveTab] = useState("getting-started");
 
@@ -40,7 +45,7 @@ export default function GuidePage() {
       const { data } = await supabase
         .from("profiles")
         .select("username, display_name, avatar_url")
-        .in("username", ["sqm", "Ripted", "Ch4mpY"]);
+        .in("username", ["sqm", "Ripted", "Ch4mpY", "M4zyxx"]);
       
       if (data) {
         setFounders({
@@ -49,6 +54,7 @@ export default function GuidePage() {
         setAdmins({
           champy: data.find(p => p.username.toLowerCase() === "ch4mpy") || null,
           ripted: data.find(p => p.username.toLowerCase() === "ripted") || null,
+          mazyx: data.find(p => p.username.toLowerCase() === "m4zyxx") || null,
         });
       }
     }
