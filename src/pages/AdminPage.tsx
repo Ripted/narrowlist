@@ -1603,6 +1603,25 @@ export default function AdminPage() {
     return 1;
   };
 
+  /** Privacy helpers: prefer usernames, never show a full email address in the UI. */
+  const maskEmail = (email?: string | null) => {
+    if (!email) return "unknown";
+    const [local] = email.split("@");
+    return local || "unknown";
+  };
+
+  const usernameByUserId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of allProfiles as any[]) {
+      if (p.user_id) map[p.user_id] = p.username;
+    }
+    return map;
+  }, [allProfiles]);
+
+  const displaySubmitter = (userId?: string | null, email?: string | null) =>
+    (userId && usernameByUserId[userId]) || maskEmail(email);
+
+
   // Filtered and paginated data
   const filteredLevels = useMemo(() => {
     if (!levelSearchQuery.trim()) return levels;
