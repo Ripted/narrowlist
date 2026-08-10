@@ -131,7 +131,7 @@ export default function GuidePage() {
                 title="3. Wait for Sync"
                 description="Completions are automatically synced every 3 minutes from the game."
                 action="Check Recent Runs"
-                onClick={() => navigate("/recent-runs")}
+                onClick={() => navigate("/recent")}
               />
               <InteractiveCard
                 icon={UserPlus}
@@ -532,7 +532,7 @@ export default function GuidePage() {
                     Make sure you're using the same username in both the game and on Narrowlist.
                   </p>
                   <Button 
-                    onClick={() => navigate("/recent-runs")} 
+                    onClick={() => navigate("/recent")} 
                     variant="link" 
                     className="h-auto p-0 text-primary"
                   >
