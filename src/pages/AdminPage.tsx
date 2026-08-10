@@ -3217,7 +3217,7 @@ export default function AdminPage() {
                         {request.profile_display_name || request.profile_username}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Email: {request.email} • Requested: {new Date(request.created_at).toLocaleDateString()}
+                        Requested: {new Date(request.created_at).toLocaleDateString()}
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -3335,7 +3335,7 @@ export default function AdminPage() {
                                 by {submission.author || "Unknown"} • Suggested: #{submission.suggested_rank}
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
-                                Submitted by {submission.submitted_by_email} • {new Date(submission.created_at).toLocaleDateString()}
+                                Submitted by {displaySubmitter(submission.submitted_by, submission.submitted_by_email)} • {new Date(submission.created_at).toLocaleDateString()}
                               </div>
                             </div>
                           </div>
@@ -3576,7 +3576,7 @@ export default function AdminPage() {
                                 Level: {submission.level_name || submission.level_id}
                               </div>
                               <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                                <span>Submitted by {submission.submitted_by_email}</span>
+                                <span>Submitted by {displaySubmitter(submission.submitted_by, submission.submitted_by_email)}</span>
                                 <span>•</span>
                                 <span>{new Date(submission.created_at).toLocaleDateString()}</span>
                                 <a 
@@ -4581,7 +4581,7 @@ export default function AdminPage() {
                             {run.level_name} • {run.completion_time}s • {run.arrow_name}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Completed: {new Date(run.completed_at).toLocaleDateString()} • Added by: {run.added_by_admin_email}
+                            Completed: {new Date(run.completed_at).toLocaleDateString()} • Added by: {maskEmail(run.added_by_admin_email)}
                             {run.note && <span className="ml-2 italic">• {run.note}</span>}
                           </div>
                         </div>
@@ -4832,7 +4832,7 @@ export default function AdminPage() {
                                 <span>•</span>
                                 <span className="flex items-center gap-1">
                                   <Mail className="w-3 h-3" />
-                                  {player.email}
+                                  {maskEmail(player.email)}
                                 </span>
                               </>
                             )}
@@ -4914,7 +4914,7 @@ export default function AdminPage() {
                             <div className="text-sm text-muted-foreground">Reason: {banned.reason}</div>
                           )}
                           <div className="text-xs text-muted-foreground">
-                            Banned by {banned.banned_by_email} • {new Date(banned.created_at).toLocaleDateString()}
+                            Banned by {maskEmail(banned.banned_by_email)} • {new Date(banned.created_at).toLocaleDateString()}
                           </div>
                         </div>
                         <Button
@@ -4960,7 +4960,7 @@ export default function AdminPage() {
                               #{level.rank_position} - {level.name || level.level_id}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              Deleted by {level.deleted_by_email} on {new Date(level.deleted_at).toLocaleString()}
+                              Deleted by {maskEmail(level.deleted_by_email)} on {new Date(level.deleted_at).toLocaleString()}
                             </div>
                           </div>
                         </div>
@@ -5040,7 +5040,7 @@ export default function AdminPage() {
                             )}
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <div className="text-sm text-foreground">{entry.admin_email}</div>
+                            <div className="text-sm text-foreground">{maskEmail(entry.admin_email)}</div>
                             <div className="text-xs text-muted-foreground">
                               {new Date(entry.created_at).toLocaleString()}
                             </div>
@@ -5853,7 +5853,7 @@ export default function AdminPage() {
                   by {reviewingSubmission.author || "Unknown"}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Submitted by {reviewingSubmission.submitted_by_email}
+                  Submitted by {displaySubmitter(reviewingSubmission.submitted_by, reviewingSubmission.submitted_by_email)}
                 </div>
               </div>
 
@@ -5947,7 +5947,7 @@ export default function AdminPage() {
                   Level: {reviewingRunSubmission.level_name || reviewingRunSubmission.level_id}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
-                  Submitted by {reviewingRunSubmission.submitted_by_email}
+                  Submitted by {displaySubmitter(reviewingRunSubmission.submitted_by, reviewingRunSubmission.submitted_by_email)}
                 </div>
                 <a 
                   href={reviewingRunSubmission.proof_url} 
