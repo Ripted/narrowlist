@@ -366,15 +366,15 @@ export default function GuidePage() {
                   Difficulty Rating System
                 </CardTitle>
                 <CardDescription>
-                  Community-driven difficulty scores from D0 (easiest) to D8 (hardest), in 0.1 increments.
+                  A shared reference scale from D0 (easiest) to D8 (hardest), used when discussing levels.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Every level on the Main and Extra lists can receive a difficulty
-                  vote. Each vote is a single number from <span className="text-foreground font-mono">0.0</span> to
-                  <span className="text-foreground font-mono"> 8.0</span>. The displayed difficulty is the
-                  <span className="text-foreground font-medium"> average of all votes</span>.
+                  D-ratings describe roughly how hard a level is in practice, from
+                  <span className="text-foreground font-mono"> D0</span> to
+                  <span className="text-foreground font-mono"> D8</span>. They are set by the
+                  <span className="text-foreground font-medium"> admin team</span> using completion data and player feedback.
                 </p>
                 <div className="space-y-2">
                   {[
