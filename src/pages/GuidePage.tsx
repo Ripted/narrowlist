@@ -634,25 +634,27 @@ export default function GuidePage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
                   <p>
-                    Creator points depend only on community ratings — not on where your level sits on the list.
-                    Each main-list level you made contributes its average rating (unrated levels are treated as 5/10),
-                    and each extra-list level grants a flat bonus. Admins can tune the multiplier and flat amount.
+                    Creator points are based purely on how many ranked levels you've made:
+                    <strong className="text-foreground"> 1 point per Main List level</strong> you created.
+                    Where the level sits on the list doesn't matter. You can see the standings on the
+                    Creators leaderboard.
                   </p>
                 </AccordionContent>
               </AccordionItem>
 
               <AccordionItem value="item-9">
                 <AccordionTrigger className="text-left">
-                  How do I rate or vote on the difficulty of a level?
+                  What do the D0–D8 difficulty ratings mean?
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground">
                   <p>
-                    Open the level page after you've completed it. You'll see panels to rate
-                    enjoyment, gameplay, design and decoration, and to vote on the difficulty (D-rating).
-                    Only completed levels are eligible to keep ratings honest.
+                    D-ratings are a shared reference scale for how hard a level is, from D0 (very easy)
+                    to D8 (not humanly possible). They're set by the admin team — public difficulty
+                    voting and level ratings were removed from the site. See the Difficulty tab for the full scale.
                   </p>
                 </AccordionContent>
               </AccordionItem>
+
 
               <AccordionItem value="item-10">
                 <AccordionTrigger className="text-left">
