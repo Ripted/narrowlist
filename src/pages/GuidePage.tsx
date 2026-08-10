@@ -401,29 +401,16 @@ export default function GuidePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="w-5 h-5 text-primary" />
-                  Who Can Vote?
+                  Who Decides a Level's D-Rating?
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>• Players who have <span className="text-foreground font-medium">completed</span> the level (manual or synced run).</p>
-                <p>• <span className="text-foreground font-medium">Admins</span> can vote on any level and adjust ratings.</p>
-                <p>• Each user's vote can be updated or removed at any time.</p>
+                <p>• The <span className="text-foreground font-medium">admin team</span> assigns difficulty tiers, based on completion data and feedback from experienced players.</p>
+                <p>• Public difficulty voting was removed — the scale above is a shared reference, not a poll.</p>
+                <p>• Think a level sits in the wrong tier? Bring it up in the Narrow List Discord.</p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  Where It Shows
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-muted-foreground">
-                <p>• On every level page in the <span className="text-foreground">Difficulty</span> panel.</p>
-                <p>• Sortable on the Main and Extra list pages.</p>
-                <p>• Aggregated on the Statistics page (Hardest Levels).</p>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Community Tab */}
