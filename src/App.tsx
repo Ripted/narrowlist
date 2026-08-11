@@ -26,9 +26,12 @@ import HubPage from "./pages/HubPage";
 
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsPage from "./pages/TermsPage";
 import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { BackToTop } from "@/components/BackToTop";
+import { SiteFooter } from "@/components/SiteFooter";
 
 
 const queryClient = new QueryClient();
