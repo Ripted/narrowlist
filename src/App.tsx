@@ -69,8 +69,11 @@ const App = () => (
               <Route path="/player/:username" element={<PlayerPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <SiteFooter />
             <BackToTop />
           </BrowserRouter>
         </TooltipProvider>
