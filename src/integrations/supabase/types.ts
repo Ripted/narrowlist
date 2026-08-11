@@ -530,6 +530,7 @@ export type Database = {
           id: string
           level_id: string
           points: number
+          previous_rank: number | null
           rank_position: number
           recorded_at: string
         }
@@ -537,6 +538,7 @@ export type Database = {
           id?: string
           level_id: string
           points: number
+          previous_rank?: number | null
           rank_position: number
           recorded_at?: string
         }
@@ -544,6 +546,7 @@ export type Database = {
           id?: string
           level_id?: string
           points?: number
+          previous_rank?: number | null
           rank_position?: number
           recorded_at?: string
         }
