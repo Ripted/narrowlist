@@ -26,9 +26,12 @@ import HubPage from "./pages/HubPage";
 
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsPage from "./pages/TermsPage";
 import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { BackToTop } from "@/components/BackToTop";
+import { SiteFooter } from "@/components/SiteFooter";
 
 
 const queryClient = new QueryClient();
@@ -66,8 +69,11 @@ const App = () => (
               <Route path="/player/:username" element={<PlayerPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <SiteFooter />
             <BackToTop />
           </BrowserRouter>
         </TooltipProvider>
