@@ -121,6 +121,8 @@ export function Navbar() {
         ...(playerUsername
           ? [{ path: `/player/${playerUsername}`, label: "My Profile", icon: User }]
           : []),
+        { path: "/privacy", label: "Privacy Policy", icon: Shield },
+        { path: "/terms", label: "Terms of Use", icon: BookOpen },
       ],
     },
   ];
