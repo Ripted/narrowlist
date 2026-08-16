@@ -265,18 +265,18 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 min-w-0 shrink">
-            <div className="relative">
+            <div className="relative shrink-0">
               <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
               <img 
                 src={logoImg} 
                 alt="Narrowlist Logo" 
-                className="relative w-10 h-10 object-contain transition-all duration-300"
+                className="relative w-9 h-9 sm:w-10 sm:h-10 object-contain transition-all duration-300"
                 style={{
                   filter: theme !== 'arrow' ? 'hue-rotate(var(--logo-hue-rotate, 0deg)) saturate(1.2)' : 'none',
                 }}
               />
             </div>
-            <span className="font-display text-xl font-bold tracking-wider gradient-text">
+            <span className="font-display text-lg sm:text-xl font-bold tracking-wide gradient-text truncate">
               NARROWLIST
             </span>
           </Link>
