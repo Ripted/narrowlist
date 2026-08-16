@@ -264,7 +264,7 @@ export function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3 min-w-0 shrink">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full" />
               <img 
