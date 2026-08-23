@@ -24,6 +24,16 @@ interface FounderProfile {
   avatar_url: string | null;
 }
 
+interface RaterRow {
+  username: string;
+  can_main: boolean;
+  can_future: boolean;
+  can_extra: boolean;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+
 export default function GuidePage() {
   const navigate = useNavigate();
   const [founders, setFounders] = useState<{ sqm: FounderProfile | null }>({
