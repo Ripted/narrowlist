@@ -101,8 +101,9 @@ export function Navbar() {
       key: "activity",
       label: "Activity",
       icon: Activity,
-      path: "/recent",
+      path: "/activity",
       items: [
+        { path: "/activity", label: "Activity Feed", icon: Activity },
         { path: "/recent", label: "Recent Runs", icon: Activity },
         { path: "/recently-added", label: "Recently Added", icon: Clock },
         { path: "/statistics", label: "Statistics", icon: BarChart3 },
@@ -122,8 +123,6 @@ export function Navbar() {
         ...(playerUsername
           ? [{ path: `/player/${playerUsername}`, label: "My Profile", icon: User }]
           : []),
-        { path: "/privacy", label: "Privacy Policy", icon: Shield },
-        { path: "/terms", label: "Terms of Use", icon: BookOpen },
       ],
     },
   ];

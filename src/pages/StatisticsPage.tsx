@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
@@ -28,17 +27,9 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
   LineChart,
   Line,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar
+  Legend,
 } from "recharts";
 
 interface StatCard {
@@ -50,10 +41,7 @@ interface StatCard {
   gradient: string;
 }
 
-import { useIsMobile } from "@/hooks/use-mobile";
-
 export default function StatisticsPage() {
-  const isMobile = useIsMobile();
   // Fetch total players
   const { data: playersCount = 0 } = useQuery({
     queryKey: ["stats-players"],
@@ -249,35 +237,35 @@ export default function StatisticsPage() {
     },
   });
 
-  // Fetch arrow distribution
-  const { data: arrowDistribution = [] } = useQuery({
-    queryKey: ["stats-arrow-distribution"],
+  // Fetch hardest levels (fewest completions, main list only)
+  const { data: hardestLevels = [] } = useQuery({
+    queryKey: ["stats-hardest-levels"],
     queryFn: async () => {
       const { data: completions } = await supabase
         .from("completions")
-        .select("arrow_name");
-      
-      const { data: manualRuns } = await supabase
-        .from("manual_runs_public")
-        .select("arrow_name");
-      
-      const allRuns = [...(completions || []), ...(manualRuns || [])];
+        .select("level_id");
+
+      const { data: levels } = await supabase
+        .from("levels")
+        .select("id, name, rank_position");
+
+      if (!completions || !levels) return [];
+
       const counts: { [key: string]: number } = {};
-      
-      allRuns.forEach((run) => {
-        const arrow = run.arrow_name || "Unknown";
-        counts[arrow] = (counts[arrow] || 0) + 1;
+      completions.forEach((c) => {
+        counts[c.level_id] = (counts[c.level_id] || 0) + 1;
       });
-      
-      return Object.entries(counts).map(([name, value]) => ({
-        name,
-        value,
-        color: name === "Energy Arrow" ? "hsl(var(--primary))" 
-             : name === "Speedy Arrow" ? "hsl(var(--accent))"
-             : name === "Narrow Arrow" ? "hsl(45, 90%, 55%)"
-             : "hsl(var(--muted-foreground))"
-      }));
+
+      return levels
+        .map((level) => ({
+          name: level.name || `#${level.rank_position}`,
+          rank: level.rank_position,
+          completions: counts[level.id] || 0,
+        }))
+        .sort((a, b) => a.completions - b.completions || a.rank - b.rank)
+        .slice(0, 10);
     },
+    staleTime: 5 * 60 * 1000,
   });
 
   // Fetch completion rate by rank tier
@@ -471,14 +459,6 @@ export default function StatisticsPage() {
     staleTime: 60_000,
   });
 
-  const levelDistribution = useMemo(() => {
-    if (!levelsData) return [];
-    return [
-      { name: "Main List", value: levelsData.main, color: "hsl(var(--primary))" },
-      { name: "Extra List", value: levelsData.extra, color: "hsl(var(--accent))" },
-      { name: "Future List", value: levelsData.future, color: "hsl(45, 90%, 55%)" },
-    ].filter(item => item.value > 0);
-  }, [levelsData]);
 
   const statCards: StatCard[] = [
     {
@@ -515,12 +495,6 @@ export default function StatisticsPage() {
       color: "text-glow-silver",
       gradient: "from-glow-silver/20 to-glow-silver/5",
     },
-  ];
-
-  const CHART_COLORS = [
-    "hsl(var(--primary))",
-    "hsl(var(--accent))",
-    "hsl(45, 90%, 55%)",
   ];
 
   return (
@@ -577,7 +551,10 @@ export default function StatisticsPage() {
             <div className="rounded-xl border border-border bg-card p-6">
               <div className="flex items-center gap-2 mb-6">
                 <Activity className="w-5 h-5 text-primary" />
-                <h2 className="font-display text-lg font-bold">Completions Trend</h2>
+                <div>
+                  <h2 className="font-display text-lg font-bold">Completions Trend</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Daily completions across all lists over the last 30 days.</p>
+                </div>
                 <span className="text-xs text-muted-foreground ml-auto">Last 30 days</span>
               </div>
               <div className="h-64">
@@ -622,52 +599,7 @@ export default function StatisticsPage() {
               </div>
             </div>
 
-            {/* Level Distribution Pie */}
-            <div className="rounded-xl border border-border bg-card p-6 overflow-hidden">
-              <div className="flex items-center gap-2 mb-6">
-                <Target className="w-5 h-5 text-accent" />
-                <h2 className="font-display text-lg font-bold">Level Distribution</h2>
-              </div>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={levelDistribution}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={isMobile ? 45 : 60}
-                      outerRadius={isMobile ? 65 : 80}
-                      paddingAngle={5}
-                      dataKey="value"
-                      label={isMobile ? false : ({ name, value }) => `${name}: ${value}`}
-                      labelLine={isMobile ? false : { stroke: "hsl(var(--muted-foreground))" }}
-                    >
-                      {levelDistribution.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={CHART_COLORS[index % CHART_COLORS.length]}
-                          stroke="hsl(var(--card))"
-                          strokeWidth={2}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                        color: "hsl(var(--foreground))",
-                      }}
-                    />
-                    <Legend 
-                      verticalAlign="bottom"
-                      formatter={(value) => <span className="text-foreground text-sm">{value}</span>}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
             </div>
-          </div>
 
           {/* Charts Grid - Row 2: Most Completed & Arrow Distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -675,7 +607,10 @@ export default function StatisticsPage() {
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
                 <Flame className="w-5 h-5 text-orange-500" />
-                <h2 className="font-display text-lg font-bold">Most Completed Levels</h2>
+                <div>
+                  <h2 className="font-display text-lg font-bold">Most Completed Levels</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">The main-list levels beaten the most — a rough proxy for the most approachable top levels.</p>
+                </div>
               </div>
               <div className="p-4">
                 <div className="h-64">
@@ -716,55 +651,7 @@ export default function StatisticsPage() {
               </div>
             </div>
 
-            {/* Arrow Distribution */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
-                <Zap className="w-5 h-5 text-primary" />
-                <h2 className="font-display text-lg font-bold">Arrow Usage</h2>
-              </div>
-              <div className="p-4">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={arrowDistribution}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={isMobile ? 70 : 80}
-                        dataKey="value"
-                        label={isMobile ? false : ({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
-                        labelLine={isMobile ? false : { stroke: "hsl(var(--muted-foreground))" }}
-                      >
-                        {arrowDistribution.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.color}
-                            stroke="hsl(var(--card))"
-                            strokeWidth={2}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          color: "hsl(var(--foreground))",
-                        }}
-                        formatter={(value: number) => [`${value} runs`, "Count"]}
-                      />
-                      {isMobile && (
-                        <Legend
-                          verticalAlign="bottom"
-                          formatter={(value) => <span className="text-foreground text-xs">{value}</span>}
-                        />
-                      )}
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
             </div>
-          </div>
 
           {/* Charts Grid - Row 3: Top Players & Rank Changes */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -772,7 +659,10 @@ export default function StatisticsPage() {
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
                 <Award className="w-5 h-5 text-glow-gold" />
-                <h2 className="font-display text-lg font-bold">Top Players</h2>
+                <div>
+                  <h2 className="font-display text-lg font-bold">Top Players</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Highest total points on the main list.</p>
+                </div>
                 <span className="text-xs text-muted-foreground ml-auto">By total points</span>
               </div>
               <div className="p-4">
@@ -818,7 +708,10 @@ export default function StatisticsPage() {
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
                 <TrendingUp className="w-5 h-5 text-accent" />
-                <h2 className="font-display text-lg font-bold">Rank Changes</h2>
+                <div>
+                  <h2 className="font-display text-lg font-bold">Rank Changes</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">How often levels moved rank each day — spikes usually mean a batch rerate or new placements.</p>
+                </div>
                 <span className="text-xs text-muted-foreground ml-auto">Last 30 days</span>
               </div>
               <div className="p-4">
@@ -872,7 +765,10 @@ export default function StatisticsPage() {
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
                 <Percent className="w-5 h-5 text-primary" />
-                <h2 className="font-display text-lg font-bold">Completions by Difficulty</h2>
+                <div>
+                  <h2 className="font-display text-lg font-bold">Completions by Difficulty</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Total vs average completions per rank tier. Higher tiers should average fewer completions if the list is well-ordered.</p>
+                </div>
               </div>
               <div className="p-4">
                 <div className="h-64">
@@ -929,7 +825,10 @@ export default function StatisticsPage() {
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
                 <Star className="w-5 h-5 text-accent" />
-                <h2 className="font-display text-lg font-bold">Top Extra Points</h2>
+                <div>
+                  <h2 className="font-display text-lg font-bold">Top Extra Points</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Players with the most points on the Extra List.</p>
+                </div>
               </div>
               <div className="p-4">
                 {topExtraPlayers.length === 0 ? (
@@ -981,7 +880,10 @@ export default function StatisticsPage() {
           <div className="rounded-xl border border-border bg-card p-6 mb-6">
             <div className="flex items-center gap-2 mb-6">
               <TrendingUp className="w-5 h-5 text-primary" />
-              <h2 className="font-display text-lg font-bold">Main vs Extra List Completions</h2>
+              <div>
+                  <h2 className="font-display text-lg font-bold">Main vs Extra List Completions</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Daily completions split by list — shows whether players focus on progression (Main) or grinding extras.</p>
+                </div>
               <span className="text-xs text-muted-foreground ml-auto">Last 30 days</span>
             </div>
             <div className="h-64">
@@ -1071,6 +973,25 @@ export default function StatisticsPage() {
 
         {/* New stats sections */}
         <div className="grid lg:grid-cols-2 gap-6 mt-8 px-4 lg:px-0">
+          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
+            <h3 className="font-display font-bold text-lg mb-1 flex items-center gap-2">
+              <Flame className="w-5 h-5 text-orange-500" /> Hardest Levels
+            </h3>
+            <p className="text-xs text-muted-foreground mb-4">Main-list levels with the fewest completions.</p>
+            {hardestLevels.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No data yet.</p>
+            ) : (
+              <ol className="space-y-2">
+                {hardestLevels.map((l, i) => (
+                  <li key={l.rank} className="flex items-center justify-between text-sm">
+                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>#{l.rank} {l.name}</span>
+                    <span className="font-mono text-orange-500 ml-2 shrink-0">{l.completions} {l.completions === 1 ? "completion" : "completions"}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
+
           <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
 
             <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">

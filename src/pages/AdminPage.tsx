@@ -287,9 +287,6 @@ export default function AdminPage() {
   const [extendedRankConfirmLevel, setExtendedRankConfirmLevel] = useState<ExtendedLevel | null>(null);
   const [pendingExtendedRank, setPendingExtendedRank] = useState<number | null>(null);
   const [uploadingExtendedRowThumb, setUploadingExtendedRowThumb] = useState<string | null>(null);
-  const [resyncingExtraLevels, setResyncingExtraLevels] = useState(false);
-  const [resyncingMainLevels, setResyncingMainLevels] = useState(false);
-  const [resyncingFutureLevels, setResyncingFutureLevels] = useState(false);
   // Removed: hardfixing state (hardfix button removed)
   
   // Submission review
@@ -340,11 +337,6 @@ export default function AdminPage() {
   const [newFutureLevelRank, setNewFutureLevelRank] = useState("");
   const [addingFutureLevel, setAddingFutureLevel] = useState(false);
   
-  // Bulk import
-  const [bulkImportOpen, setBulkImportOpen] = useState(false);
-  const [bulkLevelIds, setBulkLevelIds] = useState("");
-  const [bulkStartRank, setBulkStartRank] = useState("");
-  const [bulkImporting, setBulkImporting] = useState(false);
   
   // Edit modal
   const [editingLevel, setEditingLevel] = useState<Level | null>(null);
@@ -737,56 +729,11 @@ export default function AdminPage() {
     return (supabase.rpc as any).call(supabase, name, args) as AdminListRpcResult;
   };
 
-  const resyncExtraLevels = async () => {
-    setResyncingExtraLevels(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("resync-extra-levels");
-      if (error) throw error;
-      toast({ 
-        title: "Resync Complete", 
-        description: `Updated ${data?.updated || 0} extra levels with fresh data` 
-      });
-      fetchExtendedLevels();
-    } catch (error: any) {
-      toast({ title: "Resync Failed", description: error.message, variant: "destructive" });
-    } finally {
-      setResyncingExtraLevels(false);
-    }
-  };
+;
 
-  const resyncMainLevels = async () => {
-    setResyncingMainLevels(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("resync-main-levels");
-      if (error) throw error;
-      toast({ 
-        title: "Resync Complete", 
-        description: `Updated ${data?.updated || 0} main levels with fresh data` 
-      });
-      fetchLevels();
-    } catch (error: any) {
-      toast({ title: "Resync Failed", description: error.message, variant: "destructive" });
-    } finally {
-      setResyncingMainLevels(false);
-    }
-  };
+;
 
-  const resyncFutureLevels = async () => {
-    setResyncingFutureLevels(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("resync-future-levels");
-      if (error) throw error;
-      toast({ 
-        title: "Resync Complete", 
-        description: `Updated ${data?.updated || 0} future levels with fresh data` 
-      });
-      fetchFutureLevels();
-    } catch (error: any) {
-      toast({ title: "Resync Failed", description: error.message, variant: "destructive" });
-    } finally {
-      setResyncingFutureLevels(false);
-    }
-  };
+;
 
   // Hardfix function removed - functionality covered by Sync Completions button
 
@@ -2194,69 +2141,7 @@ export default function AdminPage() {
     }
   };
 
-  const bulkImportLevels = async () => {
-    const ids = bulkLevelIds
-      .split(/[\n,]+/)
-      .map(id => cleanLevelIdText(id))
-      .filter(id => id.length > 0);
-    
-    if (ids.length === 0) {
-      toast({ title: "Error", description: "No valid level IDs found", variant: "destructive" });
-      return;
-    }
-    
-    setBulkImporting(true);
-    let successCount = 0;
-    let errorCount = 0;
-    
-    const startRank = bulkStartRank ? parseInt(bulkStartRank) : levels.length + 1;
-    
-    let currentRank = startRank;
-    
-    for (const levelId of ids) {
-      try {
-        const existingLevel = levels.find(l => l.level_id === levelId);
-        if (existingLevel) {
-          errorCount++;
-          continue;
-        }
-        
-        const data = await fetchLevelDetailsForAdmin(levelId);
-        
-        const { error } = await callAdminListRpc("admin_add_main_level", {
-          _level_id: levelId,
-          _name: data.levelInfo?.name || "Unknown Level",
-          _author: data.levelInfo?.author || "Unknown",
-          _rank_position: currentRank,
-          _thumbnail_url: `https://api.narrowarrow.xyz/level-image/${levelId}.png`,
-        });
-        
-        if (error) {
-          errorCount++;
-        } else {
-          successCount++;
-          currentRank++;
-        }
-      } catch {
-        errorCount++;
-      }
-    }
-    
-    await logAction("Bulk imported levels", `${successCount} levels starting at rank #${startRank}`);
-    
-    setBulkImporting(false);
-    setBulkImportOpen(false);
-    setBulkLevelIds("");
-    setBulkStartRank("");
-    
-    toast({ 
-      title: "Bulk Import Complete", 
-      description: `Added ${successCount} levels starting at rank #${startRank}. ${errorCount > 0 ? `${errorCount} failed/skipped.` : ""}` 
-    });
-    
-    fetchLevels();
-    fetchChangelog();
-  };
+;
 
   const confirmDeleteLevel = async () => {
     if (!deleteConfirmLevel) return;
@@ -3359,15 +3244,6 @@ export default function AdminPage() {
             {isAdmin && (
               <div className="flex gap-2 flex-wrap">
                 <Button
-                  onClick={() => setBulkImportOpen(true)}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span className="hidden sm:inline">Bulk Import</span>
-                </Button>
-                <Button
                   onClick={triggerSync}
                   disabled={syncing}
                   variant="outline"
@@ -3988,18 +3864,7 @@ export default function AdminPage() {
                         {filteredLevels.length}{levelSearchQuery ? ` of ${levels.length}` : ""} levels
                       </span>
                     </h2>
-                    <div className="flex gap-2 flex-wrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={resyncMainLevels}
-                        disabled={resyncingMainLevels}
-                        className="gap-1 text-xs"
-                      >
-                        {resyncingMainLevels ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        Resync All
-                      </Button>
-                      <Button
+                    <div className="flex gap-2 flex-wrap">                      <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setShowAll(!showAll)}
@@ -4291,18 +4156,7 @@ export default function AdminPage() {
                         {filteredFutureLevels.length}{futureSearchQuery ? ` of ${futureLevels.length}` : ""} levels
                       </span>
                     </h2>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={resyncFutureLevels}
-                        disabled={resyncingFutureLevels}
-                        className="gap-1 text-xs"
-                      >
-                        {resyncingFutureLevels ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        Resync All
-                      </Button>
-                      <Button
+                    <div className="flex gap-2">                      <Button
                         variant="outline"
                         size="sm"
                         onClick={checkVerifiedFutureLevels}
@@ -4548,18 +4402,7 @@ export default function AdminPage() {
                         {filteredExtendedLevels.length}{extendedSearchQuery ? ` of ${extendedLevels.length}` : ""} levels
                       </span>
                     </h2>
-                    <div className="flex gap-2 flex-wrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={resyncExtraLevels}
-                        disabled={resyncingExtraLevels}
-                        className="gap-1 text-xs"
-                      >
-                        {resyncingExtraLevels ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        Resync All
-                      </Button>
-                    </div>
+                    <div className="flex gap-2 flex-wrap">                    </div>
                   </div>
                   <div className="relative w-full sm:w-80">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -5347,60 +5190,7 @@ export default function AdminPage() {
         </div>
       </main>
 
-      {/* Bulk Import Modal */}
-      {bulkImportOpen && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-lg p-6 w-full max-w-lg space-y-4">
-            <h2 className="font-display text-xl font-bold flex items-center gap-2">
-              <Upload className="w-5 h-5 text-primary" />
-              Bulk Import Levels
-            </h2>
-            
-            <div>
-              <Label htmlFor="bulkIds">Level IDs (one per line or comma-separated)</Label>
-              <Textarea
-                id="bulkIds"
-                value={bulkLevelIds}
-                  onChange={(e) => setBulkLevelIds(e.target.value)}
-                  onBlur={() => setBulkLevelIds(
-                    bulkLevelIds
-                      .split(/[\n,]+/)
-                      .map((id) => cleanLevelIdText(id))
-                      .filter(Boolean)
-                      .join("\n")
-                  )}
-                placeholder="1743661104278&#10;1234567890123"
-                className="mt-1 bg-secondary border-border min-h-[200px] font-mono text-sm"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="bulkStartRank">Starting Rank (optional)</Label>
-              <Input
-                id="bulkStartRank"
-                type="number"
-                min={1}
-                max={levels.length + 1}
-                placeholder={`Leave empty to start at ${levels.length + 1}`}
-                value={bulkStartRank}
-                onChange={(e) => setBulkStartRank(e.target.value)}
-                className="mt-1 bg-secondary border-border"
-              />
-            </div>
-
-            <div className="flex gap-2 justify-end pt-4">
-              <Button variant="outline" onClick={() => setBulkImportOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={bulkImportLevels} disabled={bulkImporting || !bulkLevelIds.trim()}>
-                {bulkImporting ? "Importing..." : "Import Levels"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add/Edit Manual Run Modal */}
+{/* Add/Edit Manual Run Modal */}
       {addManualRunOpen && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-border rounded-lg p-6 w-full max-w-lg space-y-4">

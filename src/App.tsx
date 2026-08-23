@@ -14,6 +14,7 @@ import FutureLevelPage from "./pages/FutureLevelPage";
 import ExtendedListPage from "./pages/ExtendedListPage";
 import ExtraListPage from "./pages/ExtraListPage";
 import RecentRunsPage from "./pages/RecentRunsPage";
+import ActivityPage from "./pages/ActivityPage";
 import ComparePage from "./pages/ComparePage";
 import SubmitLevelPage from "./pages/SubmitLevelPage";
 import GuidePage from "./pages/GuidePage";
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="/extended-list" element={<ExtendedListPage />} />
               <Route path="/extra-list" element={<ExtraListPage />} />
               <Route path="/recent" element={<RecentRunsPage />} />
+              <Route path="/activity" element={<ActivityPage />} />
               <Route path="/recently-added" element={<RecentlyAddedPage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/submit" element={<SubmitLevelPage />} />
