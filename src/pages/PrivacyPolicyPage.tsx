@@ -8,7 +8,7 @@ export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="max-w-3xl mx-auto px-4 py-10">
+      <main className="max-w-3xl mx-auto px-4 pt-24 pb-12">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-2">Privacy Policy</h1>
         <p className="text-sm text-muted-foreground mb-8">Last updated: {LAST_UPDATED}</p>
 
@@ -16,7 +16,7 @@ export default function PrivacyPolicyPage() {
           <section>
             <h2 className="font-display text-lg font-semibold text-foreground mb-2">1. Who we are</h2>
             <p>
-              NarrowList ("we", "us", "the site") is a community-run ranking list for Narrow Arrow
+              Narrowlist ("we", "us", "the site") is a community-run ranking list for Narrow Arrow
               custom levels. This policy explains what personal data we collect, why we collect it,
               how long we keep it, and the rights you have over it. For any privacy question or
               request you can contact us at{" "}
