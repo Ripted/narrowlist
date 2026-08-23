@@ -355,6 +355,7 @@ export type Database = {
           name: string | null
           points: number
           rank_position: number
+          sub_rank: number
           thumbnail_url: string | null
           updated_at: string
         }
@@ -369,6 +370,7 @@ export type Database = {
           name?: string | null
           points: number
           rank_position: number
+          sub_rank?: number
           thumbnail_url?: string | null
           updated_at?: string
         }
@@ -383,6 +385,7 @@ export type Database = {
           name?: string | null
           points?: number
           rank_position?: number
+          sub_rank?: number
           thumbnail_url?: string | null
           updated_at?: string
         }
@@ -559,6 +562,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      level_raters: {
+        Row: {
+          can_extra: boolean
+          can_future: boolean
+          can_main: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          updated_at: string
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          can_extra?: boolean
+          can_future?: boolean
+          can_main?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          updated_at?: string
+          user_id?: string | null
+          username: string
+        }
+        Update: {
+          can_extra?: boolean
+          can_future?: boolean
+          can_main?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          updated_at?: string
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: []
       }
       level_ratings: {
         Row: {
@@ -1336,6 +1378,10 @@ export type Database = {
         Args: { rank_position: number }
         Returns: number
       }
+      can_manage_list: {
+        Args: { _list: string; _user_id: string }
+        Returns: boolean
+      }
       claim_or_create_profile: { Args: { _username: string }; Returns: string }
       cleanup_empty_unclaimed_profiles: { Args: never; Returns: number }
       cleanup_old_data: { Args: never; Returns: Json }
@@ -1347,6 +1393,10 @@ export type Database = {
         Returns: boolean
       }
       is_head_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_level_rater: {
+        Args: { _list: string; _user_id: string }
+        Returns: boolean
+      }
       normalize_level_ranks: {
         Args: { _list_type: string }
         Returns: undefined
