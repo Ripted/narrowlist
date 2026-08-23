@@ -7,6 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  isLevelRater: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -19,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLevelRater, setIsLevelRater] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -32,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, 0);
         } else {
           setIsAdmin(false);
+          setIsLevelRater(false);
         }
       }
     );
@@ -66,6 +69,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       setIsAdmin(false);
     }
+
+    try {
+      const { data } = await supabase
+        .from("level_raters")
+        .select("id")
+        .eq("user_id", currentUser.id)
+        .or("can_main.eq.true,can_future.eq.true,can_extra.eq.true")
+        .maybeSingle();
+
+      setIsLevelRater(!!data);
+    } catch {
+      setIsLevelRater(false);
+    }
   };
 
   const signIn = async (email: string, password: string) => {
@@ -86,10 +102,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setIsAdmin(false);
+    setIsLevelRater(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, isAdmin, isLevelRater, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

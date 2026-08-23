@@ -18,6 +18,7 @@ import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
 import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
 import { HtsCupManager } from "@/components/admin/HtsCupManager";
 import { extractLevelId } from "@/lib/extractLevelId";
+import { formatFutureRank } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +61,7 @@ interface FutureLevel {
   name: string | null;
   author: string | null;
   rank_position: number;
+  sub_rank: number;
   points: number;
   thumbnail_url: string | null;
 }
@@ -214,6 +216,19 @@ interface AdminLevelApiResponse {
   };
 }
 
+interface LevelRater {
+  id: string;
+  user_id: string | null;
+  username: string;
+  can_main: boolean;
+  can_future: boolean;
+  can_extra: boolean;
+  note: string | null;
+  created_at: string;
+}
+
+type RaterAccess = Pick<LevelRater, "can_main" | "can_future" | "can_extra">;
+
 type AdminListRpcName = "admin_add_main_level" | "admin_add_extra_level" | "admin_add_future_level";
 type AdminListRpcArgs = Record<string, string | number | null>;
 type AdminListRpcResult = Promise<{ data: unknown; error: { message: string } | null }>;
@@ -236,7 +251,14 @@ export default function AdminPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
+  const [raterAccess, setRaterAccess] = useState<RaterAccess | null>(null);
+  const [raterLoaded, setRaterLoaded] = useState(false);
+  const [levelRaters, setLevelRaters] = useState<LevelRater[]>([]);
+  const [newRaterName, setNewRaterName] = useState("");
+  const [addingRater, setAddingRater] = useState(false);
+  const [deleteConfirmRater, setDeleteConfirmRater] = useState<LevelRater | null>(null);
+
   const [levels, setLevels] = useState<Level[]>([]);
   const [futureLevels, setFutureLevels] = useState<FutureLevel[]>([]);
   const [approvedPlayers, setApprovedPlayers] = useState<ApprovedPlayer[]>([]);
@@ -435,12 +457,37 @@ export default function AdminPage() {
   const [deletedProfileArchive, setDeletedProfileArchive] = useState<DeletedProfileArchive[]>([]);
   const [restoringArchiveId, setRestoringArchiveId] = useState<string | null>(null);
 
+  // Load the current user's level-rater access (non-admin staff role)
   useEffect(() => {
-    if (!authLoading && !isAdmin) {
+    if (authLoading) return;
+    if (!user) {
+      setRaterAccess(null);
+      setRaterLoaded(true);
+      return;
+    }
+    supabase
+      .from("level_raters")
+      .select("can_main, can_future, can_extra")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setRaterAccess(data ?? null);
+        setRaterLoaded(true);
+      });
+  }, [user, authLoading]);
+
+  const canMain = isAdmin || !!raterAccess?.can_main;
+  const canFuture = isAdmin || !!raterAccess?.can_future;
+  const canExtra = isAdmin || !!raterAccess?.can_extra;
+  const isRater = !isAdmin && !!(raterAccess && (raterAccess.can_main || raterAccess.can_future || raterAccess.can_extra));
+  const hasAccess = isAdmin || isRater;
+
+  useEffect(() => {
+    if (!authLoading && raterLoaded && !hasAccess) {
       toast({ title: "Access Denied", description: "Admin privileges required", variant: "destructive" });
       navigate("/");
     }
-  }, [isAdmin, authLoading, navigate, toast]);
+  }, [hasAccess, authLoading, raterLoaded, navigate, toast]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -457,8 +504,100 @@ export default function AdminPage() {
       fetchBannedUsers();
       fetchDeletedLevels();
       fetchDeletedProfileArchive();
+      fetchLevelRaters();
+    } else if (raterAccess) {
+      // Level raters only load the lists they manage
+      if (raterAccess.can_main) fetchLevels();
+      if (raterAccess.can_future) fetchFutureLevels();
+      if (raterAccess.can_extra) fetchExtendedLevels();
+      fetchChangelog();
     }
-  }, [isAdmin]);
+  }, [isAdmin, raterAccess]);
+
+  const fetchLevelRaters = async () => {
+    const { data } = await supabase
+      .from("level_raters")
+      .select("*")
+      .order("username", { ascending: true });
+    if (data) setLevelRaters(data as LevelRater[]);
+  };
+
+  const addLevelRater = async () => {
+    const username = newRaterName.trim();
+    if (!username) return;
+    setAddingRater(true);
+    try {
+      // Link the account when a claimed profile with this username exists
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .ilike("username", username)
+        .maybeSingle();
+
+      if (profile && !profile.user_id) {
+        toast({
+          title: "Profile not claimed",
+          description: `"${username}" hasn't claimed their account yet — rater added but unlinked.`,
+        });
+      }
+
+      const { error } = await supabase.from("level_raters").insert({
+        username,
+        user_id: profile?.user_id ?? null,
+      });
+      if (error) throw error;
+      if (!profile?.user_id) {
+        toast({
+          title: "Rater added (unlinked)",
+          description: `No account named "${username}" found — access activates once it is linked.`,
+        });
+      } else {
+        toast({ title: "Rater added", description: `${username} can now be granted list access.` });
+      }
+      await logAction("Added level rater", username);
+      setNewRaterName("");
+      fetchLevelRaters();
+      fetchChangelog();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to add rater";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    } finally {
+      setAddingRater(false);
+    }
+  };
+
+  const toggleRaterList = async (rater: LevelRater, field: "can_main" | "can_future" | "can_extra") => {
+    const next = { ...rater, [field]: !rater[field] };
+    setLevelRaters((prev) => prev.map((r) => (r.id === rater.id ? next : r)));
+    const { error } = await supabase
+      .from("level_raters")
+      .update({ [field]: !rater[field] })
+      .eq("id", rater.id);
+    if (error) {
+      setLevelRaters((prev) => prev.map((r) => (r.id === rater.id ? rater : r)));
+      toast({ title: "Error", description: "Failed to update rater access", variant: "destructive" });
+      return;
+    }
+    await logAction(
+      "Updated level rater",
+      `${rater.username}: ${field.replace("can_", "")} ${!rater[field] ? "granted" : "revoked"}`,
+    );
+    fetchChangelog();
+  };
+
+  const removeLevelRater = async () => {
+    if (!deleteConfirmRater) return;
+    const { error } = await supabase.from("level_raters").delete().eq("id", deleteConfirmRater.id);
+    if (error) {
+      toast({ title: "Error", description: "Failed to remove rater", variant: "destructive" });
+    } else {
+      await logAction("Removed level rater", deleteConfirmRater.username);
+      toast({ title: "Removed", description: `${deleteConfirmRater.username} is no longer a level rater` });
+      fetchLevelRaters();
+      fetchChangelog();
+    }
+    setDeleteConfirmRater(null);
+  };
 
 
   const sendAdminNotification = async (
@@ -1439,8 +1578,9 @@ export default function AdminPage() {
     const { data, error } = await supabase
       .from("future_levels")
       .select("*")
-      .order("rank_position", { ascending: true });
-    
+      .order("rank_position", { ascending: true })
+      .order("sub_rank", { ascending: true });
+
     if (!error) {
       setFutureLevels(data || []);
     }
@@ -1651,12 +1791,20 @@ export default function AdminPage() {
   const filteredFutureLevels = useMemo(() => {
     if (!futureSearchQuery.trim()) return futureLevels;
     const query = futureSearchQuery.toLowerCase();
-    return futureLevels.filter(l => 
+    return futureLevels.filter(l =>
       l.name?.toLowerCase().includes(query) ||
       l.author?.toLowerCase().includes(query) ||
       l.level_id.toLowerCase().includes(query)
     );
   }, [futureLevels, futureSearchQuery]);
+
+  const futureRankGroupSizes = useMemo(() => {
+    const sizes = new Map<number, number>();
+    for (const l of futureLevels) {
+      sizes.set(l.rank_position, (sizes.get(l.rank_position) ?? 0) + 1);
+    }
+    return sizes;
+  }, [futureLevels]);
 
   const filteredLevelSubmissions = useMemo(() => {
     if (!submissionSearchQuery.trim()) return levelSubmissions;
@@ -1830,12 +1978,18 @@ export default function AdminPage() {
     setSavingFutureLevel(true);
     const newRank = parseInt(editFutureRank) || 1;
     const oldRank = editingFutureLevel.rank_position;
+    // On a rank change the level joins the end of its new rank group.
+    const newSubRank =
+      newRank !== oldRank
+        ? Math.max(0, ...futureLevels.filter((f) => f.rank_position === newRank).map((f) => f.sub_rank ?? 1)) + 1
+        : (editingFutureLevel.sub_rank ?? 1);
     const { error } = await supabase
       .from("future_levels")
       .update({
         name: editFutureName || null,
         author: editFutureAuthor || null,
         rank_position: newRank,
+        sub_rank: newSubRank,
         points: parseInt(editFuturePoints) || calculatePoints(newRank),
         thumbnail_url: editFutureThumbnail || null,
         description: editFutureDescription.trim() || null,
@@ -2613,12 +2767,26 @@ export default function AdminPage() {
   };
 
   // ===== Future-list inline rank/thumbnail/drag handlers =====
+  const sortFutureLevels = (arr: FutureLevel[]) =>
+    [...arr].sort((a, b) => a.rank_position - b.rank_position || (a.sub_rank ?? 1) - (b.sub_rank ?? 1));
+
+  // Resequence sub_rank to 1..n within each estimated-rank group, preserving order.
+  const normalizeFutureGroups = (arr: FutureLevel[]) => {
+    const counters = new Map<number, number>();
+    return arr.map((f) => {
+      const next = (counters.get(f.rank_position) ?? 0) + 1;
+      counters.set(f.rank_position, next);
+      return { ...f, sub_rank: next };
+    });
+  };
+
   const updateFutureRanks = async (updated: FutureLevel[]) => {
+    if (updated.length === 0) return;
     setSavingFuture(true);
     for (const f of updated) {
       await supabase
         .from("future_levels")
-        .update({ rank_position: f.rank_position, points: calculatePoints(f.rank_position) })
+        .update({ rank_position: f.rank_position, sub_rank: f.sub_rank, points: calculatePoints(f.rank_position) })
         .eq("id", f.id);
     }
     setSavingFuture(false);
@@ -2626,18 +2794,22 @@ export default function AdminPage() {
   };
 
   const moveFutureLevel = async (index: number, direction: "up" | "down") => {
-    const arr = [...filteredFutureLevels];
+    const arr = sortFutureLevels(futureLevels);
     const target = direction === "up" ? index - 1 : index + 1;
     if (target < 0 || target >= arr.length) return;
-    [arr[index], arr[target]] = [arr[target], arr[index]];
-    const updated = arr.map((f, i) => ({ ...f, rank_position: i + 1 }));
-    setFutureLevels(prev => {
-      const map = new Map(updated.map(u => [u.id, u.rank_position]));
-      return prev
-        .map(f => (map.has(f.id) ? { ...f, rank_position: map.get(f.id)! } : f))
-        .sort((a, b) => a.rank_position - b.rank_position);
+    // Swap only the sort keys so freeform estimated ranks (e.g. 1, 1, 10) are preserved.
+    const a = arr[index];
+    const b = arr[target];
+    arr[index] = { ...a, rank_position: b.rank_position, sub_rank: b.sub_rank ?? 1 };
+    arr[target] = { ...b, rank_position: a.rank_position, sub_rank: a.sub_rank ?? 1 };
+    const normalized = normalizeFutureGroups(sortFutureLevels(arr));
+    const before = new Map(futureLevels.map((f) => [f.id, f]));
+    const changed = normalized.filter((f) => {
+      const old = before.get(f.id)!;
+      return old.rank_position !== f.rank_position || (old.sub_rank ?? 1) !== f.sub_rank;
     });
-    await updateFutureRanks(updated);
+    setFutureLevels(normalized);
+    await updateFutureRanks(changed);
   };
 
   const startFutureRankEdit = (level: FutureLevel) => {
@@ -2661,25 +2833,23 @@ export default function AdminPage() {
       setFutureRankInputId(null);
       return;
     }
-    // Future ranks are estimates and can be any value — update only this level.
-    setSavingFuture(true);
-    const { error } = await supabase
-      .from("future_levels")
-      .update({ rank_position: newRank, points: calculatePoints(newRank) })
-      .eq("id", futureRankInputId);
-    setSavingFuture(false);
-    if (error) {
-      toast({ title: "Error", description: "Failed to update rank", variant: "destructive" });
-      setFutureRankInputId(null);
-      return;
-    }
-    setFutureLevels(prev =>
-      prev
-        .map(f => (f.id === futureRankInputId ? { ...f, rank_position: newRank, points: calculatePoints(newRank) } : f))
-        .sort((a, b) => a.rank_position - b.rank_position)
+    // Estimated ranks are freeform — the level joins the end of its new rank group.
+    const before = new Map(futureLevels.map((f) => [f.id, f]));
+    const moved = sortFutureLevels(
+      futureLevels.map((f) =>
+        f.id === futureRankInputId
+          ? { ...f, rank_position: newRank, sub_rank: Number.MAX_SAFE_INTEGER, points: calculatePoints(newRank) }
+          : f
+      )
     );
+    const normalized = normalizeFutureGroups(moved);
+    const changed = normalized.filter((f) => {
+      const old = before.get(f.id)!;
+      return old.rank_position !== f.rank_position || (old.sub_rank ?? 1) !== f.sub_rank;
+    });
+    setFutureLevels(normalized);
     setFutureRankInputId(null);
-    toast({ title: "Saved", description: `Estimated rank set to #${newRank}` });
+    await updateFutureRanks(changed);
   };
 
   const startFutureThumbnailEdit = (level: FutureLevel) => {
@@ -3142,7 +3312,7 @@ export default function AdminPage() {
     setDeleteConfirmManualRun(null);
   };
 
-  if (authLoading || loading) {
+  if (authLoading || !raterLoaded || (isAdmin && loading)) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
@@ -3156,7 +3326,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAdmin) return null;
+  if (!hasAccess) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -3174,35 +3344,45 @@ export default function AdminPage() {
                 <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
                   Admin Panel
                 </h1>
-                <p className="text-sm text-muted-foreground hidden md:block">Manage levels, players, and settings</p>
+                <p className="text-sm text-muted-foreground hidden md:block">
+                  {isAdmin
+                    ? "Manage levels, players, and settings"
+                    : `Level Rater — ${[
+                        raterAccess?.can_main && "Main",
+                        raterAccess?.can_future && "Future",
+                        raterAccess?.can_extra && "Extra",
+                      ].filter(Boolean).join(", ")} list access`}
+                </p>
               </div>
             </div>
-            
-            <div className="flex gap-2 flex-wrap">
-              <Button 
-                onClick={() => setBulkImportOpen(true)}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                <span className="hidden sm:inline">Bulk Import</span>
-              </Button>
-              <Button 
-                onClick={triggerSync} 
-                disabled={syncing}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync Now"}</span>
-              </Button>
-            </div>
+
+            {isAdmin && (
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  onClick={() => setBulkImportOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden sm:inline">Bulk Import</span>
+                </Button>
+                <Button
+                  onClick={triggerSync}
+                  disabled={syncing}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">{syncing ? "Syncing..." : "Sync Now"}</span>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Claim Requests */}
-          {claimRequests.length > 0 && (
+          {isAdmin && claimRequests.length > 0 && (
             <div className="rounded-lg bg-card border border-yellow-500/30 p-4 md:p-6 mb-8">
               <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5 text-yellow-500" />
@@ -3248,45 +3428,63 @@ export default function AdminPage() {
             </div>
           )}
 
-          <Tabs defaultValue="levels" className="space-y-6">
+          <Tabs defaultValue={canMain ? "levels" : canFuture ? "future" : "extended"} className="space-y-6">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <TabsList className="justify-start overflow-x-auto flex-nowrap gap-1 h-auto p-1.5 bg-card/50 border border-border/60 rounded-xl">
-                <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Review</span>
-                <TabsTrigger value="submissions" className="text-xs sm:text-sm gap-1 flex-shrink-0">
-                  <Send className="w-3 h-3 hidden sm:inline" />
-                  Submissions
-                  {levelSubmissions.filter(s => s.status === 'pending').length > 0 && (
-                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-500 text-yellow-950 rounded-full">
-                      {levelSubmissions.filter(s => s.status === 'pending').length}
-                    </span>
-                  )}
-                </TabsTrigger>
-                <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
+                {isAdmin && (
+                  <>
+                    <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Review</span>
+                    <TabsTrigger value="submissions" className="text-xs sm:text-sm gap-1 flex-shrink-0">
+                      <Send className="w-3 h-3 hidden sm:inline" />
+                      Submissions
+                      {levelSubmissions.filter(s => s.status === 'pending').length > 0 && (
+                        <span className="ml-1 px-1.5 py-0.5 text-xs bg-yellow-500 text-yellow-950 rounded-full">
+                          {levelSubmissions.filter(s => s.status === 'pending').length}
+                        </span>
+                      )}
+                    </TabsTrigger>
+                    <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
+                  </>
+                )}
                 <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Lists</span>
-                <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
-                <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
-                <TabsTrigger value="extended" className="text-xs sm:text-sm flex-shrink-0">Extra ({extendedLevels.length})</TabsTrigger>
-                <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
-                <TabsTrigger value="deleted" className="text-xs sm:text-sm flex-shrink-0 text-muted-foreground data-[state=active]:text-foreground">
-                  <RotateCcw className="w-3 h-3 hidden sm:inline" />
-                  Deleted ({deletedLevels.length})
-                </TabsTrigger>
-                <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
-                <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Users</span>
-                <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
-                <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
-                <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
-                <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">System</span>
-                <TabsTrigger value="packs" className="text-xs sm:text-sm flex-shrink-0">
-                  <Package className="w-3 h-3 hidden sm:inline" />
-                  Packs
-                </TabsTrigger>
-                <TabsTrigger value="tag-presets" className="text-xs sm:text-sm flex-shrink-0">
-                  <Tag className="w-3 h-3 hidden sm:inline" />
-                  Tag Presets
-                </TabsTrigger>
-                <TabsTrigger value="htscup" className="text-xs sm:text-sm flex-shrink-0">HTS Cup</TabsTrigger>
-                <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
+                {canMain && (
+                  <TabsTrigger value="levels" className="text-xs sm:text-sm flex-shrink-0">Main ({levels.length})</TabsTrigger>
+                )}
+                {canFuture && (
+                  <TabsTrigger value="future" className="text-xs sm:text-sm flex-shrink-0">Future ({futureLevels.length})</TabsTrigger>
+                )}
+                {canExtra && (
+                  <TabsTrigger value="extended" className="text-xs sm:text-sm flex-shrink-0">Extra ({extendedLevels.length})</TabsTrigger>
+                )}
+                {isAdmin && (
+                  <>
+                    <TabsTrigger value="manual-runs" className="text-xs sm:text-sm flex-shrink-0">Runs ({manualRuns.length})</TabsTrigger>
+                    <TabsTrigger value="deleted" className="text-xs sm:text-sm flex-shrink-0 text-muted-foreground data-[state=active]:text-foreground">
+                      <RotateCcw className="w-3 h-3 hidden sm:inline" />
+                      Deleted ({deletedLevels.length})
+                    </TabsTrigger>
+                    <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
+                    <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">Users</span>
+                    <TabsTrigger value="players" className="text-xs sm:text-sm flex-shrink-0">Players ({approvedPlayers.length})</TabsTrigger>
+                    <TabsTrigger value="bans" className="text-xs sm:text-sm flex-shrink-0">Bans ({bannedUsers.length})</TabsTrigger>
+                    <TabsTrigger value="raters" className="text-xs sm:text-sm flex-shrink-0">
+                      <UserCheck className="w-3 h-3 hidden sm:inline" />
+                      Raters ({levelRaters.length})
+                    </TabsTrigger>
+                    <span className="mx-1 h-6 w-px bg-border self-center flex-shrink-0" />
+                    <span className="hidden lg:inline px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70 self-center">System</span>
+                    <TabsTrigger value="packs" className="text-xs sm:text-sm flex-shrink-0">
+                      <Package className="w-3 h-3 hidden sm:inline" />
+                      Packs
+                    </TabsTrigger>
+                    <TabsTrigger value="tag-presets" className="text-xs sm:text-sm flex-shrink-0">
+                      <Tag className="w-3 h-3 hidden sm:inline" />
+                      Tag Presets
+                    </TabsTrigger>
+                    <TabsTrigger value="htscup" className="text-xs sm:text-sm flex-shrink-0">HTS Cup</TabsTrigger>
+                    <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
+                  </>
+                )}
               </TabsList>
             </div>
 
@@ -4167,7 +4365,7 @@ export default function AdminPage() {
                               className="font-display font-bold text-lg text-foreground hover:text-primary transition-colors"
                               title="Click to change rank"
                             >
-                              ~#{level.rank_position}
+                              {formatFutureRank(level.rank_position, level.sub_rank, futureRankGroupSizes.get(level.rank_position) ?? 1)}
                             </button>
                           )}
                         </div>
@@ -4253,9 +4451,9 @@ export default function AdminPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => moveFutureLevel(index, "up")}
-                            disabled={index === 0 || savingFuture}
+                            disabled={index === 0 || savingFuture || !!futureSearchQuery.trim()}
                             className="h-8 w-8 hidden sm:flex"
-                            title="Move up"
+                            title={futureSearchQuery.trim() ? "Clear search to reorder" : "Move up"}
                           >
                             <ChevronUp className="w-4 h-4" />
                           </Button>
@@ -4263,9 +4461,9 @@ export default function AdminPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => moveFutureLevel(index, "down")}
-                            disabled={index === filteredFutureLevels.length - 1 || savingFuture}
+                            disabled={index === filteredFutureLevels.length - 1 || savingFuture || !!futureSearchQuery.trim()}
                             className="h-8 w-8 hidden sm:flex"
-                            title="Move down"
+                            title={futureSearchQuery.trim() ? "Clear search to reorder" : "Move down"}
                           >
                             <ChevronDown className="w-4 h-4" />
                           </Button>
@@ -4933,6 +5131,99 @@ export default function AdminPage() {
               </div>
             </TabsContent>
 
+            {/* Level Raters Tab */}
+            <TabsContent value="raters" className="space-y-6">
+              <div className="rounded-lg bg-card border border-border p-4 md:p-6">
+                <h2 className="font-display text-lg font-bold mb-2 flex items-center gap-2">
+                  <UserCheck className="w-5 h-5 text-primary" />
+                  Add Level Rater
+                </h2>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Level raters can manage only the lists you grant them — nothing else in this panel.
+                  If the username matches a claimed account, access activates immediately.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Input
+                    placeholder="Enter username"
+                    value={newRaterName}
+                    onChange={(e) => setNewRaterName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addLevelRater()}
+                    className="flex-1 bg-secondary border-border"
+                  />
+                  <Button onClick={addLevelRater} disabled={addingRater || !newRaterName.trim()}>
+                    {addingRater ? "Adding..." : "Add Rater"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-card border border-border overflow-hidden">
+                <div className="p-4 border-b border-border bg-secondary/30">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                    <Users className="w-5 h-5 text-primary" />
+                    Level Raters
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-1 rounded ml-2">
+                      {levelRaters.length} {levelRaters.length === 1 ? "rater" : "raters"}
+                    </span>
+                  </h2>
+                </div>
+
+                {levelRaters.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No level raters yet.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                      <span>Rater</span>
+                      <span className="w-16 text-center">Main</span>
+                      <span className="w-16 text-center">Future</span>
+                      <span className="w-16 text-center">Extra</span>
+                      <span className="w-10" />
+                    </div>
+                    {levelRaters.map((rater) => (
+                      <div
+                        key={rater.id}
+                        className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-3 px-4 py-3 hover:bg-secondary/20 transition-colors"
+                      >
+                        <div className="min-w-0">
+                          <div className="font-medium text-foreground truncate">{rater.username}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {rater.user_id ? "Account linked" : "Not linked to an account"}
+                          </div>
+                        </div>
+                        {(["can_main", "can_future", "can_extra"] as const).map((field) => (
+                          <div key={field} className="w-16 flex flex-col items-center gap-1">
+                            <input
+                              type="checkbox"
+                              checked={rater[field]}
+                              onChange={() => toggleRaterList(rater, field)}
+                              className="h-4 w-4 accent-primary cursor-pointer"
+                              title={`${field.replace("can_", "")} list access`}
+                            />
+                            <span className="text-[10px] uppercase text-muted-foreground sm:hidden">
+                              {field.replace("can_", "")}
+                            </span>
+                          </div>
+                        ))}
+                        <div className="w-10 flex justify-end">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteConfirmRater(rater)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            title="Remove rater"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+
             {/* Deleted Levels Tab */}
             <TabsContent value="deleted" className="space-y-6">
               <div className="rounded-lg bg-card border border-border overflow-hidden">
@@ -5505,6 +5796,32 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Remove Level Rater Confirmation */}
+      <AlertDialog open={!!deleteConfirmRater} onOpenChange={() => setDeleteConfirmRater(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Remove Level Rater?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove <strong>{deleteConfirmRater?.username}</strong> as a level rater and
+              revoke all of their list access.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={removeLevelRater}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       {/* Edit Future Level Modal */}
       {editingFutureLevel && (

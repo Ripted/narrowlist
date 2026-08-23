@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { requireAdminOrInternal } from "../_shared/auth.ts";
+import { requireAdminOrRaterOrInternal } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const authError = await requireAdminOrInternal(req);
+  const authError = await requireAdminOrRaterOrInternal(req);
   if (authError) return authError;
 
   try {

@@ -1,6 +1,8 @@
+import { Link } from "react-router-dom";
 import { Heart, User, Calendar, Copy, Play, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { formatFutureRank } from "@/lib/utils";
 
 interface FutureLevelCardProps {
   level: {
@@ -10,13 +12,15 @@ interface FutureLevelCardProps {
     author: string | null;
     creators?: string[] | null;
     rank_position: number;
+    sub_rank?: number;
     thumbnail_url: string | null;
     created_at: string;
   };
   likeCount?: number;
+  rankGroupSize?: number;
 }
 
-export function FutureLevelCard({ level, likeCount }: FutureLevelCardProps) {
+export function FutureLevelCard({ level, likeCount, rankGroupSize = 1 }: FutureLevelCardProps) {
   const { toast } = useToast();
 
   const handleCopyId = (e: React.MouseEvent) => {
@@ -44,7 +48,10 @@ export function FutureLevelCard({ level, likeCount }: FutureLevelCardProps) {
   });
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-border hover:border-accent/50 bg-card transition-all duration-300 hover:scale-[1.02] hover:shadow-lg">
+    <Link
+      to={`/future-level/${level.level_id}`}
+      className="group relative block overflow-hidden rounded-xl border border-border hover:border-accent/50 bg-card transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+    >
       <div className="relative h-48 overflow-hidden bg-gradient-to-br from-secondary to-muted">
         {level.thumbnail_url ? (
           <img
@@ -62,7 +69,7 @@ export function FutureLevelCard({ level, likeCount }: FutureLevelCardProps) {
         <div className="absolute top-3 left-3">
           <div className="flex items-center gap-1 rounded-full bg-background/90 backdrop-blur-sm px-3 py-1">
             <span className="font-display font-bold text-lg text-accent">
-              ~#{level.rank_position}
+              {formatFutureRank(level.rank_position, level.sub_rank, rankGroupSize)}
             </span>
           </div>
         </div>
@@ -116,6 +123,6 @@ export function FutureLevelCard({ level, likeCount }: FutureLevelCardProps) {
           </div>
         )}
       </div>
-    </div>
+    </Link>
   );
 }

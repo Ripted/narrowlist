@@ -30,7 +30,7 @@ const DiscordIcon = ({ className }: { className?: string }) => (
 
 export function Navbar() {
   const location = useLocation();
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, isLevelRater, signOut } = useAuth();
   const { theme } = useTheme();
   const [playerUsername, setPlayerUsername] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -128,7 +128,7 @@ export function Navbar() {
     },
   ];
 
-  const adminItem = isAdmin ? { path: "/admin", label: "Admin", icon: Shield } : null;
+  const adminItem = isAdmin || isLevelRater ? { path: "/admin", label: "Admin", icon: Shield } : null;
 
   const isActive = (path: string) => location.pathname === path;
   const isGroupActive = (group: NavGroup) =>
