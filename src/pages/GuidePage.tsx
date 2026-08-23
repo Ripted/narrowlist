@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   BookOpen, Trophy, List, Clock, Users, Send, GitCompare, 
   HelpCircle, Star, Heart, Zap, ChevronRight, ArrowRight,
   Play, UserPlus, MapPin, Medal, Target, Eye, ListPlus,
-  MessageCircle, Tag, Package, Shield, Bookmark, Activity, Palette, Code2
+  MessageCircle, Tag, Package, Shield, Bookmark, Activity, Palette
 } from "lucide-react";
 import {
   Accordion,
@@ -17,8 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-api`;
 
 interface FounderProfile {
   username: string;
@@ -52,17 +50,7 @@ export default function GuidePage() {
   });
   const [raters, setRaters] = useState<RaterRow[]>([]);
   const [activeTab, setActiveTab] = useState("features");
-  const location = useLocation();
 
-  useEffect(() => {
-    if (location.hash === "#api") {
-      setActiveTab("api");
-      // Wait for the tab panel to become visible before scrolling to it.
-      requestAnimationFrame(() => {
-        document.getElementById("api")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    }
-  }, [location.hash]);
 
   useEffect(() => {
     async function loadProfiles() {
@@ -120,11 +108,11 @@ export default function GuidePage() {
       <Navbar />
       <main className="container mx-auto px-4 pt-24 pb-12 max-w-5xl">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h1 className="font-display text-4xl md:text-5xl font-bold gradient-text mb-4">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold gradient-text mb-4">
             Welcome to Narrowlist
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
             The definitive ranking system for Narrow Arrow's hardest levels.
             Pick a section below to learn how everything works.
           </p>
@@ -132,110 +120,28 @@ export default function GuidePage() {
 
         {/* Interactive Tab Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-12">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 mb-8">
-            <TabsTrigger value="features" className="gap-2">
+          <TabsList className="grid w-full grid-cols-5 mb-8 h-auto">
+            <TabsTrigger value="features" className="gap-1.5 flex-col sm:flex-row py-2">
               <Star className="w-4 h-4" />
-              <span className="hidden sm:inline">Features</span>
+              <span className="text-[10px] sm:text-sm">Features</span>
             </TabsTrigger>
-            <TabsTrigger value="points" className="gap-2">
+            <TabsTrigger value="points" className="gap-1.5 flex-col sm:flex-row py-2">
               <Trophy className="w-4 h-4" />
-              <span className="hidden sm:inline">Points</span>
+              <span className="text-[10px] sm:text-sm">Points</span>
             </TabsTrigger>
-            <TabsTrigger value="difficulty" className="gap-2">
+            <TabsTrigger value="difficulty" className="gap-1.5 flex-col sm:flex-row py-2">
               <Target className="w-4 h-4" />
-              <span className="hidden sm:inline">Difficulty</span>
+              <span className="text-[10px] sm:text-sm">Difficulty</span>
             </TabsTrigger>
-            <TabsTrigger value="community" className="gap-2">
+            <TabsTrigger value="community" className="gap-1.5 flex-col sm:flex-row py-2">
               <MessageCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">Community</span>
+              <span className="text-[10px] sm:text-sm">Community</span>
             </TabsTrigger>
-            <TabsTrigger value="api" className="gap-2">
-              <Code2 className="w-4 h-4" />
-              <span className="hidden sm:inline">API</span>
-            </TabsTrigger>
-            <TabsTrigger value="faq" className="gap-2">
+            <TabsTrigger value="faq" className="gap-1.5 flex-col sm:flex-row py-2">
               <HelpCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">FAQ</span>
+              <span className="text-[10px] sm:text-sm">FAQ</span>
             </TabsTrigger>
           </TabsList>
-
-          {/* Public API Tab */}
-          <TabsContent value="api" className="space-y-6" id="api">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Code2 className="w-5 h-5 text-primary" />
-                  Public API
-                </CardTitle>
-                <CardDescription>
-                  Read-only JSON endpoints for our lists. No API key, no login, open CORS —
-                  please cache responses and stay under 120 requests per minute.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 text-sm">
-                <div>
-                  <h4 className="font-semibold text-foreground mb-2">Base URL</h4>
-                  <code className="block break-all rounded-md bg-secondary/60 px-3 py-2 font-mono text-xs">
-                    {API_BASE}
-                  </code>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-foreground mb-2">Endpoints</h4>
-                  <div className="space-y-2">
-                    {[
-                      ["/main-list", "Ranked Main List levels (ranks 1–100)."],
-                      ["/extended-list", "Extended List levels (rank 101+)."],
-                      ["/extra-list", "Extra List levels."],
-                      ["/future-list", "Future List levels, including sub_rank ordering."],
-                    ].map(([ep, desc]) => (
-                      <div key={ep} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                        <code className="shrink-0 rounded bg-secondary/60 px-2 py-1 font-mono text-xs">
-                          GET {ep}
-                        </code>
-                        <span className="text-muted-foreground">{desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-foreground mb-2">Query parameters</h4>
-                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                    <li><code className="font-mono text-xs">limit</code> — 1–250, default 100</li>
-                    <li><code className="font-mono text-xs">offset</code> — pagination offset, default 0</li>
-                    <li><code className="font-mono text-xs">rank_min</code> / <code className="font-mono text-xs">rank_max</code> — inclusive rank range</li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-foreground mb-2">Example</h4>
-                  <pre className="overflow-x-auto rounded-md bg-secondary/60 p-3 font-mono text-xs">
-{`GET ${API_BASE}/main-list?limit=2
-
-{
-  "count": 100,
-  "limit": 2,
-  "offset": 0,
-  "data": [
-    {
-      "rank": 1,
-      "level_id": "abc123",
-      "name": "Exaction",
-      "creators": ["Ripted"],
-      "points": 28,
-      "thumbnail_url": "https://...",
-      "added_at": "2026-01-14T18:02:11.000Z"
-    }
-  ]
-}`}
-                  </pre>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-
 
           {/* Features Tab */}
           <TabsContent value="features" className="space-y-6">

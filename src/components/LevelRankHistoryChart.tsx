@@ -39,7 +39,15 @@ export function LevelRankHistoryChart({ levelDbId }: LevelRankHistoryChartProps)
   const [history, setHistory] = useState<RankHistoryEntry[]>([]);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"graph" | "list">("graph");
+  const [view, setView] = useState<"graph" | "list">(() => {
+    const saved = localStorage.getItem("rank-history-view");
+    return saved === "graph" || saved === "list" ? saved : "list";
+  });
+
+  const changeView = (v: "graph" | "list") => {
+    setView(v);
+    localStorage.setItem("rank-history-view", v);
+  };
 
   useEffect(() => {
     async function loadHistory() {
@@ -230,7 +238,7 @@ export function LevelRankHistoryChart({ levelDbId }: LevelRankHistoryChartProps)
             size="sm"
             variant={view === "graph" ? "secondary" : "ghost"}
             className="h-7 px-2 text-xs"
-            onClick={() => setView("graph")}
+            onClick={() => changeView("graph")}
           >
             <LineChartIcon className="w-3.5 h-3.5 mr-1" />
             Graph
@@ -240,7 +248,7 @@ export function LevelRankHistoryChart({ levelDbId }: LevelRankHistoryChartProps)
             size="sm"
             variant={view === "list" ? "secondary" : "ghost"}
             className="h-7 px-2 text-xs"
-            onClick={() => setView("list")}
+            onClick={() => changeView("list")}
           >
             <List className="w-3.5 h-3.5 mr-1" />
             List

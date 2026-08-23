@@ -51,12 +51,6 @@ export function SiteFooter() {
               >
                 Guide
               </Link>
-              <Link
-                to="/guide#api"
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Public API
-              </Link>
               <a
                 href={DISCORD_LINK}
                 target="_blank"
