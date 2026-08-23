@@ -13,6 +13,7 @@ interface FutureLevel {
   author: string | null;
   creators: string[] | null;
   rank_position: number;
+  sub_rank: number;
   points: number;
   thumbnail_url: string | null;
   created_at: string;
@@ -30,7 +31,8 @@ export default function FutureListPage() {
       const { data, error } = await supabase
         .from("future_levels")
         .select("*")
-        .order("rank_position", { ascending: true });
+        .order("rank_position", { ascending: true })
+        .order("sub_rank", { ascending: true });
 
       if (!error && data) {
         setFutureLevels(data as FutureLevel[]);
@@ -80,6 +82,15 @@ export default function FutureListPage() {
         l.level_id.toLowerCase().includes(q)
     );
   }, [futureLevels, searchQuery]);
+
+  // How many levels share each estimated rank (drives the ~#5.1 / ~#5.2 display)
+  const rankGroupSizes = useMemo(() => {
+    const sizes = new Map<number, number>();
+    for (const l of futureLevels) {
+      sizes.set(l.rank_position, (sizes.get(l.rank_position) ?? 0) + 1);
+    }
+    return sizes;
+  }, [futureLevels]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -135,6 +146,7 @@ export default function FutureListPage() {
                   key={level.id}
                   level={level}
                   likeCount={likeCounts.get(level.level_id)}
+                  rankGroupSize={rankGroupSizes.get(level.rank_position) ?? 1}
                 />
               ))}
             </div>

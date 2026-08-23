@@ -10,6 +10,7 @@ import LevelPage from "./pages/LevelPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import PlayerPage from "./pages/PlayerPage";
 import FutureListPage from "./pages/FutureListPage";
+import FutureLevelPage from "./pages/FutureLevelPage";
 import ExtendedListPage from "./pages/ExtendedListPage";
 import ExtraListPage from "./pages/ExtraListPage";
 import RecentRunsPage from "./pages/RecentRunsPage";
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/level/:levelId" element={<LevelPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/future-list" element={<FutureListPage />} />
+              <Route path="/future-level/:levelId" element={<FutureLevelPage />} />
               <Route path="/extended-list" element={<ExtendedListPage />} />
               <Route path="/extra-list" element={<ExtraListPage />} />
               <Route path="/recent" element={<RecentRunsPage />} />

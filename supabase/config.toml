@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.hts-cup-check]
 verify_jwt = false
+
+[functions.discord-bot]
+verify_jwt = false

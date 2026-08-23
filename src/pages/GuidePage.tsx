@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   BookOpen, Trophy, List, Clock, Users, Send, GitCompare, 
   HelpCircle, Star, Heart, Zap, ChevronRight, ArrowRight,
   Play, UserPlus, MapPin, Medal, Target, Eye, ListPlus,
-  MessageCircle, Tag, Package, Shield, Bookmark, Activity, Palette
+  MessageCircle, Tag, Package, Shield, Bookmark, Activity, Palette, Code2
 } from "lucide-react";
 import {
   Accordion,
@@ -17,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+const API_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/public-api`;
 
 interface FounderProfile {
   username: string;
@@ -50,10 +52,17 @@ export default function GuidePage() {
   });
   const [raters, setRaters] = useState<RaterRow[]>([]);
   const [activeTab, setActiveTab] = useState("features");
+  const location = useLocation();
 
   useEffect(() => {
-    if (window.location.hash === "#api") setActiveTab("api");
-  }, []);
+    if (location.hash === "#api") {
+      setActiveTab("api");
+      // Wait for the tab panel to become visible before scrolling to it.
+      requestAnimationFrame(() => {
+        document.getElementById("api")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, [location.hash]);
 
   useEffect(() => {
     async function loadProfiles() {
