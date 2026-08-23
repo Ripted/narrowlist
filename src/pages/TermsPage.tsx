@@ -8,7 +8,7 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="max-w-3xl mx-auto px-4 py-10">
+      <main className="max-w-3xl mx-auto px-4 pt-24 pb-12">
         <h1 className="font-display text-3xl font-bold tracking-tight mb-2">Terms of Use</h1>
         <p className="text-sm text-muted-foreground mb-8">Last updated: {LAST_UPDATED}</p>
 
@@ -16,16 +16,16 @@ export default function TermsPage() {
           <section>
             <h2 className="font-display text-lg font-semibold text-foreground mb-2">1. Acceptance</h2>
             <p>
-              By using NarrowList you agree to these Terms of Use and to our{" "}
+              By using Narrowlist you agree to these Terms of Use and to our{" "}
               <Link className="text-primary" to="/privacy">Privacy Policy</Link>. If you do not agree,
               please do not use the site.
             </p>
           </section>
 
           <section>
-            <h2 className="font-display text-lg font-semibold text-foreground mb-2">2. What NarrowList is</h2>
+            <h2 className="font-display text-lg font-semibold text-foreground mb-2">2. What Narrowlist is</h2>
             <p>
-              NarrowList is a free, community-run ranking list for Narrow Arrow custom levels. It is
+              Narrowlist is a free, community-run ranking list for Narrow Arrow custom levels. It is
               not affiliated with, endorsed by, or operated by the developers or publishers of Narrow
               Arrow. All game names, level names and trademarks belong to their respective owners.
             </p>
