@@ -13,3 +13,8 @@ export function formatFutureRank(rankPosition: number, subRank?: number | null, 
   if (groupSize > 1) return `~#${rankPosition}.${subRank ?? 1}`;
   return `~#${rankPosition}`;
 }
+
+export function isVideoFileUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url);
+}

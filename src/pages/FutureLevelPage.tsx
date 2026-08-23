@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchLevelDetails, formatDate } from "@/lib/api";
-import { formatFutureRank } from "@/lib/utils";
+import { formatFutureRank, isVideoFileUrl } from "@/lib/utils";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -232,11 +232,22 @@ export default function FutureLevelPage() {
             <div className="lg:col-span-1">
               <div className="relative aspect-video rounded-lg bg-secondary border border-border overflow-hidden group">
                 {level.thumbnail_url ? (
-                  <img
-                    src={level.thumbnail_url}
-                    alt={level.name || "Level"}
-                    className="w-full h-full object-cover"
-                  />
+                  isVideoFileUrl(level.thumbnail_url) ? (
+                    <video
+                      src={level.thumbnail_url}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={level.thumbnail_url}
+                      alt={level.name || "Level"}
+                      className="w-full h-full object-cover"
+                    />
+                  )
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <div className="text-6xl font-display font-bold text-muted-foreground/20">
