@@ -744,6 +744,35 @@ export default function GuidePage() {
                 />
               </div>
             </div>
+
+            {raters.length > 0 && (
+              <div>
+                <h3 className="font-display font-semibold mb-1 text-foreground">Level Raters</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Trusted community members who help place levels on specific lists.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  {raters.map((r) => (
+                    <ProfileLink
+                      key={r.username}
+                      username={r.username}
+                      displayName={r.display_name}
+                      avatarUrl={r.avatar_url}
+                      role={
+                        [
+                          r.can_main && "Main",
+                          r.can_future && "Future",
+                          r.can_extra && "Extra",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "Rater"
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
           </CardContent>
         </Card>
       </main>
