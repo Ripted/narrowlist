@@ -746,30 +746,6 @@ export default function GuidePage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Support Section */}
-        <Card className="text-center">
-          <CardContent className="pt-6">
-            <div className="inline-flex items-center justify-center p-3 rounded-full bg-primary/10 mb-4">
-              <Zap className="w-8 h-8 text-primary" />
-            </div>
-            <h2 className="font-display text-2xl font-bold mb-3">Support Our Development</h2>
-            <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-              Narrowlist is built with Lovable. If you'd like to support our continued development 
-              and help us add more features, use our invite link!
-            </p>
-            <a 
-              href="https://lovable.dev/invite/VXJ6L3W" 
-              target="_blank" 
-              rel="noopener noreferrer"
-            >
-              <Button size="lg" className="gap-2 glow-primary">
-                <Heart className="w-4 h-4" />
-                Support via Lovable
-              </Button>
-            </a>
-          </CardContent>
-        </Card>
       </main>
     </div>
   );
