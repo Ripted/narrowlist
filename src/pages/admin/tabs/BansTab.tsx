@@ -7,18 +7,15 @@ import type { AdminState } from "../useAdminState";
 export function BansTab({ a }: { a: AdminState }) {
   const {
     addingBan,
-    b,
     banEmail,
     banReason,
     banUserFromSubmissions,
     bannedUsers,
     displaySubmitter,
-    items,
     levels,
     maskEmail,
     setBanEmail,
     setBanReason,
-    target,
     unbanUser,
   } = a;
   return (

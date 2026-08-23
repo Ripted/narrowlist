@@ -8,6 +8,8 @@ export interface Level {
   thumbnail_url: string | null;
   verifier_profile_id: string | null;
   alternative_ids: string[] | null;
+  creators?: string[] | null;
+  description?: string | null;
 }
 
 export interface FutureLevel {
@@ -19,6 +21,8 @@ export interface FutureLevel {
   sub_rank: number;
   points: number;
   thumbnail_url: string | null;
+  creators?: string[] | null;
+  description?: string | null;
 }
 
 export interface ExtendedLevel {
@@ -33,7 +37,6 @@ export interface ExtendedLevel {
   verifier_profile_id: string | null;
   alternative_ids: string[] | null;
   description?: string | null;
-  creators?: string[] | null;
 }
 
 // State for editing future level
@@ -94,6 +97,7 @@ export interface Profile {
   id: string;
   username: string;
   display_name: string | null;
+  user_id?: string | null;
   total_points?: number | null;
   extra_points?: number | null;
 }

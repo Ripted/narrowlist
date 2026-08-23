@@ -1470,7 +1470,7 @@ export function useAdminState() {
 
   const usernameByUserId = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const p of allProfiles as never[]) {
+    for (const p of allProfiles) {
       if (p.user_id) map[p.user_id] = p.username;
     }
     return map;
@@ -2130,7 +2130,7 @@ export function useAdminState() {
         .eq("verifier_profile_id", sourceProfile.id);
       
       // Update target profile display name if specified
-      const updateData: { display_name?: string; user_id?: string | null; avatar_url?: string | null; banner_url?: string | null } = {};
+      const updateData: { display_name?: string; user_id?: string | null; avatar_url?: string | null; banner_url?: string | null; bio?: string | null; country_code?: string | null } = {};
       if (mergeDisplayName) {
         updateData.display_name = mergeDisplayName;
       }
@@ -3020,7 +3020,6 @@ export function useAdminState() {
   };
 
   return {
-    a,
     addExtendedLevel,
     addFutureLevel,
     addLevel,
@@ -3035,7 +3034,6 @@ export function useAdminState() {
     allProfiles,
     approvedPlayers,
     authLoading,
-    b,
     banEmail,
     banReason,
     banUserFromSubmissions,
@@ -3052,9 +3050,7 @@ export function useAdminState() {
     confirmFutureThumbnailChange,
     confirmRankChange,
     confirmThumbnailChange,
-    creators,
     currentPage,
-    data,
     deleteConfirmFutureLevel,
     deleteConfirmLevel,
     deleteConfirmManualRun,
@@ -3099,7 +3095,6 @@ export function useAdminState() {
     editingManualRun,
     editingNoteId,
     editingRunNoteId,
-    error,
     executeExtendedRankChange,
     executeRankChange,
     extendedLevelPreview,
@@ -3113,7 +3108,6 @@ export function useAdminState() {
     fetchLevelSubmissions,
     fetchRunSubmissions,
     fetchingExtendedLevelInfo,
-    file,
     filteredExtendedLevels,
     filteredFutureLevels,
     filteredLevelSubmissions,
@@ -3154,9 +3148,6 @@ export function useAdminState() {
     hardDeleting,
     hasAccess,
     isAdmin,
-    items,
-    leaderboard,
-    level,
     levelRaters,
     levelSearchQuery,
     levelSubmissions,
@@ -3182,7 +3173,6 @@ export function useAdminState() {
     mergeSourceProfile,
     mergeTargetProfile,
     mergingProfiles,
-    message,
     moveExtendedLevel,
     moveFutureLevel,
     moveLevel,
@@ -3195,7 +3185,6 @@ export function useAdminState() {
     newLevelId,
     newLevelRank,
     newRaterName,
-    old,
     openAddManualRun,
     openEditExtendedLevel,
     openEditFutureLevel,
@@ -3208,15 +3197,12 @@ export function useAdminState() {
     processingClaim,
     processingRunSubmission,
     processingSubmission,
-    profile,
-    rank,
     rankConfirmLevel,
     rankInputId,
     rankInputValue,
     raterAccess,
     raterLoaded,
     removeLevelRater,
-    request,
     restoreDeletedLevel,
     restoreDeletedProfile,
     restoringArchiveId,
@@ -3332,14 +3318,11 @@ export function useAdminState() {
     startExtendedRankEdit,
     startFutureRankEdit,
     startRankEdit,
-    submission,
     submissionNote,
     submissionRank,
     submissionSearchQuery,
     submissionTargetList,
-    submissions,
     syncing,
-    target,
     thumbnailEditId,
     thumbnailInputValue,
     toast,
@@ -3360,7 +3343,6 @@ export function useAdminState() {
     uploadingFutureThumbnail,
     uploadingProof,
     uploadingThumbnail,
-    username,
   };
 }
 

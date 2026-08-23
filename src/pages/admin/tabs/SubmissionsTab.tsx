@@ -9,13 +9,11 @@ import type { AdminState } from "../useAdminState";
 
 export function SubmissionsTab({ a }: { a: AdminState }) {
   const {
-    b,
     displaySubmitter,
     editNoteValue,
     editRunNoteValue,
     editingNoteId,
     editingRunNoteId,
-    error,
     fetchChangelog,
     fetchLevelSubmissions,
     fetchRunSubmissions,
@@ -23,11 +21,8 @@ export function SubmissionsTab({ a }: { a: AdminState }) {
     filteredRunSubmissions,
     handleRunSubmissionReview,
     handleSubmissionReview,
-    items,
-    level,
     levelSubmissions,
     logAction,
-    message,
     processingRunSubmission,
     processingSubmission,
     runSubmissionSearchQuery,
@@ -48,14 +43,10 @@ export function SubmissionsTab({ a }: { a: AdminState }) {
     setSubmissionNote,
     setSubmissionRank,
     setSubmissionSearchQuery,
-    submission,
     submissionSearchQuery,
-    submissions,
-    target,
     toast,
     updateRunSubmissionNote,
     updateSubmissionNote,
-    username,
   } = a;
   return (
             <TabsContent value="submissions" className="space-y-6">

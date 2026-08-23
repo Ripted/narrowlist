@@ -5,11 +5,8 @@ import type { AdminState } from "../useAdminState";
 
 export function ManualRunsTab({ a }: { a: AdminState }) {
   const {
-    b,
-    items,
     manualRuns,
     maskEmail,
-    old,
     openAddManualRun,
     openEditManualRun,
     setDeleteConfirmManualRun,
