@@ -5,10 +5,7 @@ import type { AdminState } from "../useAdminState";
 
 export function DeletedTab({ a }: { a: AdminState }) {
   const {
-    b,
     deletedLevels,
-    items,
-    level,
     levels,
     maskEmail,
     restoreDeletedLevel,

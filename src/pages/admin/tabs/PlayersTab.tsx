@@ -10,22 +10,17 @@ export function PlayersTab({ a }: { a: AdminState }) {
   const {
     allProfiles,
     approvedPlayers,
-    b,
-    data,
     deletedProfileArchive,
     filteredPlayers,
     hardDeleteSearch,
     hardDeleteSelectedId,
     hardDeleting,
-    items,
     maskEmail,
     mergeDisplayName,
     mergeSourceProfile,
     mergeTargetProfile,
     mergingProfiles,
     playerSearchQuery,
-    profile,
-    rank,
     restoreDeletedProfile,
     restoringArchiveId,
     setHardDeleteConfirmOpen,
@@ -36,9 +31,7 @@ export function PlayersTab({ a }: { a: AdminState }) {
     setMergeSourceProfile,
     setMergeTargetProfile,
     setPlayerSearchQuery,
-    target,
     unlinkPlayer,
-    username,
   } = a;
   return (
             <TabsContent value="players" className="space-y-6">

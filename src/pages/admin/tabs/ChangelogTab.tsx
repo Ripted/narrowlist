@@ -4,9 +4,7 @@ import type { AdminState } from "../useAdminState";
 
 export function ChangelogTab({ a }: { a: AdminState }) {
   const {
-    b,
     changelog,
-    items,
     maskEmail,
   } = a;
   return (
