@@ -80,10 +80,11 @@ export function Navbar() {
       path: "/main",
       items: [
         { path: "/main", label: "Main List", icon: List },
+        { path: "/future-list", label: "Future List", icon: Clock },
         { path: "/extended-list", label: "Extended List", icon: List },
         { path: "/extra-list", label: "Extra List", icon: List },
-        { path: "/future-list", label: "Future List", icon: Clock },
         { path: "/packs", label: "Level Packs", icon: Package },
+
       ],
     },
     {
