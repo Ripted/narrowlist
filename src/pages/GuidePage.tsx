@@ -38,7 +38,12 @@ export default function GuidePage() {
     ripted: null,
     mazyx: null,
   });
-  const [activeTab, setActiveTab] = useState("getting-started");
+  const [raters, setRaters] = useState<RaterRow[]>([]);
+  const [activeTab, setActiveTab] = useState("features");
+
+  useEffect(() => {
+    if (window.location.hash === "#api") setActiveTab("api");
+  }, []);
 
   useEffect(() => {
     async function loadProfiles() {
@@ -60,6 +65,36 @@ export default function GuidePage() {
     }
     loadProfiles();
   }, []);
+
+  useEffect(() => {
+    async function loadRaters() {
+      const { data } = await supabase
+        .from("level_raters")
+        .select("username, can_main, can_future, can_extra")
+        .order("username");
+      if (!data?.length) return;
+
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url")
+        .in("username", data.map((r) => r.username));
+
+      setRaters(
+        data.map((r) => {
+          const p = profs?.find(
+            (x) => x.username.toLowerCase() === r.username.toLowerCase(),
+          );
+          return {
+            ...r,
+            display_name: p?.display_name ?? null,
+            avatar_url: p?.avatar_url ?? null,
+          };
+        }),
+      );
+    }
+    loadRaters();
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-background">
