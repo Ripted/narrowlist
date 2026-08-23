@@ -12,6 +12,7 @@ import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Ha
 import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
 import { WatchlistButton } from "@/components/WatchlistButton";
 import { getPersistedHistoricalDate, subscribeHistoricalDate } from "@/components/HistoricalListViewer";
+import { isVideoFileUrl } from "@/lib/utils";
 
 interface DbProfile {
   id: string;
@@ -43,7 +44,7 @@ export default function LevelPage() {
   const [manualRuns, setManualRuns] = useState<ManualRunEntry[]>([]);
   const [sortMode, setSortMode] = useState<"time" | "date">("time");
   const [packsContaining, setPacksContaining] = useState<{ id: string; name: string; cover_url: string | null }[]>([]);
-  const levelTags: any[] = [];
+  const levelTags: string[] = [];
   const [historicalCutoff, setHistoricalCutoff] = useState<string | null>(getPersistedHistoricalDate());
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export default function LevelPage() {
         .select("pack_id")
         .eq("level_id", levelDbId)
         .eq("level_type", levelType);
-      const packIds = Array.from(new Set((itemRows || []).map((r: any) => r.pack_id)));
+      const packIds = Array.from(new Set((itemRows || []).map((r: { pack_id: string }) => r.pack_id)));
       if (packIds.length === 0) { setPacksContaining([]); return; }
       const { data: packs } = await supabase
         .from("level_packs")
@@ -124,7 +125,7 @@ export default function LevelPage() {
           isManual: true,
           run_id: -1000 - idx, // Negative ID to differentiate
           completion_time: Number(run.completion_time),
-          username: (run.profiles as any)?.username || "Unknown",
+          username: (run.profiles as { username?: string } | null)?.username || "Unknown",
           arrow_name: run.arrow_name,
           is_verifier: run.is_verifier,
           completed_at: run.completed_at,
@@ -418,11 +419,22 @@ export default function LevelPage() {
             <div className="lg:col-span-1">
               <div className="relative aspect-video rounded-lg bg-secondary border border-border overflow-hidden group">
                 {thumbnailUrl ? (
-                  <img 
-                    src={thumbnailUrl} 
-                    alt={levelInfo.name} 
-                    className="w-full h-full object-cover"
-                  />
+                  isVideoFileUrl(thumbnailUrl) ? (
+                    <video
+                      src={thumbnailUrl}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={thumbnailUrl}
+                      alt={levelInfo.name}
+                      className="w-full h-full object-cover"
+                    />
+                  )
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <div className="text-6xl font-display font-bold text-muted-foreground/20">
@@ -560,7 +572,7 @@ export default function LevelPage() {
                   const isVerifier = isManualRun 
                     ? run.is_verifier 
                     : (verifierRunId !== null && run.run_id === verifierRunId);
-                  const details = isManualRun ? null : (run as any).details;
+                  const details = isManualRun ? null : (run as { details?: unknown }).details;
                   
                   return (
                     <Link

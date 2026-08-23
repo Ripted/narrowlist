@@ -103,7 +103,6 @@ export function Navbar() {
       icon: Activity,
       path: "/activity",
       items: [
-        { path: "/activity", label: "Activity Feed", icon: Activity },
         { path: "/recent", label: "Recent Runs", icon: Activity },
         { path: "/recently-added", label: "Recently Added", icon: Clock },
         { path: "/statistics", label: "Statistics", icon: BarChart3 },
