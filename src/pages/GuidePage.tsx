@@ -24,6 +24,16 @@ interface FounderProfile {
   avatar_url: string | null;
 }
 
+interface RaterRow {
+  username: string;
+  can_main: boolean;
+  can_future: boolean;
+  can_extra: boolean;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+
 export default function GuidePage() {
   const navigate = useNavigate();
   const [founders, setFounders] = useState<{ sqm: FounderProfile | null }>({
@@ -38,7 +48,12 @@ export default function GuidePage() {
     ripted: null,
     mazyx: null,
   });
-  const [activeTab, setActiveTab] = useState("getting-started");
+  const [raters, setRaters] = useState<RaterRow[]>([]);
+  const [activeTab, setActiveTab] = useState("features");
+
+  useEffect(() => {
+    if (window.location.hash === "#api") setActiveTab("api");
+  }, []);
 
   useEffect(() => {
     async function loadProfiles() {
@@ -61,32 +76,54 @@ export default function GuidePage() {
     loadProfiles();
   }, []);
 
+  useEffect(() => {
+    async function loadRaters() {
+      const { data } = await supabase
+        .from("level_raters")
+        .select("username, can_main, can_future, can_extra")
+        .order("username");
+      if (!data?.length) return;
+
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url")
+        .in("username", data.map((r) => r.username));
+
+      setRaters(
+        data.map((r) => {
+          const p = profs?.find(
+            (x) => x.username.toLowerCase() === r.username.toLowerCase(),
+          );
+          return {
+            ...r,
+            display_name: p?.display_name ?? null,
+            avatar_url: p?.avatar_url ?? null,
+          };
+        }),
+      );
+    }
+    loadRaters();
+  }, []);
+
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 pt-24 pb-12 max-w-5xl">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-            <BookOpen className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Interactive Guide</span>
-          </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold gradient-text mb-4">
             Welcome to Narrowlist
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            The definitive ranking system for Narrow Arrow's hardest levels. 
-            Click on any section below to learn more and navigate directly!
+            The definitive ranking system for Narrow Arrow's hardest levels.
+            Pick a section below to learn how everything works.
           </p>
         </div>
 
         {/* Interactive Tab Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-12">
           <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 mb-8">
-            <TabsTrigger value="getting-started" className="gap-2">
-              <Play className="w-4 h-4" />
-              <span className="hidden sm:inline">Get Started</span>
-            </TabsTrigger>
             <TabsTrigger value="features" className="gap-2">
               <Star className="w-4 h-4" />
               <span className="hidden sm:inline">Features</span>
@@ -103,77 +140,93 @@ export default function GuidePage() {
               <MessageCircle className="w-4 h-4" />
               <span className="hidden sm:inline">Community</span>
             </TabsTrigger>
+            <TabsTrigger value="api" className="gap-2">
+              <Code2 className="w-4 h-4" />
+              <span className="hidden sm:inline">API</span>
+            </TabsTrigger>
             <TabsTrigger value="faq" className="gap-2">
               <HelpCircle className="w-4 h-4" />
               <span className="hidden sm:inline">FAQ</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* Getting Started Tab */}
-          <TabsContent value="getting-started" className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <InteractiveCard
-                icon={Eye}
-                title="1. Browse the Lists"
-                description="Explore the Main List to see all ranked levels by difficulty."
-                action="View Main List"
-                onClick={() => navigate("/main")}
-              />
-              <InteractiveCard
-                icon={Play}
-                title="2. Complete a Level"
-                description="Beat any level in Narrow Arrow that's on our lists."
-                action="See What's Ranked"
-                onClick={() => navigate("/main")}
-              />
-              <InteractiveCard
-                icon={Clock}
-                title="3. Wait for Sync"
-                description="Completions are automatically synced every 3 minutes from the game."
-                action="Check Recent Runs"
-                onClick={() => navigate("/recent")}
-              />
-              <InteractiveCard
-                icon={UserPlus}
-                title="4. Claim Your Profile"
-                description="Once you have completions, claim your profile to customize it."
-                action="Find Your Profile"
-                onClick={() => navigate("/leaderboard")}
-              />
-            </div>
-
-            <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-accent/5">
+          {/* Public API Tab */}
+          <TabsContent value="api" className="space-y-6" id="api">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-primary" />
-                  Quick Actions
+                  <Code2 className="w-5 h-5 text-primary" />
+                  Public API
                 </CardTitle>
                 <CardDescription>
-                  Jump right into the action with these quick links
+                  Read-only JSON endpoints for our lists. No API key, no login, open CORS —
+                  please cache responses and stay under 120 requests per minute.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-3">
-                  <Button onClick={() => navigate("/main")} className="gap-2">
-                    <List className="w-4 h-4" />
-                    Main List
-                  </Button>
-                  <Button onClick={() => navigate("/extra-list")} variant="secondary" className="gap-2">
-                    <ListPlus className="w-4 h-4" />
-                    Extra List
-                  </Button>
-                  <Button onClick={() => navigate("/leaderboard")} variant="secondary" className="gap-2">
-                    <Trophy className="w-4 h-4" />
-                    Leaderboard
-                  </Button>
-                  <Button onClick={() => navigate("/submit")} variant="outline" className="gap-2">
-                    <Send className="w-4 h-4" />
-                    Submit Level
-                  </Button>
+              <CardContent className="space-y-6 text-sm">
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">Base URL</h4>
+                  <code className="block break-all rounded-md bg-secondary/60 px-3 py-2 font-mono text-xs">
+                    {API_BASE}
+                  </code>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">Endpoints</h4>
+                  <div className="space-y-2">
+                    {[
+                      ["/main-list", "Ranked Main List levels (ranks 1–100)."],
+                      ["/extended-list", "Extended List levels (rank 101+)."],
+                      ["/extra-list", "Extra List levels."],
+                      ["/future-list", "Future List levels, including sub_rank ordering."],
+                    ].map(([ep, desc]) => (
+                      <div key={ep} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                        <code className="shrink-0 rounded bg-secondary/60 px-2 py-1 font-mono text-xs">
+                          GET {ep}
+                        </code>
+                        <span className="text-muted-foreground">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">Query parameters</h4>
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                    <li><code className="font-mono text-xs">limit</code> — 1–250, default 100</li>
+                    <li><code className="font-mono text-xs">offset</code> — pagination offset, default 0</li>
+                    <li><code className="font-mono text-xs">rank_min</code> / <code className="font-mono text-xs">rank_max</code> — inclusive rank range</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-foreground mb-2">Example</h4>
+                  <pre className="overflow-x-auto rounded-md bg-secondary/60 p-3 font-mono text-xs">
+{`GET ${API_BASE}/main-list?limit=2
+
+{
+  "count": 100,
+  "limit": 2,
+  "offset": 0,
+  "data": [
+    {
+      "rank": 1,
+      "level_id": "abc123",
+      "name": "Exaction",
+      "creators": ["Ripted"],
+      "points": 28,
+      "thumbnail_url": "https://...",
+      "added_at": "2026-01-14T18:02:11.000Z"
+    }
+  ]
+}`}
+                  </pre>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
+
+
 
           {/* Features Tab */}
           <TabsContent value="features" className="space-y-6">
@@ -413,7 +466,7 @@ export default function GuidePage() {
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p>• The <span className="text-foreground font-medium">admin team</span> assigns difficulty tiers, based on completion data and feedback from experienced players.</p>
                 <p>• Public difficulty voting was removed — the scale above is a shared reference, not a poll.</p>
-                <p>• Think a level sits in the wrong tier? Bring it up in the Narrow List Discord.</p>
+                <p>• Think a level sits in the wrong tier? Bring it up in the Narrowlist Discord.</p>
               </CardContent>
             </Card>
 
@@ -450,7 +503,7 @@ export default function GuidePage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-primary" />
-                    Narrow List Discord
+                    Narrowlist Discord
                   </CardTitle>
                   <CardDescription>
                     The home of Narrowlist. Discuss rankings, submit runs, suggest levels and follow site updates.
@@ -464,7 +517,7 @@ export default function GuidePage() {
                   >
                     <Button className="w-full gap-2">
                       <MessageCircle className="w-4 h-4" />
-                      Join Narrow List
+                      Join Narrowlist
                     </Button>
                   </a>
                 </CardContent>
@@ -680,7 +733,7 @@ export default function GuidePage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground space-y-2">
                   <p>
-                    Join the Narrow List Discord — it's the fastest way to reach the admin team for help,
+                    Join the Narrowlist Discord — it's the fastest way to reach the admin team for help,
                     bug reports, or rank discussions.
                   </p>
                   <a
@@ -689,7 +742,7 @@ export default function GuidePage() {
                     rel="noopener noreferrer"
                     className="text-primary hover:underline inline-flex items-center gap-1"
                   >
-                    Open Narrow List Discord →
+                    Open Narrowlist Discord →
                   </a>
                 </AccordionContent>
               </AccordionItem>
@@ -744,30 +797,35 @@ export default function GuidePage() {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Support Section */}
-        <Card className="text-center">
-          <CardContent className="pt-6">
-            <div className="inline-flex items-center justify-center p-3 rounded-full bg-primary/10 mb-4">
-              <Zap className="w-8 h-8 text-primary" />
-            </div>
-            <h2 className="font-display text-2xl font-bold mb-3">Support Our Development</h2>
-            <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-              Narrowlist is built with Lovable. If you'd like to support our continued development 
-              and help us add more features, use our invite link!
-            </p>
-            <a 
-              href="https://lovable.dev/invite/VXJ6L3W" 
-              target="_blank" 
-              rel="noopener noreferrer"
-            >
-              <Button size="lg" className="gap-2 glow-primary">
-                <Heart className="w-4 h-4" />
-                Support via Lovable
-              </Button>
-            </a>
+            {raters.length > 0 && (
+              <div>
+                <h3 className="font-display font-semibold mb-1 text-foreground">Level Raters</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Trusted community members who help place levels on specific lists.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  {raters.map((r) => (
+                    <ProfileLink
+                      key={r.username}
+                      username={r.username}
+                      displayName={r.display_name}
+                      avatarUrl={r.avatar_url}
+                      role={
+                        [
+                          r.can_main && "Main",
+                          r.can_future && "Future",
+                          r.can_extra && "Extra",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "Rater"
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
           </CardContent>
         </Card>
       </main>
