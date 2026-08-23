@@ -413,7 +413,7 @@ export default function GuidePage() {
               <CardContent className="space-y-2 text-sm text-muted-foreground">
                 <p>• The <span className="text-foreground font-medium">admin team</span> assigns difficulty tiers, based on completion data and feedback from experienced players.</p>
                 <p>• Public difficulty voting was removed — the scale above is a shared reference, not a poll.</p>
-                <p>• Think a level sits in the wrong tier? Bring it up in the Narrow List Discord.</p>
+                <p>• Think a level sits in the wrong tier? Bring it up in the Narrowlist Discord.</p>
               </CardContent>
             </Card>
 
@@ -450,7 +450,7 @@ export default function GuidePage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-primary" />
-                    Narrow List Discord
+                    Narrowlist Discord
                   </CardTitle>
                   <CardDescription>
                     The home of Narrowlist. Discuss rankings, submit runs, suggest levels and follow site updates.
@@ -464,7 +464,7 @@ export default function GuidePage() {
                   >
                     <Button className="w-full gap-2">
                       <MessageCircle className="w-4 h-4" />
-                      Join Narrow List
+                      Join Narrowlist
                     </Button>
                   </a>
                 </CardContent>
@@ -680,7 +680,7 @@ export default function GuidePage() {
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground space-y-2">
                   <p>
-                    Join the Narrow List Discord — it's the fastest way to reach the admin team for help,
+                    Join the Narrowlist Discord — it's the fastest way to reach the admin team for help,
                     bug reports, or rank discussions.
                   </p>
                   <a
@@ -689,7 +689,7 @@ export default function GuidePage() {
                     rel="noopener noreferrer"
                     className="text-primary hover:underline inline-flex items-center gap-1"
                   >
-                    Open Narrow List Discord →
+                    Open Narrowlist Discord →
                   </a>
                 </AccordionContent>
               </AccordionItem>
