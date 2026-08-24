@@ -69,7 +69,7 @@ const HubPage = () => {
 
     // Tools
     { path: "/submit", label: "Submit", description: "Submit a level or run", icon: Send, category: "tools" },
-    { path: "/guide", label: "Guide", description: "How everything works", icon: BookOpen, category: "tools" },
+    { path: "/info", label: "Info", description: "How everything works", icon: BookOpen, category: "tools" },
     { path: "/roulette", label: "Level Roulette", description: "Random level challenges", icon: Dice5, category: "tools" },
     { path: "/themes", label: "Themes", description: "Customize site appearance", icon: Palette, category: "tools" },
   ];

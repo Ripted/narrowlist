@@ -1,9 +1,10 @@
-import { Check, ChevronDown, ChevronUp, ClipboardPaste, Edit2, GripVertical, Hourglass, Image, ImagePlus, List, Loader2, Search, Shield, Trash2, Upload, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, ClipboardPaste, Edit2, GripVertical, Hourglass, Image, ImagePlus, List, ListCollapse, Loader2, Search, Shield, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TabsContent } from "@/components/ui/tabs";
 import { extractLevelId } from "@/lib/extractLevelId";
 import { formatFutureRank } from "@/lib/utils";
+import { ITEMS_PER_PAGE } from "../utils";
 import type { Level } from "../types";
 import type { AdminState } from "../useAdminState";
 
@@ -16,7 +17,19 @@ export function FutureTab({ a }: { a: AdminState }) {
     confirmFutureThumbnailChange,
     filteredFutureLevels,
     futureLevels,
+    futureCurrentPage,
     futureRankGroupSizes,
+    futureTotalPages,
+    paginatedFutureLevels,
+    showAllFuture,
+    handleFutureDragStart,
+    handleFutureDragOver,
+    handleFutureDrop,
+    handleFutureDragEnd,
+    dragOverFutureIndex,
+    draggedFutureIndex,
+    setFutureCurrentPage,
+    setShowAllFuture,
     futureRankInputId,
     futureRankInputValue,
     futureSearchQuery,
@@ -87,7 +100,17 @@ export function FutureTab({ a }: { a: AdminState }) {
                         {filteredFutureLevels.length}{futureSearchQuery ? ` of ${futureLevels.length}` : ""} levels
                       </span>
                     </h2>
-                    <div className="flex gap-2">                      <Button
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAllFuture(!showAllFuture)}
+                        className="gap-1 text-xs"
+                      >
+                        {showAllFuture ? <ListCollapse className="w-3 h-3" /> : <List className="w-3 h-3" />}
+                        {showAllFuture ? "Paginate" : "Show All"}
+                      </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         onClick={checkVerifiedFutureLevels}
@@ -104,7 +127,7 @@ export function FutureTab({ a }: { a: AdminState }) {
                     <Input
                       placeholder="Search future levels..."
                       value={futureSearchQuery}
-                      onChange={(e) => setFutureSearchQuery(e.target.value)}
+                      onChange={(e) => { setFutureSearchQuery(e.target.value); setFutureCurrentPage(1); }}
                       className="pl-9 bg-secondary border-border h-8 text-sm"
                     />
                   </div>
@@ -115,13 +138,24 @@ export function FutureTab({ a }: { a: AdminState }) {
                     {futureSearchQuery ? "No matching future levels found." : "No future levels added yet."}
                   </div>
                 ) : (
+                  <>
                   <div className="divide-y divide-border">
-                    {filteredFutureLevels.map((level, index) => (
+                    {paginatedFutureLevels.map((level, index) => {
+                      const realIndex = showAllFuture ? index : (futureCurrentPage - 1) * ITEMS_PER_PAGE + index;
+                      return (
                       <div
                         key={level.id}
-                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all hover:bg-secondary/20`}
+                        draggable={!futureSearchQuery}
+                        onDragStart={() => handleFutureDragStart(realIndex)}
+                        onDragOver={(e) => handleFutureDragOver(e, realIndex)}
+                        onDrop={() => handleFutureDrop(realIndex)}
+                        onDragEnd={handleFutureDragEnd}
+                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
+                          ${draggedFutureIndex === realIndex ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
+                          ${dragOverFutureIndex === realIndex && draggedFutureIndex !== realIndex ? "border-t-2 border-primary" : ""}
+                        `}
                       >
-                        <div className="flex-shrink-0 text-muted-foreground/40 hidden sm:block" title="Reordering disabled — use rank input">
+                        <div className="flex-shrink-0 text-muted-foreground hidden sm:block">
                           <GripVertical className="w-5 h-5" />
                         </div>
 
@@ -236,8 +270,8 @@ export function FutureTab({ a }: { a: AdminState }) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => moveFutureLevel(index, "up")}
-                            disabled={index === 0 || savingFuture || !!futureSearchQuery.trim()}
+                            onClick={() => moveFutureLevel(realIndex, "up")}
+                            disabled={realIndex === 0 || savingFuture || !!futureSearchQuery.trim()}
                             className="h-8 w-8 hidden sm:flex"
                             title={futureSearchQuery.trim() ? "Clear search to reorder" : "Move up"}
                           >
@@ -246,8 +280,8 @@ export function FutureTab({ a }: { a: AdminState }) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => moveFutureLevel(index, "down")}
-                            disabled={index === filteredFutureLevels.length - 1 || savingFuture || !!futureSearchQuery.trim()}
+                            onClick={() => moveFutureLevel(realIndex, "down")}
+                            disabled={realIndex === filteredFutureLevels.length - 1 || savingFuture || !!futureSearchQuery.trim()}
                             className="h-8 w-8 hidden sm:flex"
                             title={futureSearchQuery.trim() ? "Clear search to reorder" : "Move down"}
                           >
@@ -273,8 +307,35 @@ export function FutureTab({ a }: { a: AdminState }) {
                           </Button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
+
+                  {/* Pagination */}
+                  {!showAllFuture && futureTotalPages > 1 && (
+                    <div className="p-4 border-t border-border flex items-center justify-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFutureCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={futureCurrentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        Page {futureCurrentPage} of {futureTotalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setFutureCurrentPage(p => Math.min(futureTotalPages, p + 1))}
+                        disabled={futureCurrentPage === futureTotalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                  </>
                 )}
               </div>
             </TabsContent>

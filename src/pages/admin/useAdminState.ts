@@ -81,6 +81,10 @@ export function useAdminState() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [showAll, setShowAll] = useState(false);
+  const [futureCurrentPage, setFutureCurrentPage] = useState(1);
+  const [showAllFuture, setShowAllFuture] = useState(false);
+  const [extendedCurrentPage, setExtendedCurrentPage] = useState(1);
+  const [showAllExtended, setShowAllExtended] = useState(false);
   
   // Search filters
   const [levelSearchQuery, setLevelSearchQuery] = useState("");
@@ -158,6 +162,10 @@ export function useAdminState() {
   // Drag and drop
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [draggedFutureIndex, setDraggedFutureIndex] = useState<number | null>(null);
+  const [dragOverFutureIndex, setDragOverFutureIndex] = useState<number | null>(null);
+  const [draggedExtendedIndex, setDraggedExtendedIndex] = useState<number | null>(null);
+  const [dragOverExtendedIndex, setDragOverExtendedIndex] = useState<number | null>(null);
 
   // Future list inline editing & drag state
   const [futureRankInputId, setFutureRankInputId] = useState<string | null>(null);
@@ -165,8 +173,6 @@ export function useAdminState() {
   const [futureThumbnailEditId, setFutureThumbnailEditId] = useState<string | null>(null);
   const [futureThumbnailInputValue, setFutureThumbnailInputValue] = useState("");
   const [uploadingFutureRowThumbnail, setUploadingFutureRowThumbnail] = useState<string | null>(null);
-  const [futureDraggedIndex, setFutureDraggedIndex] = useState<number | null>(null);
-  const [futureDragOverIndex, setFutureDragOverIndex] = useState<number | null>(null);
   const [savingFuture, setSavingFuture] = useState(false);
   
   // Claim requests
@@ -276,8 +282,8 @@ export function useAdminState() {
     if (data) setLevelRaters(data as LevelRater[]);
   };
 
-  const addLevelRater = async () => {
-    const username = newRaterName.trim();
+  const addLevelRater = async (name?: string) => {
+    const username = (name ?? newRaterName).trim();
     if (!username) return;
     setAddingRater(true);
     try {
@@ -1558,6 +1564,14 @@ export function useAdminState() {
 
   // Pagination
   const totalPages = Math.ceil(filteredLevels.length / ITEMS_PER_PAGE);
+  const futureTotalPages = Math.ceil(filteredFutureLevels.length / ITEMS_PER_PAGE);
+  const paginatedFutureLevels = showAllFuture
+    ? filteredFutureLevels
+    : filteredFutureLevels.slice((futureCurrentPage - 1) * ITEMS_PER_PAGE, futureCurrentPage * ITEMS_PER_PAGE);
+  const extendedTotalPages = Math.ceil(filteredExtendedLevels.length / ITEMS_PER_PAGE);
+  const paginatedExtendedLevels = showAllExtended
+    ? filteredExtendedLevels
+    : filteredExtendedLevels.slice((extendedCurrentPage - 1) * ITEMS_PER_PAGE, extendedCurrentPage * ITEMS_PER_PAGE);
   const paginatedLevels = showAll 
     ? filteredLevels 
     : filteredLevels.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -2453,6 +2467,43 @@ export function useAdminState() {
     setDragOverIndex(null);
   };
 
+  // ===== Extra-list drag-and-drop =====
+  const handleExtendedDragStart = (index: number) => {
+    setDraggedExtendedIndex(index);
+  };
+
+  const handleExtendedDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    setDragOverExtendedIndex(index);
+  };
+
+  const handleExtendedDrop = async (targetIndex: number) => {
+    if (draggedExtendedIndex === null || draggedExtendedIndex === targetIndex) {
+      setDraggedExtendedIndex(null);
+      setDragOverExtendedIndex(null);
+      return;
+    }
+    const sorted = [...extendedLevels].sort((a, b) => a.rank_position - b.rank_position);
+    const [draggedItem] = sorted.splice(draggedExtendedIndex, 1);
+    sorted.splice(targetIndex, 0, draggedItem);
+    setExtendedLevels(sorted.map((l, i) => ({ ...l, rank_position: i + 1 })));
+    setDraggedExtendedIndex(null);
+    setDragOverExtendedIndex(null);
+    try {
+      await updateExtendedRanksSafely(sorted);
+      await logAction("Reordered extra levels", `${draggedItem.name || draggedItem.level_id} to #${targetIndex + 1}`);
+      toast({ title: "Saved", description: "Extra list rankings updated" });
+    } catch (error) {
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to reorder", variant: "destructive" });
+      fetchExtendedLevels();
+    }
+  };
+
+  const handleExtendedDragEnd = () => {
+    setDraggedExtendedIndex(null);
+    setDragOverExtendedIndex(null);
+  };
+
   // ===== Future-list inline rank/thumbnail/drag handlers =====
   const sortFutureLevels = (arr: FutureLevel[]) =>
     [...arr].sort((a, b) => a.rank_position - b.rank_position || (a.sub_rank ?? 1) - (b.sub_rank ?? 1));
@@ -2619,24 +2670,39 @@ export function useAdminState() {
     }
   };
 
-  const handleFutureDragStart = (index: number) => setFutureDraggedIndex(index);
+  const handleFutureDragStart = (index: number) => {
+    setDraggedFutureIndex(index);
+  };
+
   const handleFutureDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    setFutureDragOverIndex(index);
+    setDragOverFutureIndex(index);
   };
-  const handleFutureDrop = async (_targetIndex: number) => {
-    // Future list ranks are freeform (e.g. 1, 1, 1, 10, 30) — drag-reorder is disabled.
-    // Use the rank input on each row to change a specific level's estimated rank.
-    setFutureDraggedIndex(null);
-    setFutureDragOverIndex(null);
-    toast({
-      title: "Drag disabled on Future List",
-      description: "Edit a level's estimated rank using its rank input instead.",
+
+  const handleFutureDrop = async (targetIndex: number) => {
+    if (draggedFutureIndex === null || draggedFutureIndex === targetIndex) {
+      setDraggedFutureIndex(null);
+      setDragOverFutureIndex(null);
+      return;
+    }
+    const arr = sortFutureLevels(futureLevels);
+    const [draggedItem] = arr.splice(draggedFutureIndex, 1);
+    arr.splice(targetIndex, 0, draggedItem);
+    const normalized = normalizeFutureGroups(arr);
+    const before = new Map(futureLevels.map((f) => [f.id, f]));
+    const changed = normalized.filter((f) => {
+      const old = before.get(f.id)!;
+      return old.rank_position !== f.rank_position || (old.sub_rank ?? 1) !== f.sub_rank;
     });
+    setFutureLevels(normalized);
+    setDraggedFutureIndex(null);
+    setDragOverFutureIndex(null);
+    await updateFutureRanks(changed);
   };
+
   const handleFutureDragEnd = () => {
-    setFutureDraggedIndex(null);
-    setFutureDragOverIndex(null);
+    setDraggedFutureIndex(null);
+    setDragOverFutureIndex(null);
   };
 
   const openEditModal = (level: Level) => {
@@ -3063,6 +3129,10 @@ export function useAdminState() {
     displaySubmitter,
     dragOverIndex,
     draggedIndex,
+    dragOverFutureIndex,
+    draggedFutureIndex,
+    dragOverExtendedIndex,
+    draggedExtendedIndex,
     editAlternativeIds,
     editAuthor,
     editCreators,
@@ -3126,6 +3196,14 @@ export function useAdminState() {
     handleDragOver,
     handleDragStart,
     handleDrop,
+    handleFutureDragStart,
+    handleFutureDragOver,
+    handleFutureDrop,
+    handleFutureDragEnd,
+    handleExtendedDragStart,
+    handleExtendedDragOver,
+    handleExtendedDrop,
+    handleExtendedDragEnd,
     handleEditThumbnailUpload,
     handleExtendedThumbnailUpload,
     handleFutureThumbnailUpload,
@@ -3191,6 +3269,8 @@ export function useAdminState() {
     openEditManualRun,
     openEditModal,
     paginatedLevels,
+    paginatedFutureLevels,
+    paginatedExtendedLevels,
     pendingExtendedRank,
     pendingNewRank,
     playerSearchQuery,
@@ -3308,6 +3388,8 @@ export function useAdminState() {
     setRunSubmissionSearchQuery,
     setRunSubmissionTime,
     setShowAll,
+    setShowAllFuture,
+    setShowAllExtended,
     setSubmissionNote,
     setSubmissionRank,
     setSubmissionSearchQuery,
@@ -3315,6 +3397,8 @@ export function useAdminState() {
     setThumbnailEditId,
     setThumbnailInputValue,
     showAll,
+    showAllFuture,
+    showAllExtended,
     startExtendedRankEdit,
     startFutureRankEdit,
     startRankEdit,
@@ -3328,6 +3412,12 @@ export function useAdminState() {
     toast,
     toggleRaterList,
     totalPages,
+    futureTotalPages,
+    extendedTotalPages,
+    futureCurrentPage,
+    setFutureCurrentPage,
+    extendedCurrentPage,
+    setExtendedCurrentPage,
     transferExtendedToMain,
     transferMainToExtended,
     triggerSync,
