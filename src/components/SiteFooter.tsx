@@ -46,10 +46,10 @@ export function SiteFooter() {
                 Resources
               </span>
               <Link
-                to="/guide"
+                to="/info"
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
-                Guide
+                Info
               </Link>
               <a
                 href={DISCORD_LINK}

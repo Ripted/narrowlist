@@ -1,8 +1,9 @@
-import { ArrowUpDown, Check, ChevronDown, ChevronUp, ClipboardPaste, Edit2, Image, ImagePlus, List, Loader2, Plus, Search, Trash2, Upload, X } from "lucide-react";
+import { ArrowUpDown, Check, ChevronDown, ChevronUp, ClipboardPaste, Edit2, GripVertical, Image, ImagePlus, List, ListCollapse, Loader2, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TabsContent } from "@/components/ui/tabs";
 import { extractLevelId } from "@/lib/extractLevelId";
+import { ITEMS_PER_PAGE } from "../utils";
 import type { Level } from "../types";
 import type { AdminState } from "../useAdminState";
 
@@ -12,28 +13,40 @@ export function ExtendedTab({ a }: { a: AdminState }) {
     addingExtendedLevel,
     confirmExtendedRankChange,
     deleteExtendedLevel,
+    extendedCurrentPage,
     extendedLevelPreview,
     extendedLevels,
     extendedRankInputId,
     extendedRankInputValue,
     extendedSearchQuery,
+    extendedTotalPages,
     fetchExtendedLevelPreview,
     fetchingExtendedLevelInfo,
     filteredExtendedLevels,
     handleLevelIdPaste,
     handleQuickExtendedThumbnailUpload,
     handleQuickPasteExtendedThumbnail,
+    handleExtendedDragStart,
+    handleExtendedDragOver,
+    handleExtendedDrop,
+    handleExtendedDragEnd,
+    dragOverExtendedIndex,
+    draggedExtendedIndex,
     levels,
     moveExtendedLevel,
     newExtendedLevelId,
     newExtendedLevelRank,
     openEditExtendedLevel,
+    paginatedExtendedLevels,
+    setExtendedCurrentPage,
     setExtendedRankInputId,
     setExtendedRankInputValue,
     setExtendedSearchQuery,
     setMoveToMainConfirm,
     setNewExtendedLevelId,
     setNewExtendedLevelRank,
+    setShowAllExtended,
+    showAllExtended,
     startExtendedRankEdit,
     uploadingExtendedRowThumb,
   } = a;
@@ -92,14 +105,24 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                         {filteredExtendedLevels.length}{extendedSearchQuery ? ` of ${extendedLevels.length}` : ""} levels
                       </span>
                     </h2>
-                    <div className="flex gap-2 flex-wrap">                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAllExtended(!showAllExtended)}
+                        className="gap-1 text-xs"
+                      >
+                        {showAllExtended ? <ListCollapse className="w-3 h-3" /> : <List className="w-3 h-3" />}
+                        {showAllExtended ? "Paginate" : "Show All"}
+                      </Button>
+                    </div>
                   </div>
                   <div className="relative w-full sm:w-80">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Search levels by name, author, or ID..."
                       value={extendedSearchQuery}
-                      onChange={(e) => setExtendedSearchQuery(e.target.value)}
+                      onChange={(e) => { setExtendedSearchQuery(e.target.value); setExtendedCurrentPage(1); }}
                       className="pl-9 bg-secondary border-border h-8 text-sm"
                     />
                   </div>
@@ -110,14 +133,26 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                     {extendedSearchQuery ? "No matching levels found." : "No extra levels yet."}
                   </div>
                 ) : (
+                  <>
                   <div className="divide-y divide-border">
-                    {filteredExtendedLevels.map((level) => {
-                      const actualIndex = extendedLevels.findIndex((l) => l.id === level.id);
+                    {paginatedExtendedLevels.map((level, index) => {
+                      const realIndex = showAllExtended ? index : (extendedCurrentPage - 1) * ITEMS_PER_PAGE + index;
                       return (
                         <div
                           key={level.id}
-                          className="flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all hover:bg-secondary/20"
+                          draggable={!extendedSearchQuery}
+                          onDragStart={() => handleExtendedDragStart(realIndex)}
+                          onDragOver={(e) => handleExtendedDragOver(e, realIndex)}
+                          onDrop={() => handleExtendedDrop(realIndex)}
+                          onDragEnd={handleExtendedDragEnd}
+                          className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
+                            ${draggedExtendedIndex === realIndex ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
+                            ${dragOverExtendedIndex === realIndex && draggedExtendedIndex !== realIndex ? "border-t-2 border-primary" : ""}
+                          `}
                         >
+                          <div className="flex-shrink-0 text-muted-foreground hidden sm:block">
+                            <GripVertical className="w-5 h-5" />
+                          </div>
                           <div className="w-12 md:w-16 flex-shrink-0">
                             {extendedRankInputId === level.id ? (
                               <div className="flex items-center gap-1">
@@ -211,20 +246,20 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => moveExtendedLevel(actualIndex, "up")}
-                              disabled={actualIndex === 0}
+                              onClick={() => moveExtendedLevel(realIndex, "up")}
+                              disabled={realIndex === 0 || !!extendedSearchQuery.trim()}
                               className="h-8 w-8 hidden sm:flex"
-                              title="Move up"
+                              title={extendedSearchQuery.trim() ? "Clear search to reorder" : "Move up"}
                             >
                               <ChevronUp className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => moveExtendedLevel(actualIndex, "down")}
-                              disabled={actualIndex === extendedLevels.length - 1}
+                              onClick={() => moveExtendedLevel(realIndex, "down")}
+                              disabled={realIndex === extendedLevels.length - 1 || !!extendedSearchQuery.trim()}
                               className="h-8 w-8 hidden sm:flex"
-                              title="Move down"
+                              title={extendedSearchQuery.trim() ? "Clear search to reorder" : "Move down"}
                             >
                               <ChevronDown className="w-4 h-4" />
                             </Button>
@@ -261,6 +296,32 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                       );
                     })}
                   </div>
+
+                  {/* Pagination */}
+                  {!showAllExtended && extendedTotalPages > 1 && (
+                    <div className="p-4 border-t border-border flex items-center justify-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setExtendedCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={extendedCurrentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        Page {extendedCurrentPage} of {extendedTotalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setExtendedCurrentPage(p => Math.min(extendedTotalPages, p + 1))}
+                        disabled={extendedCurrentPage === extendedTotalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                  </>
                 )}
               </div>
             </TabsContent>

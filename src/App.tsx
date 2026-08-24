@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/hooks/useTheme";
 import Index from "./pages/Index";
@@ -61,7 +61,8 @@ const App = () => (
               <Route path="/recently-added" element={<RecentlyAddedPage />} />
               <Route path="/compare" element={<ComparePage />} />
               <Route path="/submit" element={<SubmitLevelPage />} />
-              <Route path="/guide" element={<GuidePage />} />
+              <Route path="/info" element={<GuidePage />} />
+              <Route path="/guide" element={<Navigate to="/info" replace />} />
               <Route path="/themes" element={<ThemesPage />} />
               <Route path="/statistics" element={<StatisticsPage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />

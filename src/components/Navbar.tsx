@@ -112,10 +112,10 @@ export function Navbar() {
       key: "tools",
       label: "Tools",
       icon: Package,
-      path: "/guide",
+      path: "/info",
       items: [
         { path: "/submit", label: "Submit", icon: Send },
-        { path: "/guide", label: "Guide", icon: BookOpen },
+        { path: "/info", label: "Info", icon: BookOpen },
         { path: "/roulette", label: "Level Roulette", icon: Dice5 },
         { path: "/themes", label: "Themes", icon: Palette },
         ...(user ? [{ path: "/watchlist", label: "Watchlist", icon: Bookmark }] : []),
