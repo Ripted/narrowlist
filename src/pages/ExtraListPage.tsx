@@ -18,10 +18,8 @@ import { SortControls } from "@/components/SortControls";
 import {
   useAllRatingsAggregate,
   useAllDifficultyAggregate,
-  LevelSortField,
-  SortDirection,
-  DEFAULT_SORT_DIRECTION,
 } from "@/hooks/useLevelAggregates";
+import { useListViewPrefs } from "@/hooks/useListViewPrefs";
 
 interface ExtendedLevel {
   id: string;
@@ -251,13 +249,21 @@ function ExtendedLevelCard({
 }
 
 export default function ExtendedListPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState<LevelSortField>("rank");
-  const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION.rank);
-  const [showOnlyUncompleted, setShowOnlyUncompleted] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [tagMatchMode, setTagMatchMode] = useState<"any" | "all">("any");
+  const {
+    searchQuery,
+    setSearchQuery,
+    page: currentPage,
+    setPage,
+    sortField,
+    setSort,
+    sortDirection,
+    showOnlyUncompleted,
+    toggleUncompleted,
+    selectedTags,
+    setSelectedTags,
+    tagMatchMode,
+    setTagMatchMode,
+  } = useListViewPrefs({ storageKey: "narrowlist-view-extra", withTags: true, withPage: true });
   const { completedExtraLevelIds, isLoggedIn } = useUserCompletions();
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({});
   const { data: ratingsAgg } = useAllRatingsAggregate();
@@ -501,10 +507,7 @@ export default function ExtendedListPage() {
                 <Button
                   variant={showOnlyUncompleted ? "default" : "outline"}
                   size="sm"
-                  onClick={() => {
-                    setShowOnlyUncompleted(!showOnlyUncompleted);
-                    setCurrentPage(1);
-                  }}
+                  onClick={() => toggleUncompleted()}
                   className="gap-2 flex-shrink-0"
                 >
                   <Filter className="w-4 h-4" />
@@ -514,21 +517,14 @@ export default function ExtendedListPage() {
               <SortControls
                 field={sortField}
                 direction={sortDirection}
-                onChange={(f, d) => {
-                  setSortField(f);
-                  setSortDirection(d);
-                  setCurrentPage(1);
-                }}
+                onChange={(f, d) => setSort(f, d)}
               />
               <div className="relative w-full basis-full sm:basis-auto sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search levels..."
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 bg-secondary border-border"
                 />
               </div>
@@ -590,7 +586,6 @@ export default function ExtendedListPage() {
                                   else next.delete(tagKey);
                                   return next;
                                 });
-                                setCurrentPage(1);
                               }}
                             />
                             <span className="flex-1 truncate">
@@ -608,10 +603,7 @@ export default function ExtendedListPage() {
                         variant="ghost"
                         size="sm"
                         className="w-full h-7 gap-1 text-xs"
-                        onClick={() => {
-                          setSelectedTags(new Set());
-                          setCurrentPage(1);
-                        }}
+                        onClick={() => setSelectedTags(new Set())}
                       >
                         <X className="w-3 h-3" />
                         Clear all
@@ -629,14 +621,13 @@ export default function ExtendedListPage() {
                     variant="default"
                     size="sm"
                     className="h-7 px-2 gap-1 text-xs"
-                    onClick={() => {
+                    onClick={() =>
                       setSelectedTags((prev) => {
                         const next = new Set(prev);
                         next.delete(tagKey);
                         return next;
-                      });
-                      setCurrentPage(1);
-                    }}
+                      })
+                    }
                   >
                     {opt.emoji} {opt.text}
                     <X className="w-3 h-3" />
@@ -704,7 +695,7 @@ export default function ExtendedListPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    onClick={() => setPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
                     className="gap-2"
                   >
@@ -717,7 +708,7 @@ export default function ExtendedListPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
                     className="gap-2"
                   >

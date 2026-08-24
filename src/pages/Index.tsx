@@ -7,10 +7,8 @@ import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import {
   useAllRatingsAggregate,
   useAllDifficultyAggregate,
-  LevelSortField,
-  SortDirection,
-  DEFAULT_SORT_DIRECTION,
 } from "@/hooks/useLevelAggregates";
+import { useListViewPrefs } from "@/hooks/useListViewPrefs";
 import { SortControls } from "@/components/SortControls";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
@@ -40,14 +38,21 @@ const Index = () => {
   const { data: ratingsAgg } = useAllRatingsAggregate();
   const { data: difficultyAgg } = useAllDifficultyAggregate();
   const { data: victorCounts } = useLevelCompletionCounts();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showOnlyUncompleted, setShowOnlyUncompleted] = useState(false);
   const [historicalLevels, setHistoricalLevels] = useState<HistoricalLevel[] | null>(null);
   const [historicalDate, setHistoricalDate] = useState<string | null>(null);
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [tagMatchMode, setTagMatchMode] = useState<"any" | "all">("any");
-  const [sortField, setSortField] = useState<LevelSortField>("rank");
-  const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION.rank);
+  const {
+    searchQuery,
+    setSearchQuery,
+    showOnlyUncompleted,
+    toggleUncompleted,
+    selectedTags,
+    setSelectedTags,
+    tagMatchMode,
+    setTagMatchMode,
+    sortField,
+    setSort,
+    sortDirection,
+  } = useListViewPrefs({ storageKey: "narrowlist-view-main", withTags: true });
 
   const handleHistoricalData = (levels: HistoricalLevel[] | null, date: string | null) => {
     setHistoricalLevels(levels);
@@ -214,7 +219,7 @@ const Index = () => {
                 <Button
                   variant={showOnlyUncompleted ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setShowOnlyUncompleted(!showOnlyUncompleted)}
+                  onClick={() => toggleUncompleted()}
                   className="gap-2 flex-shrink-0"
                 >
                   <Filter className="w-4 h-4" />
@@ -225,10 +230,7 @@ const Index = () => {
                 <SortControls
                   field={sortField}
                   direction={sortDirection}
-                  onChange={(f, d) => {
-                    setSortField(f);
-                    setSortDirection(d);
-                  }}
+                  onChange={(f, d) => setSort(f, d)}
                 />
               )}
               <div className="relative w-full basis-full sm:basis-auto sm:w-64">

@@ -627,6 +627,18 @@ export default function PlayerPage() {
                   )}
                 </div>
                 {displayName !== displayUsername && displayUsername && <p className="text-muted-foreground">@{displayUsername}</p>}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="mt-1 gap-1 text-xs"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    toast({ title: "Copied!", description: "Link to this profile" });
+                  }}
+                >
+                  <LinkIcon className="w-3 h-3" />
+                  Copy Profile Link
+                </Button>
                 
                 {/* Country selector for owner or admin */}
                 {canEdit && (

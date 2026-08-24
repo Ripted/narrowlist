@@ -46,41 +46,48 @@ interface DbProfile {
   avatar_url: string | null;
 }
 
-// Cache for profiles to avoid repeated queries
+// Cache for profiles to avoid repeated queries.
+// Entries expire so display-name changes and new profiles show up without a full reload.
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 let profileCache: Map<string, DbProfile> | null = null;
+let profileCacheFetchedAt = 0;
 
 async function getProfileCache(): Promise<Map<string, DbProfile>> {
-  if (profileCache) return profileCache;
-  
+  if (profileCache && Date.now() - profileCacheFetchedAt < PROFILE_CACHE_TTL) return profileCache;
+
   const { data } = await supabase
     .from("profiles")
     .select("id, username, display_name, avatar_url");
-  
+
   profileCache = new Map();
   if (data) {
     for (const p of data) {
       profileCache.set(p.username.toLowerCase(), p);
     }
   }
+  profileCacheFetchedAt = Date.now();
   return profileCache;
 }
 
 // Map profile IDs to profile data
 let profileIdCache: Map<string, DbProfile> | null = null;
+let profileIdCacheFetchedAt = 0;
 
 async function getProfileIdCache(): Promise<Map<string, DbProfile>> {
-  if (profileIdCache) return profileIdCache;
-  
+  if (profileIdCache && Date.now() - profileIdCacheFetchedAt < PROFILE_CACHE_TTL) return profileIdCache;
+
   const { data } = await supabase
     .from("profiles")
     .select("id, username, display_name, avatar_url");
-  
+
   profileIdCache = new Map();
   if (data) {
     for (const p of data) {
       profileIdCache.set(p.id, p);
     }
   }
+  profileIdCacheFetchedAt = Date.now();
   return profileIdCache;
 }
 
