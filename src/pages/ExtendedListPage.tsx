@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useLevels } from "@/hooks/useLevels";
 import { useUserCompletions } from "@/hooks/useUserCompletions";
 import { useAllLevelTags } from "@/hooks/useLevelTags";
@@ -6,10 +6,8 @@ import { useLevelCompletionCounts } from "@/hooks/useLevelCompletionCounts";
 import {
   useAllRatingsAggregate,
   useAllDifficultyAggregate,
-  LevelSortField,
-  SortDirection,
-  DEFAULT_SORT_DIRECTION,
 } from "@/hooks/useLevelAggregates";
+import { useListViewPrefs } from "@/hooks/useListViewPrefs";
 import { SortControls } from "@/components/SortControls";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
@@ -27,10 +25,15 @@ const ExtendedListPage = () => {
   const { data: ratingsAgg } = useAllRatingsAggregate();
   const { data: difficultyAgg } = useAllDifficultyAggregate();
   const { data: victorCounts } = useLevelCompletionCounts();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState<LevelSortField>("rank");
-  const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_SORT_DIRECTION.rank);
+  const {
+    searchQuery,
+    setSearchQuery,
+    page: currentPage,
+    setPage,
+    sortField,
+    setSort,
+    sortDirection,
+  } = useListViewPrefs({ storageKey: "narrowlist-view-extended", withPage: true });
 
   // Only show levels ranked 101+
   const extendedLevels = useMemo(() => {
@@ -136,20 +139,14 @@ const ExtendedListPage = () => {
               <SortControls
                 field={sortField}
                 direction={sortDirection}
-                onChange={(f, d) => {
-                  setSortField(f);
-                  setSortDirection(d);
-                }}
+                onChange={(f, d) => setSort(f, d)}
               />
               <div className="relative w-full basis-full sm:basis-auto sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search levels..."
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 bg-secondary border-border"
                 />
               </div>
@@ -215,7 +212,7 @@ const ExtendedListPage = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    onClick={() => setPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
                     className="gap-2"
                   >
@@ -228,7 +225,7 @@ const ExtendedListPage = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
                     className="gap-2"
                   >

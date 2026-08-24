@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useLevel, getPlayerProfile } from "@/hooks/useLevels";
 import { formatTime, formatDate, fetchRunDetails, RunDetails } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers, TrendingUp, FileText, Package, Download } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Hash, Shield, Info, ArrowUpDown, Copy, Play, Layers, TrendingUp, FileText, Package, Download, ChevronLeft, ChevronRight, Link2 } from "lucide-react";
 
 import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
 import { WatchlistButton } from "@/components/WatchlistButton";
@@ -33,8 +33,15 @@ interface ManualRunEntry {
   note: string | null;
 }
 
+interface LevelNeighbor {
+  level_id: string;
+  name: string | null;
+  rank_position: number;
+}
+
 export default function LevelPage() {
   const { levelId } = useParams<{ levelId: string }>();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(window.location.search);
   const isExtended = searchParams.get('extended') === 'true';
   const { level, leaderboard, rank, points, thumbnailUrl, loading, levelDbId, verifierProfileId, alternativeIds, description, isFromExtendedList } = useLevel(levelId || "", isExtended);
@@ -266,11 +273,52 @@ export default function LevelPage() {
     }
   };
 
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({ title: "Copied!", description: "Link to this level" });
+  };
+
   const handlePlay = () => {
     if (levelId) {
       window.open(`https://narrowarrow.xyz/levelid=${levelId}`, "_blank");
     }
   };
+
+  // Fetch neighboring ranks (prev/next) from the same list
+  const [neighbors, setNeighbors] = useState<{ prev: LevelNeighbor | null; next: LevelNeighbor | null }>({ prev: null, next: null });
+
+  useEffect(() => {
+    async function loadNeighbors() {
+      if (!rank) {
+        setNeighbors({ prev: null, next: null });
+        return;
+      }
+      const table = isFromExtendedList ? "extended_levels" : "levels";
+      const [prevResult, nextResult] = await Promise.all([
+        supabase.from(table).select("level_id, name, rank_position").eq("rank_position", rank - 1).maybeSingle(),
+        supabase.from(table).select("level_id, name, rank_position").eq("rank_position", rank + 1).maybeSingle(),
+      ]);
+      setNeighbors({ prev: prevResult.data ?? null, next: nextResult.data ?? null });
+    }
+    loadNeighbors();
+  }, [rank, isFromExtendedList]);
+
+  const neighborUrl = useCallback(
+    (n: LevelNeighbor) => `/level/${n.level_id}${isFromExtendedList ? "?extended=true" : ""}`,
+    [isFromExtendedList]
+  );
+
+  // Arrow keys jump to the previous/next level on the list
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      const target = e.key === "ArrowLeft" ? neighbors.prev : e.key === "ArrowRight" ? neighbors.next : null;
+      if (target) navigate(neighborUrl(target));
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [neighbors, navigate, neighborUrl]);
 
   if (loading) {
     return (
@@ -332,12 +380,34 @@ export default function LevelPage() {
       
       <main className="pt-24 pb-12">
         <div className="container mx-auto px-4">
-          <Link to="/main">
-            <Button variant="ghost" size="sm" className="mb-6 gap-2 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Levels
-            </Button>
-          </Link>
+          <div className="flex items-center justify-between gap-2 mb-6">
+            <Link to={isFromExtendedList ? "/extra-list" : "/main"}>
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Levels
+              </Button>
+            </Link>
+            {(neighbors.prev || neighbors.next) && (
+              <div className="flex items-center gap-2">
+                {neighbors.prev && (
+                  <Link to={neighborUrl(neighbors.prev)}>
+                    <Button variant="outline" size="sm" className="gap-1" title={neighbors.prev.name || undefined}>
+                      <ChevronLeft className="w-4 h-4" />
+                      #{neighbors.prev.rank_position}
+                    </Button>
+                  </Link>
+                )}
+                {neighbors.next && (
+                  <Link to={neighborUrl(neighbors.next)}>
+                    <Button variant="outline" size="sm" className="gap-1" title={neighbors.next.name || undefined}>
+                      #{neighbors.next.rank_position}
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="grid lg:grid-cols-3 gap-4 sm:gap-8 mb-8">
             <div className="lg:col-span-2 space-y-4 sm:space-y-6">
@@ -545,6 +615,16 @@ export default function LevelPage() {
                   <Copy className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span className="hidden sm:inline">Copy ID</span>
                   <span className="sm:hidden">ID</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyLink}
+                  className="gap-2 text-xs sm:text-sm"
+                >
+                  <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Copy Link</span>
+                  <span className="sm:hidden">Link</span>
                 </Button>
                 <Button
                   size="sm"
