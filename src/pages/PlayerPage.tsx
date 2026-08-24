@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { countries, getCountryByCode } from "@/config/countries";
+import { PageMeta } from "@/components/PageMeta";
 
 interface ProfileData {
   id: string;
@@ -562,6 +563,13 @@ export default function PlayerPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageMeta
+        title={displayName || displayUsername}
+        description={player
+          ? `Rank #${rank} on Narrowlist with ${player.totalPoints} pts and ${player.completions.length} main list completions. View ${displayName}'s profile, completions, and stats.`
+          : `View ${displayName}'s Narrowlist profile, created levels, and stats.`}
+        image={displayAvatarUrl}
+      />
       <Navbar />
       <div className="fixed inset-0 bg-grid-pattern bg-grid opacity-20 pointer-events-none" />
       <main className="pt-24 pb-12">

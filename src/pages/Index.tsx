@@ -14,6 +14,7 @@ import {
 import { SortControls } from "@/components/SortControls";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
+import { PageMeta } from "@/components/PageMeta";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Target, Search, Filter, History, Tag, X, ChevronDown } from "lucide-react";
@@ -175,6 +176,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageMeta title="Main List" description="The top 100 hardest levels in Narrow Arrow. Each level awards points based on its ranking position." />
       <Navbar />
       
       {/* Background effects */}

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { usePlayerLeaderboard } from "@/hooks/useLevels";
 import { PlayerCard } from "@/components/PlayerCard";
 import { Navbar } from "@/components/Navbar";
+import { PageMeta } from "@/components/PageMeta";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -360,6 +361,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageMeta title="Leaderboard" description="The top Narrow Arrow players ranked by total points from Main and Extra list completions." />
       <Navbar />
       
       {/* Background effects */}

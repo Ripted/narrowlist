@@ -13,6 +13,7 @@ import {
 import { SortControls } from "@/components/SortControls";
 import { LevelCard } from "@/components/LevelCard";
 import { Navbar } from "@/components/Navbar";
+import { PageMeta } from "@/components/PageMeta";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Target, Search, ChevronLeft, ChevronRight } from "lucide-react";
@@ -111,6 +112,7 @@ const ExtendedListPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageMeta title="Extended List" description="Ranks 101 and beyond — the hardest levels in Narrow Arrow past the Main List top 100." />
       <Navbar />
       
       <div className="fixed inset-0 bg-grid-pattern bg-grid opacity-30 pointer-events-none" />
