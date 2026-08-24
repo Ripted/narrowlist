@@ -11,6 +11,7 @@ import { ArrowLeft, Trophy, Clock, User, Heart, Calendar, Medal, CheckCircle, Ha
 
 import { LevelRankHistoryChart } from "@/components/LevelRankHistoryChart";
 import { WatchlistButton } from "@/components/WatchlistButton";
+import { PageMeta } from "@/components/PageMeta";
 import { getPersistedHistoricalDate, subscribeHistoricalDate } from "@/components/HistoricalListViewer";
 import { isVideoFileUrl } from "@/lib/utils";
 
@@ -322,6 +323,11 @@ export default function LevelPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageMeta
+        title={level.name}
+        description={`#${rank} on the ${isFromExtendedList ? "Extra" : "Main"} List by ${level.author} — ${points} pts. View completions, records, and leaderboard on Narrowlist.`}
+        image={thumbnailUrl}
+      />
       <Navbar />
       
       <main className="pt-24 pb-12">

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
+import { PageMeta } from "@/components/PageMeta";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -213,6 +214,7 @@ export default function RecentRunsPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageMeta title="Recent Runs" description="The latest level completions from all Narrowlist players in real-time." />
       <Navbar />
 
       <div className="fixed inset-0 bg-grid-pattern bg-grid opacity-20 pointer-events-none" />
