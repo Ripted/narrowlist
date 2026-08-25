@@ -1,29 +1,30 @@
+import { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Navbar } from "@/components/Navbar";
-import { 
-  BarChart3, 
-  Users, 
-  Trophy, 
-  Target, 
-  TrendingUp, 
+import {
+  BarChart3,
+  Users,
+  Trophy,
+  Target,
+  TrendingUp,
   Clock,
   Zap,
   Award,
   Activity,
   Calendar,
   Star,
-  Crown,
   Flame,
-  Percent
+  Percent,
+  Globe,
 } from "lucide-react";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   BarChart,
   Bar,
@@ -39,6 +40,137 @@ interface StatCard {
   icon: React.ElementType;
   color: string;
   gradient: string;
+}
+
+// Shared chart styling
+const tooltipStyle: React.CSSProperties = {
+  backgroundColor: "hsl(var(--card))",
+  border: "1px solid hsl(var(--border))",
+  borderRadius: "8px",
+  color: "hsl(var(--foreground))",
+};
+// Subtle hover highlight instead of recharts' default white band
+const barCursor = { fill: "hsl(var(--muted) / 0.4)" };
+const axisTick = { fill: "hsl(var(--muted-foreground))", fontSize: 11 };
+const axisLine = { stroke: "hsl(var(--border))" };
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <div className="p-2 rounded-lg bg-secondary border border-border shrink-0">
+        <Icon className="w-4 h-4 text-primary" />
+      </div>
+      <div className="min-w-0">
+        <h2 className="font-display text-lg font-bold">{title}</h2>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function ChartCard({
+  icon: Icon,
+  iconClassName,
+  title,
+  description,
+  badge,
+  className,
+  children,
+}: {
+  icon: React.ElementType;
+  iconClassName?: string;
+  title: string;
+  description?: string;
+  badge?: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={`rounded-xl border border-border bg-card overflow-hidden min-w-0 ${className ?? ""}`}>
+      <div className="flex items-center gap-2 px-4 py-4 sm:px-6 border-b border-border bg-secondary/30">
+        <Icon className={`w-5 h-5 shrink-0 ${iconClassName ?? "text-primary"}`} />
+        <div className="min-w-0">
+          <h3 className="font-display text-base sm:text-lg font-bold truncate">{title}</h3>
+          {description && (
+            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+          )}
+        </div>
+        {badge && (
+          <span className="text-xs text-muted-foreground ml-auto shrink-0 hidden sm:inline">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="p-3 sm:p-4">{children}</div>
+    </div>
+  );
+}
+
+function ListCard({
+  icon: Icon,
+  iconClassName,
+  title,
+  description,
+  empty,
+  emptyText,
+  children,
+}: {
+  icon: React.ElementType;
+  iconClassName?: string;
+  title: string;
+  description?: string;
+  empty: boolean;
+  emptyText: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden min-w-0">
+      <div className="flex items-center gap-2 px-4 py-4 sm:px-6 border-b border-border bg-secondary/30">
+        <Icon className={`w-5 h-5 shrink-0 ${iconClassName ?? "text-primary"}`} />
+        <div className="min-w-0">
+          <h3 className="font-display text-base sm:text-lg font-bold truncate">{title}</h3>
+          {description && (
+            <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+          )}
+        </div>
+      </div>
+      <div className="p-4 sm:p-6">
+        {empty ? <p className="text-sm text-muted-foreground">{emptyText}</p> : children}
+      </div>
+    </div>
+  );
+}
+
+function RankedRow({
+  index,
+  label,
+  value,
+  valueClassName,
+}: {
+  index: number;
+  label: ReactNode;
+  value: ReactNode;
+  valueClassName?: string;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-3 text-sm">
+      <span className="flex items-center gap-2.5 min-w-0">
+        <span className="w-5 shrink-0 text-right font-mono text-xs text-muted-foreground">
+          {index + 1}
+        </span>
+        <span className="truncate">{label}</span>
+      </span>
+      <span className={`shrink-0 font-mono ${valueClassName ?? "text-primary"}`}>{value}</span>
+    </li>
+  );
 }
 
 export default function StatisticsPage() {
@@ -503,26 +635,26 @@ export default function StatisticsPage() {
       <div className="fixed inset-0 bg-grid-pattern bg-grid opacity-20 pointer-events-none" />
       <div className="fixed top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
       <div className="fixed bottom-0 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
-      
+
       <main className="relative pt-24 pb-12">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 space-y-6">
           {/* Header */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 shrink-0">
               <BarChart3 className="w-6 h-6 text-primary" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="font-display text-2xl md:text-3xl font-bold">Global Statistics</h1>
               <p className="text-sm text-muted-foreground">Overview of Narrowlist activity and trends</p>
             </div>
           </div>
 
           {/* Stat Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {statCards.map((stat, index) => (
               <div
                 key={stat.title}
-                className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary/50 hover:shadow-lg"
+                className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all duration-300 hover:border-primary/50 hover:shadow-lg animate-fade-in opacity-0"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity`} />
@@ -545,21 +677,23 @@ export default function StatisticsPage() {
             ))}
           </div>
 
-          {/* Charts Grid - Row 1 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Completions Trend */}
-            <div className="rounded-xl border border-border bg-card p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Activity className="w-5 h-5 text-primary" />
-                <div>
-                  <h2 className="font-display text-lg font-bold">Completions Trend</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Daily completions across all lists over the last 30 days.</p>
-                </div>
-                <span className="text-xs text-muted-foreground ml-auto">Last 30 days</span>
-              </div>
+          {/* ===== Activity ===== */}
+          <SectionHeader
+            icon={Activity}
+            title="Activity"
+            description="How the community has been playing and how the lists have been moving."
+          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard
+              icon={Activity}
+              title="Completions Trend"
+              description="Daily completions across all lists over the last 30 days."
+              badge="Last 30 days"
+            >
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={completionsTrend}>
+                  <AreaChart data={completionsTrend} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
                     <defs>
                       <linearGradient id="completionsGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
@@ -567,26 +701,16 @@ export default function StatisticsPage() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis 
-                      dataKey="date" 
-                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                      tickLine={{ stroke: "hsl(var(--border))" }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
+                    <XAxis
+                      dataKey="date"
+                      tick={axisTick}
+                      tickLine={axisLine}
+                      axisLine={axisLine}
                       interval="preserveStartEnd"
+                      minTickGap={24}
                     />
-                    <YAxis 
-                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                      tickLine={{ stroke: "hsl(var(--border))" }}
-                      axisLine={{ stroke: "hsl(var(--border))" }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                        color: "hsl(var(--foreground))",
-                      }}
-                    />
+                    <YAxis tick={axisTick} tickLine={axisLine} axisLine={axisLine} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
                     <Area
                       type="monotone"
                       dataKey="completions"
@@ -597,320 +721,69 @@ export default function StatisticsPage() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </ChartCard>
 
-            </div>
-
-          {/* Charts Grid - Row 2: Most Completed & Arrow Distribution */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Most Completed Levels */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
-                <Flame className="w-5 h-5 text-orange-500" />
-                <div>
-                  <h2 className="font-display text-lg font-bold">Most Completed Levels</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">The main-list levels beaten the most — a rough proxy for the most approachable top levels.</p>
-                </div>
+            <ChartCard
+              icon={TrendingUp}
+              iconClassName="text-accent"
+              title="Rank Changes"
+              description="How often levels moved rank each day — spikes usually mean a batch rerate or new placements."
+              badge="Last 30 days"
+            >
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={rankHistoryData} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+                    <defs>
+                      <linearGradient id="rankGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="date"
+                      tick={axisTick}
+                      tickLine={axisLine}
+                      axisLine={axisLine}
+                      interval="preserveStartEnd"
+                      minTickGap={24}
+                    />
+                    <YAxis tick={axisTick} tickLine={axisLine} axisLine={axisLine} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Area
+                      type="monotone"
+                      dataKey="changes"
+                      stroke="hsl(var(--accent))"
+                      strokeWidth={2}
+                      fill="url(#rankGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-              <div className="p-4">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={mostCompletedLevels} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                      <XAxis 
-                        type="number" 
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                        tickLine={{ stroke: "hsl(var(--border))" }}
-                        axisLine={{ stroke: "hsl(var(--border))" }}
-                      />
-                      <YAxis 
-                        type="category" 
-                        dataKey="name"
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={100}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          color: "hsl(var(--foreground))",
-                        }}
-                        formatter={(value: number) => [`${value} completions`, "Total"]}
-                      />
-                      <Bar 
-                        dataKey="completions" 
-                        fill="hsl(var(--accent))" 
-                        radius={[0, 4, 4, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            </div>
-
-          {/* Charts Grid - Row 3: Top Players & Rank Changes */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Top Players */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
-                <Award className="w-5 h-5 text-glow-gold" />
-                <div>
-                  <h2 className="font-display text-lg font-bold">Top Players</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Highest total points on the main list.</p>
-                </div>
-                <span className="text-xs text-muted-foreground ml-auto">By total points</span>
-              </div>
-              <div className="p-4">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={topPlayers.slice(0, 8)} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                      <XAxis 
-                        type="number" 
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                        tickLine={{ stroke: "hsl(var(--border))" }}
-                        axisLine={{ stroke: "hsl(var(--border))" }}
-                      />
-                      <YAxis 
-                        type="category" 
-                        dataKey="username"
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={80}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          color: "hsl(var(--foreground))",
-                        }}
-                        formatter={(value: number) => [`${value} points`, "Total"]}
-                      />
-                      <Bar 
-                        dataKey="total_points" 
-                        fill="hsl(var(--primary))" 
-                        radius={[0, 4, 4, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Rank Changes Activity */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
-                <TrendingUp className="w-5 h-5 text-accent" />
-                <div>
-                  <h2 className="font-display text-lg font-bold">Rank Changes</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">How often levels moved rank each day — spikes usually mean a batch rerate or new placements.</p>
-                </div>
-                <span className="text-xs text-muted-foreground ml-auto">Last 30 days</span>
-              </div>
-              <div className="p-4">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={rankHistoryData}>
-                      <defs>
-                        <linearGradient id="rankGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.4} />
-                          <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis 
-                        dataKey="date" 
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                        tickLine={{ stroke: "hsl(var(--border))" }}
-                        axisLine={{ stroke: "hsl(var(--border))" }}
-                        interval="preserveStartEnd"
-                      />
-                      <YAxis 
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                        tickLine={{ stroke: "hsl(var(--border))" }}
-                        axisLine={{ stroke: "hsl(var(--border))" }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          color: "hsl(var(--foreground))",
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="changes"
-                        stroke="hsl(var(--accent))"
-                        strokeWidth={2}
-                        fill="url(#rankGradient)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
+            </ChartCard>
           </div>
 
-          {/* Charts Grid - Row 4: Completion by Tier & Extra Points Leaders */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Completion by Difficulty Tier */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
-                <Percent className="w-5 h-5 text-primary" />
-                <div>
-                  <h2 className="font-display text-lg font-bold">Completions by Difficulty</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Total vs average completions per rank tier. Higher tiers should average fewer completions if the list is well-ordered.</p>
-                </div>
-              </div>
-              <div className="p-4">
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={completionByTier}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis 
-                        dataKey="tier" 
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                        tickLine={{ stroke: "hsl(var(--border))" }}
-                        axisLine={{ stroke: "hsl(var(--border))" }}
-                      />
-                      <YAxis 
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                        tickLine={{ stroke: "hsl(var(--border))" }}
-                        axisLine={{ stroke: "hsl(var(--border))" }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                          color: "hsl(var(--foreground))",
-                        }}
-                        formatter={(value: number, name: string) => [
-                          `${value}`,
-                          name === "completions" ? "Total Completions" : "Avg per Level"
-                        ]}
-                      />
-                      <Legend 
-                        formatter={(value) => (
-                          <span className="text-foreground text-sm">
-                            {value === "completions" ? "Total" : "Avg/Level"}
-                          </span>
-                        )}
-                      />
-                      <Bar 
-                        dataKey="completions" 
-                        fill="hsl(var(--primary))" 
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar 
-                        dataKey="avgPerLevel" 
-                        fill="hsl(var(--accent))" 
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Top Extra Points Players */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="flex items-center gap-2 p-6 border-b border-border bg-secondary/30">
-                <Star className="w-5 h-5 text-accent" />
-                <div>
-                  <h2 className="font-display text-lg font-bold">Top Extra Points</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Players with the most points on the Extra List.</p>
-                </div>
-              </div>
-              <div className="p-4">
-                {topExtraPlayers.length === 0 ? (
-                  <div className="h-64 flex items-center justify-center text-muted-foreground">
-                    No extra points data yet
-                  </div>
-                ) : (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={topExtraPlayers} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                        <XAxis 
-                          type="number" 
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                          tickLine={{ stroke: "hsl(var(--border))" }}
-                          axisLine={{ stroke: "hsl(var(--border))" }}
-                        />
-                        <YAxis 
-                          type="category" 
-                          dataKey="username"
-                          tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                          tickLine={false}
-                          axisLine={false}
-                          width={80}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                            color: "hsl(var(--foreground))",
-                          }}
-                          formatter={(value: number) => [`${value} extra pts`, "Total"]}
-                        />
-                        <Bar 
-                          dataKey="extra_points" 
-                          fill="hsl(var(--accent))" 
-                          radius={[0, 4, 4, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Main vs Extra Completion Comparison Chart */}
-          <div className="rounded-xl border border-border bg-card p-6 mb-6">
-            <div className="flex items-center gap-2 mb-6">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              <div>
-                  <h2 className="font-display text-lg font-bold">Main vs Extra List Completions</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Daily completions split by list — shows whether players focus on progression (Main) or grinding extras.</p>
-                </div>
-              <span className="text-xs text-muted-foreground ml-auto">Last 30 days</span>
-            </div>
-            <div className="h-64">
+          <ChartCard
+            icon={TrendingUp}
+            title="Main vs Extra List Completions"
+            description="Daily completions split by list — shows whether players focus on progression (Main) or grinding extras."
+            badge="Last 30 days"
+          >
+            <div className="h-64 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={mainVsExtraTrend}>
+                <LineChart data={mainVsExtraTrend} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                    tickLine={{ stroke: "hsl(var(--border))" }}
-                    axisLine={{ stroke: "hsl(var(--border))" }}
+                  <XAxis
+                    dataKey="date"
+                    tick={axisTick}
+                    tickLine={axisLine}
+                    axisLine={axisLine}
                     interval="preserveStartEnd"
+                    minTickGap={24}
                   />
-                  <YAxis 
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
-                    tickLine={{ stroke: "hsl(var(--border))" }}
-                    axisLine={{ stroke: "hsl(var(--border))" }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      color: "hsl(var(--foreground))",
-                    }}
-                  />
-                  <Legend 
+                  <YAxis tick={axisTick} tickLine={axisLine} axisLine={axisLine} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend
                     formatter={(value) => (
                       <span className="text-foreground text-sm">
                         {value === "main" ? "Main List" : "Extra List"}
@@ -922,7 +795,7 @@ export default function StatisticsPage() {
                     dataKey="main"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    dot={{ fill: 'hsl(var(--primary))', strokeWidth: 0, r: 3 }}
+                    dot={{ fill: "hsl(var(--primary))", strokeWidth: 0, r: 3 }}
                     activeDot={{ r: 5 }}
                   />
                   <Line
@@ -930,138 +803,331 @@ export default function StatisticsPage() {
                     dataKey="extra"
                     stroke="hsl(var(--accent))"
                     strokeWidth={2}
-                    dot={{ fill: 'hsl(var(--accent))', strokeWidth: 0, r: 3 }}
+                    dot={{ fill: "hsl(var(--accent))", strokeWidth: 0, r: 3 }}
                     activeDot={{ r: 5 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
+          </ChartCard>
+
+          {/* ===== Leaderboards ===== */}
+          <SectionHeader
+            icon={Trophy}
+            title="Leaderboards"
+            description="The players at the top of the Main and Extra lists."
+          />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard
+              icon={Award}
+              iconClassName="text-glow-gold"
+              title="Top Players"
+              description="Highest total points on the main list."
+              badge="By total points"
+            >
+              {topPlayers.length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
+                  No player data yet
+                </div>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topPlayers.slice(0, 8)} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                      <XAxis type="number" tick={axisTick} tickLine={axisLine} axisLine={axisLine} />
+                      <YAxis
+                        type="category"
+                        dataKey="username"
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={false}
+                        width={80}
+                      />
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        cursor={barCursor}
+                        formatter={(value: number) => [`${value} points`, "Total"]}
+                      />
+                      <Bar
+                        dataKey="total_points"
+                        fill="hsl(var(--primary))"
+                        radius={[0, 4, 4, 0]}
+                        maxBarSize={24}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </ChartCard>
+
+            <ChartCard
+              icon={Star}
+              iconClassName="text-accent"
+              title="Top Extra Points"
+              description="Players with the most points on the Extra List."
+              badge="By extra points"
+            >
+              {topExtraPlayers.length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
+                  No extra points data yet
+                </div>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topExtraPlayers} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                      <XAxis type="number" tick={axisTick} tickLine={axisLine} axisLine={axisLine} />
+                      <YAxis
+                        type="category"
+                        dataKey="username"
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={false}
+                        width={80}
+                      />
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        cursor={barCursor}
+                        formatter={(value: number) => [`${value} extra pts`, "Total"]}
+                      />
+                      <Bar
+                        dataKey="extra_points"
+                        fill="hsl(var(--accent))"
+                        radius={[0, 4, 4, 0]}
+                        maxBarSize={24}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </ChartCard>
           </div>
 
-          {/* Quick Stats Footer */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
-              <Clock className="w-5 h-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Manual Runs</p>
-                <p className="font-display font-bold text-lg">{completionsData?.manual.toLocaleString() || "0"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
-              <Zap className="w-5 h-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">API Synced</p>
-                <p className="font-display font-bold text-lg">{completionsData?.api.toLocaleString() || "0"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
-              <Calendar className="w-5 h-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Future Levels</p>
-                <p className="font-display font-bold text-lg">{levelsData?.future.toLocaleString() || "0"}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
-              <Activity className="w-5 h-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Weekly Completions</p>
-                <p className="font-display font-bold text-lg">{recentActivity?.completions.toLocaleString() || "0"}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+          {/* ===== Levels ===== */}
+          <SectionHeader
+            icon={Target}
+            title="Levels"
+            description="Which levels get beaten the most — and which barely anyone has beaten."
+          />
 
-        {/* New stats sections */}
-        <div className="grid lg:grid-cols-2 gap-6 mt-8 px-4 lg:px-0">
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
-            <h3 className="font-display font-bold text-lg mb-1 flex items-center gap-2">
-              <Flame className="w-5 h-5 text-orange-500" /> Hardest Levels
-            </h3>
-            <p className="text-xs text-muted-foreground mb-4">Main-list levels with the fewest completions.</p>
-            {hardestLevels.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No data yet.</p>
-            ) : (
-              <ol className="space-y-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard
+              icon={Flame}
+              iconClassName="text-orange-500"
+              title="Most Completed Levels"
+              description="The main-list levels beaten the most — a rough proxy for the most approachable top levels."
+            >
+              {mostCompletedLevels.length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
+                  No completion data yet
+                </div>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={mostCompletedLevels} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                      <XAxis type="number" tick={axisTick} tickLine={axisLine} axisLine={axisLine} allowDecimals={false} />
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        tick={axisTick}
+                        tickLine={false}
+                        axisLine={false}
+                        width={100}
+                      />
+                      <Tooltip
+                        contentStyle={tooltipStyle}
+                        cursor={barCursor}
+                        formatter={(value: number) => [`${value} completions`, "Total"]}
+                      />
+                      <Bar
+                        dataKey="completions"
+                        fill="hsl(var(--accent))"
+                        radius={[0, 4, 4, 0]}
+                        maxBarSize={24}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </ChartCard>
+
+            <ChartCard
+              icon={Percent}
+              title="Completions by Difficulty"
+              description="Total vs average completions per rank tier. Higher tiers should average fewer completions if the list is well-ordered."
+            >
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={completionByTier} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="tier" tick={axisTick} tickLine={axisLine} axisLine={axisLine} />
+                    <YAxis tick={axisTick} tickLine={axisLine} axisLine={axisLine} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      cursor={barCursor}
+                      formatter={(value: number, name: string) => [
+                        `${value}`,
+                        name === "completions" ? "Total Completions" : "Avg per Level",
+                      ]}
+                    />
+                    <Legend
+                      formatter={(value) => (
+                        <span className="text-foreground text-sm">
+                          {value === "completions" ? "Total" : "Avg/Level"}
+                        </span>
+                      )}
+                    />
+                    <Bar dataKey="completions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                    <Bar dataKey="avgPerLevel" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </ChartCard>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ListCard
+              icon={Flame}
+              iconClassName="text-orange-500"
+              title="Hardest Levels"
+              description="Main-list levels with the fewest completions."
+              empty={hardestLevels.length === 0}
+              emptyText="No data yet."
+            >
+              <ol className="space-y-2.5">
                 {hardestLevels.map((l, i) => (
-                  <li key={l.rank} className="flex items-center justify-between text-sm">
-                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>#{l.rank} {l.name}</span>
-                    <span className="font-mono text-orange-500 ml-2 shrink-0">{l.completions} {l.completions === 1 ? "completion" : "completions"}</span>
-                  </li>
+                  <RankedRow
+                    key={l.rank}
+                    index={i}
+                    label={<span>#{l.rank} {l.name}</span>}
+                    value={`${l.completions} ${l.completions === 1 ? "completion" : "completions"}`}
+                    valueClassName="text-orange-500"
+                  />
                 ))}
               </ol>
-            )}
-          </div>
+            </ListCard>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
-
-            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-              <Award className="w-5 h-5 text-primary" /> Top Verifiers
-            </h3>
-            {topVerifiers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No verifiers yet.</p>
-            ) : (
-              <ol className="space-y-2">
+            <ListCard
+              icon={Award}
+              title="Top Verifiers"
+              description="Players who have verified the most levels."
+              empty={topVerifiers.length === 0}
+              emptyText="No verifiers yet."
+            >
+              <ol className="space-y-2.5">
                 {topVerifiers.map((v, i) => (
-                  <li key={v.profile!.id} className="flex items-center justify-between text-sm">
-                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>{v.profile!.display_name || v.profile!.username}</span>
-                    <span className="font-mono text-primary ml-2 shrink-0">{v.count} verified</span>
-                  </li>
+                  <RankedRow
+                    key={v.profile!.id}
+                    index={i}
+                    label={v.profile!.display_name || v.profile!.username}
+                    value={`${v.count} verified`}
+                  />
                 ))}
               </ol>
-            )}
+            </ListCard>
           </div>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
-            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-accent" /> Most Active (30d)
-            </h3>
-            {mostActivePlayers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No recent activity.</p>
-            ) : (
-              <ol className="space-y-2">
+          {/* ===== Community ===== */}
+          <SectionHeader
+            icon={Users}
+            title="Community"
+            description="Who is playing, where they're from, and what they've beaten lately."
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <ListCard
+              icon={Activity}
+              iconClassName="text-accent"
+              title="Most Active (30d)"
+              empty={mostActivePlayers.length === 0}
+              emptyText="No recent activity."
+            >
+              <ol className="space-y-2.5">
                 {mostActivePlayers.map((p, i) => (
-                  <li key={p.profile!.id} className="flex items-center justify-between text-sm">
-                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>{p.profile!.display_name || p.profile!.username}</span>
-                    <span className="font-mono text-accent ml-2 shrink-0">{p.count} runs</span>
-                  </li>
+                  <RankedRow
+                    key={p.profile!.id}
+                    index={i}
+                    label={p.profile!.display_name || p.profile!.username}
+                    value={`${p.count} runs`}
+                    valueClassName="text-accent"
+                  />
                 ))}
               </ol>
-            )}
-          </div>
+            </ListCard>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
-            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" /> Country Distribution
-            </h3>
-            {countryDist.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No country data yet.</p>
-            ) : (
+            <ListCard
+              icon={Globe}
+              title="Country Distribution"
+              empty={countryDist.length === 0}
+              emptyText="No country data yet."
+            >
               <div className="flex flex-wrap gap-2">
-                {countryDist.map(c => (
+                {countryDist.map((c) => (
                   <span key={c.code} className="px-2.5 py-1 rounded-md bg-secondary text-xs font-mono">
                     {c.code} <span className="text-muted-foreground">×{c.count}</span>
                   </span>
                 ))}
               </div>
-            )}
-          </div>
+            </ListCard>
 
-          <div className="rounded-xl border border-border bg-card/50 backdrop-blur p-6 min-w-0">
-            <h3 className="font-display font-bold text-lg mb-4 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" /> Recent Runs (7d)
-            </h3>
-            {recentRecords.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No runs in the last 7 days.</p>
-            ) : (
-              <ol className="space-y-2">
+            <ListCard
+              icon={Clock}
+              title="Recent Runs (7d)"
+              empty={recentRecords.length === 0}
+              emptyText="No runs in the last 7 days."
+            >
+              <ol className="space-y-2.5">
                 {recentRecords.map((r, i) => (
-                  <li key={r.id} className="flex items-center justify-between text-sm gap-2">
-                    <span className="truncate"><span className="text-muted-foreground mr-2">{i + 1}.</span>{r.profile!.display_name || r.profile!.username} <span className="text-xs text-muted-foreground">on #{r.level!.rank_position} {r.level!.name}</span></span>
-                    <span className="font-mono text-primary shrink-0">{Number(r.completion_time).toFixed(3)}s</span>
-                  </li>
+                  <RankedRow
+                    key={r.id}
+                    index={i}
+                    label={
+                      <span>
+                        {r.profile!.display_name || r.profile!.username}{" "}
+                        <span className="text-xs text-muted-foreground">
+                          on #{r.level!.rank_position} {r.level!.name}
+                        </span>
+                      </span>
+                    }
+                    value={`${Number(r.completion_time).toFixed(3)}s`}
+                  />
                 ))}
               </ol>
-            )}
+            </ListCard>
+          </div>
+
+          {/* More stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
+              <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Manual Runs</p>
+                <p className="font-display font-bold text-lg">{completionsData?.manual.toLocaleString() || "0"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
+              <Zap className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">API Synced</p>
+                <p className="font-display font-bold text-lg">{completionsData?.api.toLocaleString() || "0"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
+              <Calendar className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Future Levels</p>
+                <p className="font-display font-bold text-lg">{levelsData?.future.toLocaleString() || "0"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-secondary/50 border border-border">
+              <Activity className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Weekly Completions</p>
+                <p className="font-display font-bold text-lg">{recentActivity?.completions.toLocaleString() || "0"}</p>
+              </div>
+            </div>
           </div>
         </div>
       </main>
