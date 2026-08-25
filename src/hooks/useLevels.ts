@@ -140,7 +140,6 @@ async function fetchLevelsData(): Promise<LevelWithRank[]> {
   }
   
   const validLevels: LevelWithRank[] = results
-    .filter((r) => r.details !== null)
     .map((r) => {
       // Get verifier username from profile ID
       const verifierProfile = r.dbLevel.verifier_profile_id 
@@ -151,16 +150,27 @@ async function fetchLevelsData(): Promise<LevelWithRank[]> {
       const dbCreators = (r.dbLevel as any).creators as string[] | null;
       const displayAuthor = dbCreators && dbCreators.length > 0
         ? dbCreators.join(", ")
-        : r.dbLevel.author || r.details!.levelInfo.author;
+        : r.dbLevel.author || r.details?.levelInfo.author || "Unknown";
       
+      // If the game API is unreachable (e.g. non-whitelisted preview origins
+      // get rejected by api.narrowarrow.xyz), fall back to the DB row so the
+      // level still renders instead of silently emptying the whole list.
+      const apiInfo = r.details?.levelInfo;
+
       return {
-        ...r.details!,
-        // Override with DB values if available
+        ...r.details,
         levelInfo: {
-          ...r.details!.levelInfo,
-          name: r.dbLevel.name || r.details!.levelInfo.name,
+          id: apiInfo?.id ?? 0,
+          level_id: r.dbLevel.level_id,
+          name: r.dbLevel.name || apiInfo?.name || "Unknown Level",
           author: displayAuthor,
+          like_count: apiInfo?.like_count ?? 0,
+          published: apiInfo?.published ?? 0,
+          created_at: apiInfo?.created_at ?? "",
+          updated_at: apiInfo?.updated_at ?? "",
+          user_id: apiInfo?.user_id ?? 0,
         },
+        runCount: r.details?.runCount ?? 0,
         rank: r.dbLevel.rank_position,
         points: r.dbLevel.points,
         thumbnailUrl: r.dbLevel.thumbnail_url || undefined,
