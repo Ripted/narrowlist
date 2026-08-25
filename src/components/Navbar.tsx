@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen, Palette, Bookmark, BarChart3, Package, LayoutGrid, Dice5 } from "lucide-react";
+import { Trophy, List, Shield, LogOut, LogIn, User, Menu, Clock, Activity, GitCompare, MoreHorizontal, ChevronDown, Send, BookOpen, Palette, Bookmark, BarChart3, Package, LayoutGrid, Dice5, CalendarDays } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import logoImg from "@/assets/logo.png";
 
@@ -74,6 +74,13 @@ export function Navbar() {
       items: [],
     },
     {
+      key: "events",
+      label: "Events",
+      icon: CalendarDays,
+      path: "/events",
+      items: [],
+    },
+    {
       key: "lists",
       label: "Lists",
       icon: List,
@@ -131,7 +138,9 @@ export function Navbar() {
   const isActive = (path: string) => location.pathname === path;
   const isGroupActive = (group: NavGroup) =>
     group.items.length === 0
-      ? location.pathname === group.path || location.pathname === "/hub"
+      ? location.pathname === group.path ||
+        location.pathname.startsWith(group.path + "/") ||
+        (group.path === "/" && location.pathname === "/hub")
       : group.items.some((i) => isActive(i.path));
 
   const NavLinks = ({ mobile = false }: { mobile?: boolean }) => (

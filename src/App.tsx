@@ -24,6 +24,8 @@ import AdminPage from "./pages/AdminPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import PacksPage from "./pages/PacksPage";
 import HubPage from "./pages/HubPage";
+import EventsPage from "./pages/EventsPage";
+import JamEventPage from "./pages/JamEventPage";
 
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
@@ -67,6 +69,8 @@ const App = () => (
               <Route path="/statistics" element={<StatisticsPage />} />
               <Route path="/watchlist" element={<WatchlistPage />} />
               <Route path="/roulette" element={<LevelRoulettePage />} />
+              <Route path="/events" element={<EventsPage />} />
+              <Route path="/events/:jamSlug" element={<JamEventPage />} />
               <Route path="/packs" element={<PacksPage />} />
               <Route path="/packs/:packId" element={<PacksPage />} />
               <Route path="/player/:username" element={<PlayerPage />} />

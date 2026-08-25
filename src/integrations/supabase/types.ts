@@ -433,6 +433,121 @@ export type Database = {
         }
         Relationships: []
       }
+      jam_rating_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          jam_id: string
+          submission_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          jam_id: string
+          submission_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          jam_id?: string
+          submission_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jam_rating_assignments_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "jam_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jam_ratings: {
+        Row: {
+          created_at: string
+          creativity: number
+          design: number
+          enjoyment: number
+          id: string
+          jam_id: string
+          submission_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          creativity: number
+          design: number
+          enjoyment: number
+          id?: string
+          jam_id: string
+          submission_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          creativity?: number
+          design?: number
+          enjoyment?: number
+          id?: string
+          jam_id?: string
+          submission_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jam_ratings_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "jam_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jam_submissions: {
+        Row: {
+          created_at: string
+          creator: string | null
+          description: string | null
+          id: string
+          jam_id: string
+          level_id: string
+          level_name: string
+          updated_at: string
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          creator?: string | null
+          description?: string | null
+          id?: string
+          jam_id: string
+          level_id: string
+          level_name: string
+          updated_at?: string
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          creator?: string | null
+          description?: string | null
+          id?: string
+          jam_id?: string
+          level_id?: string
+          level_name?: string
+          updated_at?: string
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       level_difficulty_votes: {
         Row: {
           created_at: string

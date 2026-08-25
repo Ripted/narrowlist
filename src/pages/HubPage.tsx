@@ -21,6 +21,7 @@ import {
   Target,
   Sparkles,
   Dice5,
+  CalendarDays,
 
   LucideIcon,
 } from "lucide-react";
@@ -66,6 +67,7 @@ const HubPage = () => {
     { path: "/recent", label: "Recent Runs", description: "Latest completions", icon: Activity, category: "activity" },
     { path: "/recently-added", label: "Recently Added", description: "Newest levels on the lists", icon: Sparkles, category: "activity" },
     { path: "/statistics", label: "Statistics", description: "Global metrics & charts", icon: BarChart3, category: "activity" },
+    { path: "/events", label: "Events", description: "Level jams & competitions", icon: CalendarDays, category: "activity" },
 
     // Tools
     { path: "/submit", label: "Submit", description: "Submit a level or run", icon: Send, category: "tools" },
