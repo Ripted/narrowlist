@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,6 +35,8 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
   const requestAssignment = useRequestJamAssignment(jam);
   const skipAssignment = useSkipJamAssignment(jam);
   const submitRating = useSubmitJamRating(jam);
+  // Skipped levels stay excluded for this session — the server has no memory of skips.
+  const [skippedIds, setSkippedIds] = useState<string[]>([]);
 
   const myRatings = useMemo(() => {
     const map = new Map<string, JamRating>();
@@ -97,6 +99,7 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
               submission={submission}
               footer={
                 <JamRatingForm
+                  key={myRatings.get(submission.id)?.id ?? `new-${submission.id}`}
                   existing={myRatings.get(submission.id) ?? null}
                   submitting={submitRating.isPending}
                   onSubmit={(values) => handleRate(submission.id, values)}
@@ -120,7 +123,7 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
 
   const handleGetNext = async () => {
     try {
-      const picked = await requestAssignment.mutateAsync();
+      const picked = await requestAssignment.mutateAsync({ excludeIds: skippedIds });
       if (!picked) {
         toast({ title: "Nothing left in the queue", description: "You've rated every available level." });
       }
@@ -136,6 +139,7 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
   const handleSkip = async (submissionId: string) => {
     try {
       await skipAssignment.mutateAsync(submissionId);
+      setSkippedIds((prev) => [...prev, submissionId]);
     } catch {
       toast({ title: "Could not skip this level", variant: "destructive" });
     }
@@ -173,6 +177,7 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
               submission={submission}
               footer={
                 <JamRatingForm
+                  key={myRatings.get(submission.id)?.id ?? `new-${submission.id}`}
                   existing={myRatings.get(submission.id) ?? null}
                   submitting={submitRating.isPending}
                   skipping={skipAssignment.isPending}

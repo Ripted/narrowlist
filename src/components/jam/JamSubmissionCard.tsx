@@ -83,6 +83,7 @@ export function JamRatingForm({ existing, submitting, onSubmit, onSkip, skipping
   const [enjoyment, setEnjoyment] = useState(existing?.enjoyment ?? 0);
   const [creativity, setCreativity] = useState(existing?.creativity ?? 0);
   const [design, setDesign] = useState(existing?.design ?? 0);
+
   const complete = enjoyment > 0 && creativity > 0 && design > 0;
   const dirty =
     !existing ||

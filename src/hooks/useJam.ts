@@ -248,7 +248,7 @@ export function useRequestJamAssignment(jam: JamEventConfig) {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (): Promise<string | null> => {
+    mutationFn: async (input: { excludeIds?: string[] } = {}): Promise<string | null> => {
       if (!user) throw new Error("You must be signed in to use the queue.");
       const [subsRes, ratingsRes, assignmentsRes] = await Promise.all([
         supabase.from("jam_submissions").select("id, user_id").eq("jam_id", jam.id),
@@ -267,13 +267,18 @@ export function useRequestJamAssignment(jam: JamEventConfig) {
         (ratingsRes.data ?? []).filter((r) => r.user_id === user.id).map((r) => r.submission_id)
       );
       const myAssigned = new Set((assignmentsRes.data ?? []).map((a) => a.submission_id));
+      const excluded = new Set(input.excludeIds ?? []);
       const ratingCounts = new Map<string, number>();
       for (const r of ratingsRes.data ?? []) {
         ratingCounts.set(r.submission_id, (ratingCounts.get(r.submission_id) ?? 0) + 1);
       }
 
       const candidates = (subsRes.data ?? []).filter(
-        (s) => s.user_id !== user.id && !myRated.has(s.id) && !myAssigned.has(s.id)
+        (s) =>
+          s.user_id !== user.id &&
+          !myRated.has(s.id) &&
+          !myAssigned.has(s.id) &&
+          !excluded.has(s.id)
       );
       if (candidates.length === 0) return null;
 

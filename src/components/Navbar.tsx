@@ -74,11 +74,16 @@ export function Navbar() {
       items: [],
     },
     {
-      key: "events",
-      label: "Events",
-      icon: CalendarDays,
-      path: "/events",
-      items: [],
+      key: "activity",
+      label: "Activity",
+      icon: Activity,
+      path: "/recent",
+      items: [
+        { path: "/recent", label: "Recent Runs", icon: Activity },
+        { path: "/recently-added", label: "Recently Added", icon: Clock },
+        { path: "/statistics", label: "Statistics", icon: BarChart3 },
+        { path: "/events", label: "Events", icon: CalendarDays },
+      ],
     },
     {
       key: "lists",
@@ -87,49 +92,42 @@ export function Navbar() {
       path: "/main",
       items: [
         { path: "/main", label: "Main List", icon: List },
-        { path: "/future-list", label: "Future List", icon: Clock },
         { path: "/extended-list", label: "Extended List", icon: List },
+        { path: "/future-list", label: "Future List", icon: Clock },
         { path: "/extra-list", label: "Extra List", icon: List },
         { path: "/packs", label: "Level Packs", icon: Package },
 
       ],
     },
     {
-      key: "leaderboards",
-      label: "Leaderboards",
+      key: "leaderboard",
+      label: "Leaderboard",
       icon: Trophy,
       path: "/leaderboard",
-      items: [
-        { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
-        { path: "/compare", label: "Compare Players", icon: GitCompare },
-      ],
-    },
-    {
-      key: "activity",
-      label: "Activity",
-      icon: Activity,
-      path: "/activity",
-      items: [
-        { path: "/recent", label: "Recent Runs", icon: Activity },
-        { path: "/recently-added", label: "Recently Added", icon: Clock },
-        { path: "/statistics", label: "Statistics", icon: BarChart3 },
-      ],
+      items: [],
     },
     {
       key: "tools",
       label: "Tools",
       icon: Package,
-      path: "/info",
+      path: "/submit",
       items: [
         { path: "/submit", label: "Submit", icon: Send },
-        { path: "/info", label: "Info", icon: BookOpen },
         { path: "/roulette", label: "Level Roulette", icon: Dice5 },
+        { path: "/compare", label: "Compare Players", icon: GitCompare },
         { path: "/themes", label: "Themes", icon: Palette },
         ...(user ? [{ path: "/watchlist", label: "Watchlist", icon: Bookmark }] : []),
         ...(playerUsername
           ? [{ path: `/player/${playerUsername}`, label: "My Profile", icon: User }]
           : []),
       ],
+    },
+    {
+      key: "info",
+      label: "Info",
+      icon: BookOpen,
+      path: "/info",
+      items: [],
     },
   ];
 

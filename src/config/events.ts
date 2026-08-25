@@ -84,14 +84,6 @@ export function getRevealedTheme(jam: JamEventConfig, now: number): string | nul
   }
 }
 
-/** The timestamp the countdown on a jam should target. */
-export function getCountdownTarget(jam: JamEventConfig, now: number): number | null {
-  if (now < jam.startsAt) return jam.startsAt;
-  if (now < jam.endsAt) return jam.endsAt;
-  if (now < jam.votingEndsAt) return jam.votingEndsAt;
-  return null;
-}
-
 export function findJamBySlug(slug: string | undefined): JamEventConfig | undefined {
   return JAM_EVENTS.find((j) => j.slug === slug);
 }
