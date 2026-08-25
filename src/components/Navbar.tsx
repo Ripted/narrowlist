@@ -87,10 +87,10 @@ export function Navbar() {
       icon: Activity,
       path: "/recent",
       items: [
+        { path: "/events", label: "Events", icon: CalendarDays },
+        { path: "/statistics", label: "Statistics", icon: BarChart3 },
         { path: "/recent", label: "Recent Runs", icon: Activity },
         { path: "/recently-added", label: "Recently Added", icon: Clock },
-        { path: "/statistics", label: "Statistics", icon: BarChart3 },
-        { path: "/events", label: "Events", icon: CalendarDays },
       ],
     },
     {
