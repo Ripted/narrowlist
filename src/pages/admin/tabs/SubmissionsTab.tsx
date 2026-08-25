@@ -143,10 +143,11 @@ export function SubmissionsTab({ a }: { a: AdminState }) {
                                   className="gap-1 text-muted-foreground"
                                   onClick={async () => {
                                     try {
-                                      await supabase
+                                      const { error } = await supabase
                                         .from("level_submissions")
                                         .update({ status: "read" })
                                         .eq("id", submission.id);
+                                      if (error) throw error;
                                       await logAction("Marked level submission as read", `${submission.level_name || submission.level_id} (${displaySubmitter(submission.submitted_by, submission.submitted_by_email)})`);
                                       toast({ title: "Marked as Read" });
                                       fetchLevelSubmissions();
@@ -167,10 +168,11 @@ export function SubmissionsTab({ a }: { a: AdminState }) {
                                   value={submission.status}
                                   onValueChange={async (newStatus) => {
                                     try {
-                                      await supabase
+                                      const { error } = await supabase
                                         .from("level_submissions")
                                         .update({ status: newStatus })
                                         .eq("id", submission.id);
+                                      if (error) throw error;
                                       await logAction("Changed submission status", `${submission.level_name || submission.level_id}: ${submission.status} → ${newStatus}`);
                                       toast({ title: "Status Updated", description: `Changed to ${newStatus}` });
                                       fetchLevelSubmissions();
@@ -384,10 +386,11 @@ export function SubmissionsTab({ a }: { a: AdminState }) {
                                   className="gap-1 text-muted-foreground"
                                   onClick={async () => {
                                     try {
-                                      await supabase
+                                      const { error } = await supabase
                                         .from("run_submissions")
                                         .update({ status: "read" })
                                         .eq("id", submission.id);
+                                      if (error) throw error;
                                       await logAction("Marked run submission as read", `${submission.username} on ${submission.level_name || submission.level_id}`);
                                       toast({ title: "Marked as Read" });
                                       fetchRunSubmissions();
@@ -408,10 +411,11 @@ export function SubmissionsTab({ a }: { a: AdminState }) {
                                   value={submission.status}
                                   onValueChange={async (newStatus) => {
                                     try {
-                                      await supabase
+                                      const { error } = await supabase
                                         .from("run_submissions")
                                         .update({ status: newStatus })
                                         .eq("id", submission.id);
+                                      if (error) throw error;
                                       await logAction("Changed run submission status", `${submission.username} on ${submission.level_name || submission.level_id}: ${submission.status} → ${newStatus}`);
                                       toast({ title: "Status Updated", description: `Changed to ${newStatus}` });
                                       fetchRunSubmissions();

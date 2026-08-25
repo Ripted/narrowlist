@@ -7,6 +7,11 @@ import { extractLevelId } from "@/lib/extractLevelId";
 import type { Level } from "../types";
 import type { AdminState } from "../useAdminState";
 
+// HTML5 drag & drop doesn't work on touch and draggable rows block scroll
+// gestures there; mobile reordering uses the arrow buttons instead.
+const isTouchDevice = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
+
 export function LevelsTab({ a }: { a: AdminState }) {
   const {
     addLevel,
@@ -140,7 +145,7 @@ export function LevelsTab({ a }: { a: AdminState }) {
                         return (
                           <div
                             key={level.id}
-                            draggable
+                            draggable={!isTouchDevice}
                             onDragStart={() => handleDragStart(realIndex)}
                             onDragOver={(e) => handleDragOver(e, realIndex)}
                             onDrop={() => handleDrop(realIndex)}
@@ -229,7 +234,7 @@ export function LevelsTab({ a }: { a: AdminState }) {
                                         <Image className="w-4 h-4 text-muted-foreground" />
                                       </div>
                                     )}
-                                    <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                                    <div className="absolute inset-0 bg-background/50 opacity-100 sm:bg-background/60 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
                                       <button
                                         onClick={() => document.getElementById(`thumb-upload-${level.id}`)?.click()}
                                         className="p-1 rounded bg-primary/80 hover:bg-primary"
@@ -267,7 +272,7 @@ export function LevelsTab({ a }: { a: AdminState }) {
                                 size="icon"
                                 onClick={() => moveLevel(realIndex, "up")}
                                 disabled={realIndex === 0 || saving}
-                                className="h-8 w-8 hidden sm:flex"
+                                className="h-8 w-8"
                                 title="Move up"
                               >
                                 <ChevronUp className="w-4 h-4" />
@@ -277,7 +282,7 @@ export function LevelsTab({ a }: { a: AdminState }) {
                                 size="icon"
                                 onClick={() => moveLevel(realIndex, "down")}
                                 disabled={realIndex === levels.length - 1 || saving}
-                                className="h-8 w-8 hidden sm:flex"
+                                className="h-8 w-8"
                                 title="Move down"
                               >
                                 <ChevronDown className="w-4 h-4" />
@@ -299,7 +304,7 @@ export function LevelsTab({ a }: { a: AdminState }) {
                                 title="Move to Extra List"
                               >
                                 <ArrowUpDown className="w-3 h-3" />
-                                Extra
+                                <span className="hidden sm:inline">Extra</span>
                               </Button>
                               <Button
                                 variant="ghost"

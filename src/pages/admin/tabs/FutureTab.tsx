@@ -8,6 +8,11 @@ import { ITEMS_PER_PAGE } from "../utils";
 import type { Level } from "../types";
 import type { AdminState } from "../useAdminState";
 
+// HTML5 drag & drop doesn't work on touch and draggable rows block scroll
+// gestures there; mobile reordering uses the arrow buttons instead.
+const isTouchDevice = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
+
 export function FutureTab({ a }: { a: AdminState }) {
   const {
     addFutureLevel,
@@ -145,7 +150,7 @@ export function FutureTab({ a }: { a: AdminState }) {
                       return (
                       <div
                         key={level.id}
-                        draggable={!futureSearchQuery}
+                        draggable={!futureSearchQuery && !isTouchDevice}
                         onDragStart={() => handleFutureDragStart(realIndex)}
                         onDragOver={(e) => handleFutureDragOver(e, realIndex)}
                         onDrop={() => handleFutureDrop(realIndex)}
@@ -234,7 +239,7 @@ export function FutureTab({ a }: { a: AdminState }) {
                                     <Image className="w-4 h-4 text-muted-foreground" />
                                   </div>
                                 )}
-                                <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                                <div className="absolute inset-0 bg-background/50 opacity-100 sm:bg-background/60 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
                                   <button
                                     onClick={() => document.getElementById(`future-thumb-upload-${level.id}`)?.click()}
                                     className="p-1 rounded bg-primary/80 hover:bg-primary"
@@ -272,7 +277,7 @@ export function FutureTab({ a }: { a: AdminState }) {
                             size="icon"
                             onClick={() => moveFutureLevel(realIndex, "up")}
                             disabled={realIndex === 0 || savingFuture || !!futureSearchQuery.trim()}
-                            className="h-8 w-8 hidden sm:flex"
+                            className="h-8 w-8"
                             title={futureSearchQuery.trim() ? "Clear search to reorder" : "Move up"}
                           >
                             <ChevronUp className="w-4 h-4" />
@@ -282,7 +287,7 @@ export function FutureTab({ a }: { a: AdminState }) {
                             size="icon"
                             onClick={() => moveFutureLevel(realIndex, "down")}
                             disabled={realIndex === filteredFutureLevels.length - 1 || savingFuture || !!futureSearchQuery.trim()}
-                            className="h-8 w-8 hidden sm:flex"
+                            className="h-8 w-8"
                             title={futureSearchQuery.trim() ? "Clear search to reorder" : "Move down"}
                           >
                             <ChevronDown className="w-4 h-4" />

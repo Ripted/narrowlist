@@ -76,7 +76,7 @@ export function Navbar() {
     },
     {
       key: "leaderboard",
-      label: "Leaderboard",
+      label: "Leaderboards",
       icon: Trophy,
       path: "/leaderboard",
       items: [],

@@ -294,6 +294,32 @@ export function useLevel(levelId: string, isExtended?: boolean) {
       } else if (details) {
         setLevel(details);
         setDescription(null);
+      } else if (dbData) {
+        // The game API is unreachable from this origin — fall back to the DB
+        // row so the page still shows the tracked level instead of "Not Found".
+        const dbCreators = (dbData as any).creators as string[] | null;
+        setLevel({
+          levelInfo: {
+            id: 0,
+            level_id: levelId,
+            name: dbData.name || "Unknown Level",
+            author: dbCreators && dbCreators.length > 0
+              ? dbCreators.join(", ")
+              : dbData.author || "Unknown",
+            like_count: 0,
+            published: 0,
+            created_at: "",
+            updated_at: "",
+            user_id: 0,
+          },
+          runCount: 0,
+        });
+        setRank(dbData.rank_position);
+        setPoints(dbData.points);
+        setThumbnailUrl(dbData.thumbnail_url);
+        setLevelDbId(dbData.id);
+        setVerifierProfileId(dbData.verifier_profile_id);
+        setDescription((dbData as any).description ?? null);
       }
       
       setLeaderboard(combinedLeaderboard);

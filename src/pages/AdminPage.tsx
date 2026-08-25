@@ -1,4 +1,4 @@
-import { Clock, List, Package, RefreshCw, RotateCcw, Send, Shield, Tag, UserCheck, UserX, Users } from "lucide-react";
+import { Clock, HeartPulse, List, Package, RefreshCw, RotateCcw, Send, Shield, Tag, UserCheck, UserX, Users } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { LevelPacksManager } from "@/components/admin/LevelPacksManager";
 import { TagPresetsManager } from "@/components/admin/TagPresetsManager";
@@ -16,6 +16,7 @@ import { BansTab } from "./admin/tabs/BansTab";
 import { RatersTab } from "./admin/tabs/RatersTab";
 import { DeletedTab } from "./admin/tabs/DeletedTab";
 import { ChangelogTab } from "./admin/tabs/ChangelogTab";
+import { HealthTab } from "./admin/tabs/HealthTab";
 import { AdminDialogs } from "./admin/AdminDialogs";
 
 export default function AdminPage() {
@@ -207,6 +208,10 @@ export default function AdminPage() {
                       <Tag className="w-3 h-3 hidden sm:inline" />
                       Tag Presets
                     </TabsTrigger>
+                    <TabsTrigger value="health" className="text-xs sm:text-sm flex-shrink-0">
+                      <HeartPulse className="w-3 h-3 hidden sm:inline" />
+                      Health
+                    </TabsTrigger>
                     <TabsTrigger value="changelog" className="text-xs sm:text-sm flex-shrink-0">Log</TabsTrigger>
                   </>
                 )}
@@ -248,6 +253,8 @@ export default function AdminPage() {
             </TabsContent>
 
 
+
+            <HealthTab />
 
             <ChangelogTab a={a} />
           </Tabs>
