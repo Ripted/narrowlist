@@ -139,18 +139,28 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                   </div>
                 ) : (
                   <>
+                  {/* Reordering operates on the globally sorted list, so it only
+                      makes sense when every level is visible in one sequence. */}
+                  {(extendedSearchQuery.trim() || !showAllExtended) && (
+                    <div className="px-4 py-2 text-xs text-muted-foreground bg-secondary/20 border-b border-border">
+                      Reordering (arrows and drag) is disabled{extendedSearchQuery.trim() ? " while a search is active" : ""}
+                      {!showAllExtended ? `${extendedSearchQuery.trim() ? " and" : ""} while the list is paginated — use "Show All"` : ""}.
+                      You can still change ranks by clicking the rank number.
+                    </div>
+                  )}
                   <div className="divide-y divide-border">
                     {paginatedExtendedLevels.map((level, index) => {
                       const realIndex = showAllExtended ? index : (extendedCurrentPage - 1) * ITEMS_PER_PAGE + index;
+                      const reorderingDisabled = !!extendedSearchQuery.trim() || !showAllExtended;
                       return (
                         <div
                           key={level.id}
-                          draggable={!extendedSearchQuery && !isTouchDevice}
-                          onDragStart={() => handleExtendedDragStart(realIndex)}
-                          onDragOver={(e) => handleExtendedDragOver(e, realIndex)}
-                          onDrop={() => handleExtendedDrop(realIndex)}
+                          draggable={!reorderingDisabled && !isTouchDevice}
+                          onDragStart={() => !reorderingDisabled && handleExtendedDragStart(realIndex)}
+                          onDragOver={(e) => !reorderingDisabled && handleExtendedDragOver(e, realIndex)}
+                          onDrop={() => !reorderingDisabled && handleExtendedDrop(realIndex)}
                           onDragEnd={handleExtendedDragEnd}
-                          className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
+                          className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all ${reorderingDisabled ? "" : "cursor-grab active:cursor-grabbing"}
                             ${draggedExtendedIndex === realIndex ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
                             ${dragOverExtendedIndex === realIndex && draggedExtendedIndex !== realIndex ? "border-t-2 border-primary" : ""}
                           `}
@@ -252,9 +262,9 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                               variant="ghost"
                               size="icon"
                               onClick={() => moveExtendedLevel(realIndex, "up")}
-                              disabled={realIndex === 0 || !!extendedSearchQuery.trim()}
+                              disabled={reorderingDisabled || realIndex === 0}
                               className="h-8 w-8"
-                              title={extendedSearchQuery.trim() ? "Clear search to reorder" : "Move up"}
+                              title={reorderingDisabled ? "Clear search / Show All to reorder" : "Move up"}
                             >
                               <ChevronUp className="w-4 h-4" />
                             </Button>
@@ -262,9 +272,9 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                               variant="ghost"
                               size="icon"
                               onClick={() => moveExtendedLevel(realIndex, "down")}
-                              disabled={realIndex === extendedLevels.length - 1 || !!extendedSearchQuery.trim()}
+                              disabled={reorderingDisabled || realIndex === extendedLevels.length - 1}
                               className="h-8 w-8"
-                              title={extendedSearchQuery.trim() ? "Clear search to reorder" : "Move down"}
+                              title={reorderingDisabled ? "Clear search / Show All to reorder" : "Move down"}
                             >
                               <ChevronDown className="w-4 h-4" />
                             </Button>

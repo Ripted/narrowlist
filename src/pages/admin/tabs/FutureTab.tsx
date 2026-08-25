@@ -144,18 +144,28 @@ export function FutureTab({ a }: { a: AdminState }) {
                   </div>
                 ) : (
                   <>
+                  {/* Reordering operates on the globally sorted list, so it only
+                      makes sense when every level is visible in one sequence. */}
+                  {(futureSearchQuery.trim() || !showAllFuture) && (
+                    <div className="px-4 py-2 text-xs text-muted-foreground bg-secondary/20 border-b border-border">
+                      Reordering (arrows and drag) is disabled{futureSearchQuery.trim() ? " while a search is active" : ""}
+                      {!showAllFuture ? `${futureSearchQuery.trim() ? " and" : ""} while the list is paginated — use "Show All"` : ""}.
+                      You can still change ranks by clicking the rank number.
+                    </div>
+                  )}
                   <div className="divide-y divide-border">
                     {paginatedFutureLevels.map((level, index) => {
                       const realIndex = showAllFuture ? index : (futureCurrentPage - 1) * ITEMS_PER_PAGE + index;
+                      const reorderingDisabled = !!futureSearchQuery.trim() || !showAllFuture;
                       return (
                       <div
                         key={level.id}
-                        draggable={!futureSearchQuery && !isTouchDevice}
-                        onDragStart={() => handleFutureDragStart(realIndex)}
-                        onDragOver={(e) => handleFutureDragOver(e, realIndex)}
-                        onDrop={() => handleFutureDrop(realIndex)}
+                        draggable={!reorderingDisabled && !isTouchDevice}
+                        onDragStart={() => !reorderingDisabled && handleFutureDragStart(realIndex)}
+                        onDragOver={(e) => !reorderingDisabled && handleFutureDragOver(e, realIndex)}
+                        onDrop={() => !reorderingDisabled && handleFutureDrop(realIndex)}
                         onDragEnd={handleFutureDragEnd}
-                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
+                        className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all ${reorderingDisabled ? "" : "cursor-grab active:cursor-grabbing"}
                           ${draggedFutureIndex === realIndex ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
                           ${dragOverFutureIndex === realIndex && draggedFutureIndex !== realIndex ? "border-t-2 border-primary" : ""}
                         `}
@@ -276,9 +286,9 @@ export function FutureTab({ a }: { a: AdminState }) {
                             variant="ghost"
                             size="icon"
                             onClick={() => moveFutureLevel(realIndex, "up")}
-                            disabled={realIndex === 0 || savingFuture || !!futureSearchQuery.trim()}
+                            disabled={reorderingDisabled || realIndex === 0 || savingFuture}
                             className="h-8 w-8"
-                            title={futureSearchQuery.trim() ? "Clear search to reorder" : "Move up"}
+                            title={reorderingDisabled ? "Clear search / Show All to reorder" : "Move up"}
                           >
                             <ChevronUp className="w-4 h-4" />
                           </Button>
@@ -286,9 +296,9 @@ export function FutureTab({ a }: { a: AdminState }) {
                             variant="ghost"
                             size="icon"
                             onClick={() => moveFutureLevel(realIndex, "down")}
-                            disabled={realIndex === filteredFutureLevels.length - 1 || savingFuture || !!futureSearchQuery.trim()}
+                            disabled={reorderingDisabled || realIndex === futureLevels.length - 1 || savingFuture}
                             className="h-8 w-8"
-                            title={futureSearchQuery.trim() ? "Clear search to reorder" : "Move down"}
+                            title={reorderingDisabled ? "Clear search / Show All to reorder" : "Move down"}
                           >
                             <ChevronDown className="w-4 h-4" />
                           </Button>
