@@ -571,29 +571,27 @@ export function useAdminState() {
   };
 
   const moveExtendedLevel = async (index: number, direction: "up" | "down") => {
-    const newLevels = [...extendedLevels];
+    const sorted = [...extendedLevels].sort((a, b) => a.rank_position - b.rank_position);
     const targetIndex = direction === "up" ? index - 1 : index + 1;
-    
-    if (targetIndex < 0 || targetIndex >= newLevels.length) return;
-    
-    // Swap positions
-    const currentLevel = newLevels[index];
-    const swapLevel = newLevels[targetIndex];
-    
-    try {
-      const oldRank = currentLevel.rank_position;
-      const newRank = swapLevel.rank_position;
-      // Park current at a temporary value to avoid UNIQUE(rank_position) collision
-      const tempRank = -Math.abs(oldRank) - 1000000;
-      await supabase.from("extended_levels").update({ rank_position: tempRank }).eq("id", currentLevel.id);
-      await supabase.from("extended_levels").update({ rank_position: oldRank }).eq("id", swapLevel.id);
-      await supabase.from("extended_levels").update({ rank_position: newRank }).eq("id", currentLevel.id);
 
+    if (targetIndex < 0 || targetIndex >= sorted.length) return;
+
+    const currentLevel = sorted[index];
+    const oldRank = currentLevel.rank_position;
+    const newRank = sorted[targetIndex].rank_position;
+
+    [sorted[index], sorted[targetIndex]] = [sorted[targetIndex], sorted[index]];
+
+    try {
+      // updateExtendedRanksSafely re-ranks via temp negative positions, so the
+      // UNIQUE(rank_position) constraint can't collide mid-swap.
+      await updateExtendedRanksSafely(sorted);
       await logAction("Moved extra level", `${currentLevel.name || currentLevel.level_id} ${direction}`);
       await sendAdminNotification("rank_change", currentLevel.name || currentLevel.level_id, oldRank, newRank, "Extra", "moved", currentLevel);
       fetchExtendedLevels();
     } catch (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to move level", variant: "destructive" });
+      fetchExtendedLevels();
     }
   };
 
@@ -651,19 +649,23 @@ export function useAdminState() {
   };
 
   const updateExtendedRanksSafely = async (updated: ExtendedLevel[]) => {
+    // Park every row at a temporary negative rank first so the
+    // UNIQUE(rank_position) constraint can't collide between swaps.
     for (let i = 0; i < updated.length; i++) {
-      await supabase
+      const { error } = await supabase
         .from("extended_levels")
         .update({ rank_position: -(i + 1) - 100000 })
         .eq("id", updated[i].id);
+      if (error) throw new Error(`Failed to reorder extra list: ${error.message}`);
     }
 
     for (let i = 0; i < updated.length; i++) {
       const newRank = i + 1;
-      await supabase
+      const { error } = await supabase
         .from("extended_levels")
         .update({ rank_position: newRank, points: calculateExtraPoints(newRank) })
         .eq("id", updated[i].id);
+      if (error) throw new Error(`Failed to reorder extra list: ${error.message}`);
     }
   };
 
@@ -2007,19 +2009,29 @@ export function useAdminState() {
 
   const updateRanks = async (updatedLevels: Level[]) => {
     setSaving(true);
-    
+
+    let failed = false;
     for (const level of updatedLevels) {
-      await supabase
+      const { error } = await supabase
         .from("levels")
-        .update({ 
-          rank_position: level.rank_position, 
-          points: calculatePoints(level.rank_position) 
+        .update({
+          rank_position: level.rank_position,
+          points: calculatePoints(level.rank_position)
         })
         .eq("id", level.id);
+      if (error) {
+        failed = true;
+        break;
+      }
     }
-    
+
     setSaving(false);
-    toast({ title: "Saved", description: "Rankings updated" });
+    if (failed) {
+      toast({ title: "Error", description: "Failed to save rankings — list may be out of sync, try again", variant: "destructive" });
+      fetchLevels();
+    } else {
+      toast({ title: "Saved", description: "Rankings updated" });
+    }
   };
 
   const startRankEdit = (level: Level) => {
@@ -2531,14 +2543,24 @@ export function useAdminState() {
   const updateFutureRanks = async (updated: FutureLevel[]) => {
     if (updated.length === 0) return;
     setSavingFuture(true);
+    let failed = false;
     for (const f of updated) {
-      await supabase
+      const { error } = await supabase
         .from("future_levels")
         .update({ rank_position: f.rank_position, sub_rank: f.sub_rank, points: calculatePoints(f.rank_position) })
         .eq("id", f.id);
+      if (error) {
+        failed = true;
+        break;
+      }
     }
     setSavingFuture(false);
-    toast({ title: "Saved", description: "Future rankings updated" });
+    if (failed) {
+      toast({ title: "Error", description: "Failed to save future rankings — list may be out of sync, try again", variant: "destructive" });
+      fetchFutureLevels();
+    } else {
+      toast({ title: "Saved", description: "Future rankings updated" });
+    }
   };
 
   const moveFutureLevel = async (index: number, direction: "up" | "down") => {

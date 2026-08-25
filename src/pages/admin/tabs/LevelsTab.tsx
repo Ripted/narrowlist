@@ -139,18 +139,28 @@ export function LevelsTab({ a }: { a: AdminState }) {
                   </div>
                 ) : (
                   <>
+                    {/* Reordering uses indices into the unfiltered list, so it only
+                        makes sense when every level is visible in one sequence. */}
+                    {(levelSearchQuery.trim() || !showAll) && (
+                      <div className="px-4 py-2 text-xs text-muted-foreground bg-secondary/20 border-b border-border">
+                        Reordering (arrows and drag) is disabled{levelSearchQuery.trim() ? " while a search is active" : ""}
+                        {!showAll ? `${levelSearchQuery.trim() ? " and" : ""} while the list is paginated — use “Show All”` : ""}.
+                        You can still change ranks by clicking the rank number.
+                      </div>
+                    )}
                     <div className="divide-y divide-border">
                       {paginatedLevels.map((level, index) => {
                         const realIndex = showAll ? index : (currentPage - 1) * ITEMS_PER_PAGE + index;
+                        const reorderingDisabled = !!levelSearchQuery.trim() || !showAll;
                         return (
                           <div
                             key={level.id}
-                            draggable={!isTouchDevice}
-                            onDragStart={() => handleDragStart(realIndex)}
-                            onDragOver={(e) => handleDragOver(e, realIndex)}
-                            onDrop={() => handleDrop(realIndex)}
+                            draggable={!reorderingDisabled && !isTouchDevice}
+                            onDragStart={() => !reorderingDisabled && handleDragStart(realIndex)}
+                            onDragOver={(e) => !reorderingDisabled && handleDragOver(e, realIndex)}
+                            onDrop={() => !reorderingDisabled && handleDrop(realIndex)}
                             onDragEnd={handleDragEnd}
-                            className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all cursor-grab active:cursor-grabbing
+                            className={`flex items-center gap-2 md:gap-3 p-3 md:p-4 transition-all ${reorderingDisabled ? "" : "cursor-grab active:cursor-grabbing"}
                               ${draggedIndex === realIndex ? "opacity-50 bg-primary/10" : "hover:bg-secondary/20"}
                               ${dragOverIndex === realIndex && draggedIndex !== realIndex ? "border-t-2 border-primary" : ""}
                             `}
@@ -271,9 +281,9 @@ export function LevelsTab({ a }: { a: AdminState }) {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => moveLevel(realIndex, "up")}
-                                disabled={realIndex === 0 || saving}
+                                disabled={reorderingDisabled || realIndex === 0 || saving}
                                 className="h-8 w-8"
-                                title="Move up"
+                                title={reorderingDisabled ? "Clear search / Show All to reorder" : "Move up"}
                               >
                                 <ChevronUp className="w-4 h-4" />
                               </Button>
@@ -281,9 +291,9 @@ export function LevelsTab({ a }: { a: AdminState }) {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => moveLevel(realIndex, "down")}
-                                disabled={realIndex === levels.length - 1 || saving}
+                                disabled={reorderingDisabled || realIndex === levels.length - 1 || saving}
                                 className="h-8 w-8"
-                                title="Move down"
+                                title={reorderingDisabled ? "Clear search / Show All to reorder" : "Move down"}
                               >
                                 <ChevronDown className="w-4 h-4" />
                               </Button>
