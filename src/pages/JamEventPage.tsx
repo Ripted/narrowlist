@@ -11,6 +11,7 @@ import {
   ScrollText,
   Send,
   Sparkles,
+  Trash2,
   Trophy,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -19,15 +20,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { findJamBySlug, getJamPhase, getRevealedTheme, JamEventConfig, JamPhase } from "@/config/events";
+import { findJamBySlug, getJamPhase, getRevealedTheme, JamEventConfig, JamPhase, JAM_EVENTS } from "@/config/events";
 import { JamCountdown } from "@/components/jam/JamCountdown";
 import { useNow } from "@/hooks/useNow";
 import { JamSubmissionForm } from "@/components/jam/JamSubmissionForm";
 import { JamVotingSection } from "@/components/jam/JamVotingSection";
 import { JamResults } from "@/components/jam/JamResults";
 import { JamSubmissionCard } from "@/components/jam/JamSubmissionCard";
-import { computeJamScores, useJamRatings, useJamSubmissions } from "@/hooks/useJam";
+import { computeJamScores, useDeleteJamEntry, useJamRatings, useJamSubmissions } from "@/hooks/useJam";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const formatJamDate = (ts: number) => format(new Date(ts), "EEEE, MMM d yyyy 'at' HH:mm");
 
@@ -44,7 +46,10 @@ function phaseLabel(phase: JamPhase): string {
   }
 }
 
-function JamHero({ jam, phase, now }: { jam: JamEventConfig; phase: JamPhase; now: number }) {
+function JamHero({ jam }: { jam: JamEventConfig }) {
+  // Ticks at 1s so the phase flips the moment the jam starts/ends.
+  const now = useNow();
+  const phase = getJamPhase(jam, now);
   const theme = getRevealedTheme(jam, now);
 
   return (
@@ -175,10 +180,12 @@ export default function JamEventPage() {
   const jam = findJamBySlug(jamSlug);
   const now = useNow(15_000);
   const { user } = useAuth();
+  const { toast } = useToast();
   const [tab, setTab] = useState<JamTab | null>(null);
 
   const submissions = useJamSubmissions(jam?.id ?? "");
   const ratings = useJamRatings(jam?.id ?? "");
+  const deleteEntry = useDeleteJamEntry(jam ?? JAM_EVENTS[0]);
 
   if (!jam) {
     return (
@@ -207,7 +214,7 @@ export default function JamEventPage() {
       <PageMeta title={jam.name} description={jam.tagline} />
       <Navbar />
       <main className="container mx-auto px-4 pt-24 pb-16 space-y-8">
-        <JamHero jam={jam} phase={phase} now={now} />
+        <JamHero jam={jam} />
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground px-1">
           <span className="inline-flex items-center gap-1.5">
@@ -248,7 +255,28 @@ export default function JamEventPage() {
                   <h2 className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-4">
                     {mySubmission ? "Your submission" : "Submit your level"}
                   </h2>
-                  <JamSubmissionForm jam={jam} existing={mySubmission} />
+                  <JamSubmissionForm key={mySubmission?.id ?? "new"} jam={jam} existing={mySubmission} />
+                  {mySubmission && (
+                    <div className="mt-3 pt-3 border-t border-border/50">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        disabled={deleteEntry.isPending}
+                        onClick={async () => {
+                          try {
+                            await deleteEntry.mutateAsync(mySubmission.id);
+                            toast({ title: "Submission removed" });
+                          } catch {
+                            toast({ title: "Could not remove submission", variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1.5" />
+                        {deleteEntry.isPending ? "Removing..." : "Remove submission"}
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               ) : (
                 <Card className="p-6 bg-card/40 border-primary/30 text-center">

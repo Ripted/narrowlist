@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
+import { JamLiveBanner } from "@/components/jam/JamLiveBanner";
 import { Card } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
@@ -55,13 +56,12 @@ const HubPage = () => {
     // Lists
     { path: "/main", label: "Main List", description: "Top 100 hardest levels", icon: Target, category: "lists" },
     { path: "/extended-list", label: "Extended List", description: "Ranks 101 and beyond", icon: List, category: "lists" },
-    { path: "/extra-list", label: "Extra List", description: "Levels with extra points", icon: List, category: "lists" },
     { path: "/future-list", label: "Future List", description: "Upcoming & inactive levels", icon: Clock, category: "lists" },
+    { path: "/extra-list", label: "Extra List", description: "Levels with extra points", icon: List, category: "lists" },
     { path: "/packs", label: "Level Packs", description: "Curated level collections", icon: Package, category: "lists" },
 
     // Leaderboards
     { path: "/leaderboard", label: "Leaderboard", description: "Top players & creators", icon: Trophy, category: "leaderboards" },
-    { path: "/compare", label: "Compare Players", description: "Side-by-side player stats", icon: GitCompare, category: "leaderboards" },
 
     // Activity
     { path: "/recent", label: "Recent Runs", description: "Latest completions", icon: Activity, category: "activity" },
@@ -73,6 +73,7 @@ const HubPage = () => {
     { path: "/submit", label: "Submit", description: "Submit a level or run", icon: Send, category: "tools" },
     { path: "/info", label: "Info", description: "How everything works", icon: BookOpen, category: "tools" },
     { path: "/roulette", label: "Level Roulette", description: "Random level challenges", icon: Dice5, category: "tools" },
+    { path: "/compare", label: "Compare Players", description: "Side-by-side player stats", icon: GitCompare, category: "tools" },
     { path: "/themes", label: "Themes", description: "Customize site appearance", icon: Palette, category: "tools" },
   ];
 
@@ -100,6 +101,7 @@ const HubPage = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <main className="container mx-auto px-4 pt-24 pb-16">
+        <JamLiveBanner />
         <div className="text-center mb-12">
           <h1 className="font-display text-4xl md:text-5xl font-bold gradient-text mb-3">
             Explore Narrowlist

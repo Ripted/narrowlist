@@ -62,6 +62,7 @@ export function JamResults({ submissions, ratings }: JamResultsProps) {
       </TabsList>
       <TabsContent value={category} className="mt-4">
         <Card className="overflow-hidden bg-card/60 border-border/60">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/60 text-left text-muted-foreground">
@@ -85,13 +86,10 @@ export function JamResults({ submissions, ratings }: JamResultsProps) {
                   )}
                 >
                   <td className="px-4 py-3 font-display font-bold tabular-nums">
-                    {index + 1 === 1 && category === "overall" ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Trophy className="w-4 h-4 text-amber-400" />1
-                      </span>
-                    ) : (
-                      `#${index + 1}`
-                    )}
+                    <span className="inline-flex items-center gap-1.5">
+                      {index === 0 && category === "overall" && <Trophy className="w-4 h-4 text-amber-400" />}
+                      #{index + 1}
+                    </span>
                   </td>
                   <td className="px-4 py-3 font-medium max-w-[200px] truncate">
                     {entry.submission.level_name}
@@ -114,6 +112,7 @@ export function JamResults({ submissions, ratings }: JamResultsProps) {
               ))}
             </tbody>
           </table>
+          </div>
         </Card>
       </TabsContent>
     </Tabs>
