@@ -114,7 +114,14 @@ export default function ActivityPage() {
       ]);
 
       const completions = (runsRes.data || []) as CompletionRow[];
-      const rankRows = (ranksRes.data || []) as RankRow[];
+      // Dedupe identical rows — a legacy duplicate DB trigger wrote every change twice
+      const seenRankRows = new Set<string>();
+      const rankRows = ((ranksRes.data || []) as RankRow[]).filter((r) => {
+        const key = `${r.level_id}:${r.recorded_at}:${r.rank_position}:${r.previous_rank ?? "null"}`;
+        if (seenRankRows.has(key)) return false;
+        seenRankRows.add(key);
+        return true;
+      });
 
       // Resolve names for runs
       const profileIds = [...new Set(completions.map((c) => c.profile_id))];
