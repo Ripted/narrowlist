@@ -2,12 +2,15 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dices, ListChecks, LogIn, PartyPopper } from "lucide-react";
+import { Dices, ListChecks, LogIn, PartyPopper, Unlock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
+  JAM_UNLOCK_RATING_COUNT,
+  JamCollaborator,
   JamRating,
   JamSubmission,
   useMyJamAssignments,
+  useMyProfile,
   useRequestJamAssignment,
   useSkipJamAssignment,
   useSubmitJamRating,
@@ -22,16 +25,19 @@ interface JamVotingSectionProps {
   jam: JamEventConfig;
   submissions: JamSubmission[];
   ratings: JamRating[];
+  collaborators: JamCollaborator[];
 }
 
 /**
- * Voting during the 7-day window after the jam. Participants rate any level
- * freely; everyone else (logged in) rates levels assigned through the queue.
+ * Voting during the 7-day window after the jam. Participants (creators and
+ * collaborators) rate any level freely; everyone else rates levels assigned
+ * through the queue until 5 ratings unlock free voting.
  */
-export function JamVotingSection({ jam, submissions, ratings }: JamVotingSectionProps) {
+export function JamVotingSection({ jam, submissions, ratings, collaborators }: JamVotingSectionProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const assignments = useMyJamAssignments(jam.id);
+  const profile = useMyProfile();
   const requestAssignment = useRequestJamAssignment(jam);
   const skipAssignment = useSkipJamAssignment(jam);
   const submitRating = useSubmitJamRating(jam);
@@ -45,6 +51,17 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
     }
     return map;
   }, [ratings, user?.id]);
+
+  // Submissions the user is involved in (creator or collaborator) are off-limits.
+  const myCollabSubIds = useMemo(() => {
+    const set = new Set<string>();
+    if (profile.data) {
+      for (const c of collaborators) {
+        if (c.profile_id === profile.data.id) set.add(c.submission_id);
+      }
+    }
+    return set;
+  }, [collaborators, profile.data]);
 
   if (!user) {
     return (
@@ -64,8 +81,12 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
     );
   }
 
-  const isParticipant = submissions.some((s) => s.user_id === user.id);
-  const rateable = submissions.filter((s) => s.user_id !== user.id);
+  const isEntryMember = (s: JamSubmission) => s.user_id === user.id || myCollabSubIds.has(s.id);
+  const isParticipant =
+    submissions.some((s) => s.user_id === user.id) || myCollabSubIds.size > 0;
+  const freeVotingUnlocked = myRatings.size >= JAM_UNLOCK_RATING_COUNT;
+  const canRateFreely = isParticipant || freeVotingUnlocked;
+  const rateable = submissions.filter((s) => !isEntryMember(s));
 
   const handleRate = async (submissionId: string, values: { enjoyment: number; creativity: number; design: number }) => {
     try {
@@ -80,13 +101,19 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
     }
   };
 
-  if (isParticipant) {
+  if (canRateFreely) {
     return (
       <div className="space-y-4">
         <Card className="p-4 bg-primary/5 border-primary/20 flex items-center gap-3">
-          <PartyPopper className="w-5 h-5 text-primary shrink-0" />
+          {isParticipant ? (
+            <PartyPopper className="w-5 h-5 text-primary shrink-0" />
+          ) : (
+            <Unlock className="w-5 h-5 text-primary shrink-0" />
+          )}
           <p className="text-sm">
-            You entered the jam — you can rate every level except your own.{" "}
+            {isParticipant
+              ? "You entered the jam — you can rate every level except ones you worked on. "
+              : `You rated ${JAM_UNLOCK_RATING_COUNT} levels — free voting unlocked! `}
             <span className="text-muted-foreground">
               {myRatings.size} / {rateable.length} rated
             </span>
@@ -97,6 +124,7 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
             <JamSubmissionCard
               key={submission.id}
               submission={submission}
+              jamSlug={jam.slug}
               footer={
                 <JamRatingForm
                   key={myRatings.get(submission.id)?.id ?? `new-${submission.id}`}
@@ -152,7 +180,9 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
           <ListChecks className="w-5 h-5 text-primary shrink-0" />
           <p className="text-sm">
             Since you didn't enter the jam, levels are assigned to you from the queue.{" "}
-            <span className="text-muted-foreground">{myRatings.size} levels rated</span>
+            <span className="text-muted-foreground">
+              {myRatings.size} rated — rate {JAM_UNLOCK_RATING_COUNT} to unlock free voting
+            </span>
           </p>
         </div>
         <Button
@@ -175,6 +205,7 @@ export function JamVotingSection({ jam, submissions, ratings }: JamVotingSection
             <JamSubmissionCard
               key={submission.id}
               submission={submission}
+              jamSlug={jam.slug}
               footer={
                 <JamRatingForm
                   key={myRatings.get(submission.id)?.id ?? `new-${submission.id}`}

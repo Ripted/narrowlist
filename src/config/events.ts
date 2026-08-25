@@ -33,10 +33,11 @@ export const LEVEL_JAM: JamEventConfig = {
   rules: [
     "Build a level that fits the theme — the theme is revealed the moment the jam starts.",
     "You have exactly 96 hours: Thursday 21:00 to Monday 21:00 (UTC+2).",
-    "One submission per person. You can edit your submission while the jam is running.",
+    "You can submit up to 5 levels. Each must be uploaded on the account your Narrowlist profile is linked to.",
+    "Team up: add collaborators (up to 15 per level) from their entry page. Collaborators count as participants.",
     "Your level must be new — built during the jam.",
     "After the jam ends, voting runs for 7 days in the categories Enjoyment, Creativity and Design.",
-    "Participants can rate any level (except their own). Everyone else must be logged in and rates levels assigned through the queue.",
+    "Participants can rate any level (except ones they worked on). Everyone else rates levels from the queue — after 5 ratings, free voting unlocks.",
   ],
   // Thursday August 27th 2026, 21:00 UTC+2 (discord: t:1787857200)
   startsAt: Date.UTC(2026, 7, 27, 19, 0, 0),

@@ -26,6 +26,7 @@ import PacksPage from "./pages/PacksPage";
 import HubPage from "./pages/HubPage";
 import EventsPage from "./pages/EventsPage";
 import JamEventPage from "./pages/JamEventPage";
+import JamEntryPage from "./pages/JamEntryPage";
 
 import LevelRoulettePage from "./pages/LevelRoulettePage";
 import RecentlyAddedPage from "./pages/RecentlyAddedPage";
@@ -71,6 +72,7 @@ const App = () => (
               <Route path="/roulette" element={<LevelRoulettePage />} />
               <Route path="/events" element={<EventsPage />} />
               <Route path="/events/:jamSlug" element={<JamEventPage />} />
+              <Route path="/events/:jamSlug/level/:entrySlug" element={<JamEntryPage />} />
               <Route path="/packs" element={<PacksPage />} />
               <Route path="/packs/:packId" element={<PacksPage />} />
               <Route path="/player/:username" element={<PlayerPage />} />

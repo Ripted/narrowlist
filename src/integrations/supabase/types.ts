@@ -509,6 +509,42 @@ export type Database = {
           },
         ]
       }
+      jam_collaborators: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          submission_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          submission_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          submission_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jam_collaborators_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jam_collaborators_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "jam_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jam_submissions: {
         Row: {
           created_at: string
@@ -518,9 +554,9 @@ export type Database = {
           jam_id: string
           level_id: string
           level_name: string
+          slug: string
           updated_at: string
           user_id: string
-          video_url: string | null
         }
         Insert: {
           created_at?: string
@@ -530,9 +566,9 @@ export type Database = {
           jam_id: string
           level_id: string
           level_name: string
+          slug: string
           updated_at?: string
           user_id: string
-          video_url?: string | null
         }
         Update: {
           created_at?: string
@@ -542,9 +578,9 @@ export type Database = {
           jam_id?: string
           level_id?: string
           level_name?: string
+          slug?: string
           updated_at?: string
           user_id?: string
-          video_url?: string | null
         }
         Relationships: []
       }
