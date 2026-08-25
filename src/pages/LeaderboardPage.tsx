@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { usePlayerLeaderboard } from "@/hooks/useLevels";
 import { PlayerCard } from "@/components/PlayerCard";
@@ -47,6 +47,84 @@ interface ExtraPointsPlayer {
   display_name: string | null;
   avatar_url: string | null;
   extra_points: number;
+}
+
+// Podium column with fixed-height rows so medal, name and metric baselines
+// align across all three places and the pedestals form a clean staircase.
+function PodiumPlace({
+  rank,
+  href,
+  avatarUrl,
+  name,
+  metric,
+  sub,
+  delay = 0,
+}: {
+  rank: 1 | 2 | 3;
+  href: string;
+  avatarUrl?: string | null;
+  name: string;
+  metric: ReactNode;
+  sub?: ReactNode;
+  delay?: number;
+}) {
+  const avatarSize = rank === 1 ? "w-28 h-28" : rank === 2 ? "w-24 h-24" : "w-20 h-20";
+  const pedestalHeight = rank === 1 ? "h-32" : rank === 2 ? "h-24" : "h-16";
+  const borderColor = rank === 1 ? "border-glow-gold" : rank === 2 ? "border-glow-silver" : "border-glow-bronze";
+  const avatarBg =
+    rank === 1
+      ? "from-glow-gold/30 to-glow-gold/60"
+      : rank === 2
+        ? "from-glow-silver/30 to-glow-silver/60"
+        : "from-glow-bronze/30 to-glow-bronze/60";
+  const pedestalBg =
+    rank === 1
+      ? "from-glow-gold/70 via-glow-gold/40 to-glow-gold/10 border-glow-gold/60 shadow-glow-gold/20"
+      : rank === 2
+        ? "from-glow-silver/70 via-glow-silver/40 to-glow-silver/10 border-glow-silver/60 shadow-glow-silver/20"
+        : "from-glow-bronze/70 via-glow-bronze/40 to-glow-bronze/10 border-glow-bronze/60 shadow-glow-bronze/20";
+
+  return (
+    <Link
+      to={href}
+      className="w-36 flex flex-col items-center text-center animate-fade-in cursor-pointer group"
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      {/* Avatar zone — fixed height, avatars sit on the same baseline */}
+      <div className="h-28 flex items-end justify-center mb-2">
+        <div
+          className={`${avatarSize} rounded-full border-4 ${borderColor} ${rank === 1 ? "glow-gold" : ""} overflow-hidden bg-gradient-to-br ${avatarBg} group-hover:scale-105 transition-transform`}
+        >
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
+          ) : (
+            <div className={`w-full h-full flex items-center justify-center font-bold text-foreground ${rank === 1 ? "text-4xl" : rank === 2 ? "text-3xl" : "text-2xl"}`}>
+              {name.charAt(0)}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Medal zone — fixed height */}
+      <div className="h-8 flex items-center justify-center">
+        {rank === 1 && <Crown className="w-7 h-7 text-glow-gold" />}
+        {rank === 2 && <Medal className="w-6 h-6 text-glow-silver" />}
+        {rank === 3 && <Medal className="w-5 h-5 text-glow-bronze" />}
+      </div>
+
+      <div className={`font-display font-bold text-foreground group-hover:text-primary transition-colors truncate w-full ${rank === 1 ? "text-lg" : "text-base"}`}>
+        {name}
+      </div>
+      <div className="font-mono text-sm text-primary h-6 flex items-center justify-center gap-1">
+        {metric}
+      </div>
+      <div className="h-5 text-xs text-muted-foreground flex items-center justify-center">
+        {sub}
+      </div>
+
+      <div className={`w-24 ${pedestalHeight} bg-gradient-to-t ${pedestalBg} rounded-t-2xl border-t-2 shadow-lg mt-2`} />
+    </Link>
+  );
 }
 
 export default function LeaderboardPage() {
@@ -361,7 +439,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageMeta title="Leaderboard" description="The top Narrow Arrow players ranked by total points from Main and Extra list completions." />
+      <PageMeta title="Leaderboards" description="The top Narrow Arrow players ranked by total points from Main and Extra list completions." />
       <Navbar />
       
       {/* Background effects */}
@@ -486,56 +564,29 @@ export default function LeaderboardPage() {
               {/* Top 3 Podium - only show for current leaderboard */}
               {!isLoading && !historicalDate && players.length >= 3 && !searchQuery && (
                 <div className="hidden md:flex items-end justify-center gap-4 mb-8">
-                  {/* Second place */}
-                  <Link to={`/player/${players[1].username}`} className="text-center animate-fade-in cursor-pointer group" style={{ animationDelay: "100ms" }}>
-                    <div className="w-24 h-24 mx-auto mb-3 rounded-full border-4 border-glow-silver overflow-hidden bg-gradient-to-br from-glow-silver/30 to-glow-silver/60 group-hover:scale-105 transition-transform">
-                      {players[1].avatarUrl ? (
-                        <img src={players[1].avatarUrl} alt={players[1].displayName || players[1].username} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-foreground">
-                          {(players[1].displayName || players[1].username).charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <Medal className="w-6 h-6 mx-auto text-glow-silver mb-1" />
-                    <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{players[1].displayName || players[1].username}</div>
-                    <div className="font-mono text-sm text-primary">{players[1].totalPoints} pts</div>
-                    <div className="w-24 h-24 bg-gradient-to-t from-glow-silver/70 via-glow-silver/40 to-glow-silver/10 rounded-t-2xl border-t-2 border-glow-silver/60 shadow-lg shadow-glow-silver/20 mt-2" />
-                  </Link>
-
-                  {/* First place */}
-                  <Link to={`/player/${players[0].username}`} className="text-center animate-fade-in cursor-pointer group">
-                    <div className="w-32 h-32 mx-auto mb-3 rounded-full border-4 border-glow-gold overflow-hidden bg-gradient-to-br from-glow-gold/30 to-glow-gold/60 glow-gold group-hover:scale-105 transition-transform">
-                      {players[0].avatarUrl ? (
-                        <img src={players[0].avatarUrl} alt={players[0].displayName || players[0].username} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-foreground">
-                          {(players[0].displayName || players[0].username).charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <Trophy className="w-8 h-8 mx-auto text-glow-gold mb-1" />
-                    <div className="font-display font-bold text-lg text-foreground group-hover:text-primary transition-colors">{players[0].displayName || players[0].username}</div>
-                    <div className="font-mono text-primary text-lg">{players[0].totalPoints} pts</div>
-                    <div className="w-32 h-32 bg-gradient-to-t from-glow-gold/70 via-glow-gold/40 to-glow-gold/10 rounded-t-2xl border-t-2 border-glow-gold/60 shadow-lg shadow-glow-gold/20 mt-2" />
-                  </Link>
-
-                  {/* Third place */}
-                  <Link to={`/player/${players[2].username}`} className="text-center animate-fade-in cursor-pointer group" style={{ animationDelay: "200ms" }}>
-                    <div className="w-20 h-20 mx-auto mb-3 rounded-full border-4 border-glow-bronze overflow-hidden bg-gradient-to-br from-glow-bronze/30 to-glow-bronze/60 group-hover:scale-105 transition-transform">
-                      {players[2].avatarUrl ? (
-                        <img src={players[2].avatarUrl} alt={players[2].displayName || players[2].username} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-foreground">
-                          {(players[2].displayName || players[2].username).charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <Medal className="w-5 h-5 mx-auto text-glow-bronze mb-1" />
-                    <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{players[2].displayName || players[2].username}</div>
-                    <div className="font-mono text-sm text-primary">{players[2].totalPoints} pts</div>
-                    <div className="w-20 h-16 bg-gradient-to-t from-glow-bronze/70 via-glow-bronze/40 to-glow-bronze/10 rounded-t-2xl border-t-2 border-glow-bronze/60 shadow-lg shadow-glow-bronze/20 mt-2" />
-                  </Link>
+                  <PodiumPlace
+                    rank={2}
+                    href={`/player/${players[1].username}`}
+                    avatarUrl={players[1].avatarUrl}
+                    name={players[1].displayName || players[1].username}
+                    metric={<>{players[1].totalPoints} pts</>}
+                    delay={100}
+                  />
+                  <PodiumPlace
+                    rank={1}
+                    href={`/player/${players[0].username}`}
+                    avatarUrl={players[0].avatarUrl}
+                    name={players[0].displayName || players[0].username}
+                    metric={<span className="text-base">{players[0].totalPoints} pts</span>}
+                  />
+                  <PodiumPlace
+                    rank={3}
+                    href={`/player/${players[2].username}`}
+                    avatarUrl={players[2].avatarUrl}
+                    name={players[2].displayName || players[2].username}
+                    metric={<>{players[2].totalPoints} pts</>}
+                    delay={200}
+                  />
                 </div>
               )}
 
@@ -594,56 +645,29 @@ export default function LeaderboardPage() {
               {/* Top 3 Podium for Extra Points */}
               {!loadingExtraPoints && extraPointsPlayers.length >= 3 && !searchQuery && (
                 <div className="hidden md:flex items-end justify-center gap-4 mb-8">
-                  {/* Second place */}
-                  <Link to={`/player/${extraPointsPlayers[1].username}`} className="text-center animate-fade-in cursor-pointer group" style={{ animationDelay: "100ms" }}>
-                    <div className="w-24 h-24 mx-auto mb-3 rounded-full border-4 border-glow-silver overflow-hidden bg-gradient-to-br from-glow-silver/30 to-glow-silver/60 group-hover:scale-105 transition-transform">
-                      {extraPointsPlayers[1].avatar_url ? (
-                        <img src={extraPointsPlayers[1].avatar_url} alt={extraPointsPlayers[1].display_name || extraPointsPlayers[1].username} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-foreground">
-                          {(extraPointsPlayers[1].display_name || extraPointsPlayers[1].username).charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <Medal className="w-6 h-6 mx-auto text-glow-silver mb-1" />
-                    <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{extraPointsPlayers[1].display_name || extraPointsPlayers[1].username}</div>
-                    <div className="font-mono text-sm text-accent flex items-center justify-center gap-1"><Star className="w-3 h-3" />{extraPointsPlayers[1].extra_points} pts</div>
-                    <div className="w-24 h-24 bg-gradient-to-t from-glow-silver/70 via-glow-silver/40 to-glow-silver/10 rounded-t-2xl border-t-2 border-glow-silver/60 shadow-lg shadow-glow-silver/20 mt-2" />
-                  </Link>
-
-                  {/* First place */}
-                  <Link to={`/player/${extraPointsPlayers[0].username}`} className="text-center animate-fade-in cursor-pointer group">
-                    <div className="w-32 h-32 mx-auto mb-3 rounded-full border-4 border-glow-gold glow-gold overflow-hidden bg-gradient-to-br from-glow-gold/30 to-glow-gold/60 group-hover:scale-105 transition-transform">
-                      {extraPointsPlayers[0].avatar_url ? (
-                        <img src={extraPointsPlayers[0].avatar_url} alt={extraPointsPlayers[0].display_name || extraPointsPlayers[0].username} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-foreground">
-                          {(extraPointsPlayers[0].display_name || extraPointsPlayers[0].username).charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <Crown className="w-8 h-8 mx-auto text-glow-gold mb-1" />
-                    <div className="font-display font-bold text-lg text-foreground group-hover:text-primary transition-colors">{extraPointsPlayers[0].display_name || extraPointsPlayers[0].username}</div>
-                    <div className="font-mono text-accent flex items-center justify-center gap-1"><Star className="w-4 h-4" />{extraPointsPlayers[0].extra_points} pts</div>
-                    <div className="w-24 h-32 bg-gradient-to-t from-glow-gold/70 via-glow-gold/40 to-glow-gold/10 rounded-t-2xl border-t-2 border-glow-gold/60 shadow-lg shadow-glow-gold/20 mt-2" />
-                  </Link>
-
-                  {/* Third place */}
-                  <Link to={`/player/${extraPointsPlayers[2].username}`} className="text-center animate-fade-in cursor-pointer group" style={{ animationDelay: "200ms" }}>
-                    <div className="w-20 h-20 mx-auto mb-3 rounded-full border-4 border-glow-bronze overflow-hidden bg-gradient-to-br from-glow-bronze/30 to-glow-bronze/60 group-hover:scale-105 transition-transform">
-                      {extraPointsPlayers[2].avatar_url ? (
-                        <img src={extraPointsPlayers[2].avatar_url} alt={extraPointsPlayers[2].display_name || extraPointsPlayers[2].username} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-foreground">
-                          {(extraPointsPlayers[2].display_name || extraPointsPlayers[2].username).charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <Medal className="w-5 h-5 mx-auto text-glow-bronze mb-1" />
-                    <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{extraPointsPlayers[2].display_name || extraPointsPlayers[2].username}</div>
-                    <div className="font-mono text-sm text-accent flex items-center justify-center gap-1"><Star className="w-3 h-3" />{extraPointsPlayers[2].extra_points} pts</div>
-                    <div className="w-24 h-16 bg-gradient-to-t from-glow-bronze/70 via-glow-bronze/40 to-glow-bronze/10 rounded-t-2xl border-t-2 border-glow-bronze/60 shadow-lg shadow-glow-bronze/20 mt-2" />
-                  </Link>
+                  <PodiumPlace
+                    rank={2}
+                    href={`/player/${extraPointsPlayers[1].username}`}
+                    avatarUrl={extraPointsPlayers[1].avatar_url}
+                    name={extraPointsPlayers[1].display_name || extraPointsPlayers[1].username}
+                    metric={<span className="text-accent flex items-center gap-1"><Star className="w-3 h-3" />{extraPointsPlayers[1].extra_points} pts</span>}
+                    delay={100}
+                  />
+                  <PodiumPlace
+                    rank={1}
+                    href={`/player/${extraPointsPlayers[0].username}`}
+                    avatarUrl={extraPointsPlayers[0].avatar_url}
+                    name={extraPointsPlayers[0].display_name || extraPointsPlayers[0].username}
+                    metric={<span className="text-accent text-base flex items-center gap-1"><Star className="w-4 h-4" />{extraPointsPlayers[0].extra_points} pts</span>}
+                  />
+                  <PodiumPlace
+                    rank={3}
+                    href={`/player/${extraPointsPlayers[2].username}`}
+                    avatarUrl={extraPointsPlayers[2].avatar_url}
+                    name={extraPointsPlayers[2].display_name || extraPointsPlayers[2].username}
+                    metric={<span className="text-accent flex items-center gap-1"><Star className="w-3 h-3" />{extraPointsPlayers[2].extra_points} pts</span>}
+                    delay={200}
+                  />
                 </div>
               )}
 
@@ -737,40 +761,28 @@ export default function LeaderboardPage() {
                       {[1, 0, 2].map((podiumIndex) => {
                         const creator = filteredCreators[podiumIndex];
                         if (!creator) return null;
-                        const rank = podiumIndex === 1 ? 2 : podiumIndex === 0 ? 1 : 3;
-                        const { color, bg } = getRankBadge(rank);
-                        const size = rank === 1 ? "w-32 h-32" : rank === 2 ? "w-24 h-24" : "w-20 h-20";
-                        const pedestal = rank === 1 ? "h-32" : rank === 2 ? "h-24" : "h-16";
-                        
+                        const rank = (podiumIndex === 1 ? 2 : podiumIndex === 0 ? 1 : 3) as 1 | 2 | 3;
+
                         return (
-                          <Link
+                          <PodiumPlace
                             key={creator.author}
-                            to={`/player/${creator.author}?view=creator`}
-                            className="text-center animate-fade-in cursor-pointer group"
-                            style={{ animationDelay: `${podiumIndex * 100}ms` }}
-                          >
-                            <div className={`${size} mx-auto mb-3 rounded-full border-4 ${rank === 1 ? "border-glow-gold glow-gold" : rank === 2 ? "border-glow-silver" : "border-glow-bronze"} overflow-hidden ${bg} group-hover:scale-105 transition-transform`}>
-                              {creator.avatarUrl ? (
-                                <img src={creator.avatarUrl} alt={creator.author} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Hammer className={`w-1/2 h-1/2 ${color}`} />
-                                </div>
-                              )}
-                            </div>
-                            {rank === 1 && <Crown className="w-8 h-8 mx-auto text-glow-gold mb-1" />}
-                            {rank === 2 && <Medal className="w-6 h-6 mx-auto text-glow-silver mb-1" />}
-                            {rank === 3 && <Medal className="w-5 h-5 mx-auto text-glow-bronze mb-1" />}
-                            <div className="font-display font-bold text-foreground group-hover:text-primary transition-colors">{creator.author}</div>
-                            <div className="font-mono text-sm text-accent flex items-center justify-center gap-1">
-                              <Hammer className="w-3 h-3" />
-                              {creator.creatorPoints.toFixed(1)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {creator.levelCount} levels{creator.ratedLevelCount > 0 ? ` · ⭐ ${creator.avgRating.toFixed(1)}` : ""}
-                            </div>
-                            <div className={`w-24 ${pedestal} ${rank === 1 ? "bg-gradient-to-t from-glow-gold/70 via-glow-gold/40 to-glow-gold/10 border-glow-gold/60 shadow-glow-gold/20" : rank === 2 ? "bg-gradient-to-t from-glow-silver/70 via-glow-silver/40 to-glow-silver/10 border-glow-silver/60 shadow-glow-silver/20" : "bg-gradient-to-t from-glow-bronze/70 via-glow-bronze/40 to-glow-bronze/10 border-glow-bronze/60 shadow-glow-bronze/20"} rounded-t-2xl border-t-2 shadow-lg mt-2`} />
-                          </Link>
+                            rank={rank}
+                            href={`/player/${creator.author}?view=creator`}
+                            avatarUrl={creator.avatarUrl}
+                            name={creator.author}
+                            metric={
+                              <span className="text-accent flex items-center gap-1">
+                                <Hammer className="w-3 h-3" />
+                                {creator.creatorPoints.toFixed(1)}
+                              </span>
+                            }
+                            sub={
+                              <>
+                                {creator.levelCount} levels{creator.ratedLevelCount > 0 ? ` · ⭐ ${creator.avgRating.toFixed(1)}` : ""}
+                              </>
+                            }
+                            delay={podiumIndex * 100}
+                          />
                         );
                       })}
                     </div>

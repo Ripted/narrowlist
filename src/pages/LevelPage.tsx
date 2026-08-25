@@ -372,8 +372,8 @@ export default function LevelPage() {
   return (
     <div className="min-h-screen bg-background">
       <PageMeta
-        title={level.name}
-        description={`#${rank} on the ${isFromExtendedList ? "Extra" : "Main"} List by ${level.author} — ${points} pts. View completions, records, and leaderboard on Narrowlist.`}
+        title={level.levelInfo.name}
+        description={`#${rank} on the ${isFromExtendedList ? "Extra" : "Main"} List by ${level.levelInfo.author} — ${points} pts. View completions, records, and leaderboard on Narrowlist.`}
         image={thumbnailUrl}
       />
       <Navbar />

@@ -3,6 +3,7 @@ import { LevelDetails, formatTime } from "@/lib/api";
 import { getPointsForRank } from "@/config/levels";
 import { Trophy, User, Clock, Heart, Copy, Play, Shield, Check, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { WatchlistButton } from "@/components/WatchlistButton";
 import { useToast } from "@/hooks/use-toast";
 
 interface LevelCardProps {
@@ -12,6 +13,7 @@ interface LevelCardProps {
   verifierUsername?: string;
   isCompleted?: boolean;
   showCompletionStatus?: boolean;
+  levelDbId?: string;
   // Deprecated community fields (still accepted for backward compatibility, ignored).
   tags?: any[];
   avgRating?: number;
@@ -21,7 +23,7 @@ interface LevelCardProps {
   victorCount?: number;
 }
 
-export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompleted, showCompletionStatus, victorCount }: LevelCardProps) {
+export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompleted, showCompletionStatus, levelDbId, victorCount }: LevelCardProps) {
   const { toast } = useToast();
   const points = getPointsForRank(rank);
   const { levelInfo, worldRecord } = level;
@@ -105,6 +107,15 @@ export function LevelCard({ level, rank, thumbnailUrl, verifierUsername, isCompl
 
           {/* Action buttons - appear on hover */}
           <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {levelDbId && (
+              <WatchlistButton
+                levelDbId={levelDbId}
+                levelName={levelInfo.name}
+                size="icon"
+                variant="secondary"
+                className="h-8 w-8 p-0 bg-background/90 backdrop-blur-sm hover:bg-background"
+              />
+            )}
             <Button
               size="sm"
               variant="secondary"

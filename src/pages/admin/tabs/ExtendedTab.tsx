@@ -7,6 +7,11 @@ import { ITEMS_PER_PAGE } from "../utils";
 import type { Level } from "../types";
 import type { AdminState } from "../useAdminState";
 
+// HTML5 drag & drop doesn't work on touch and draggable rows block scroll
+// gestures there; mobile reordering uses the arrow buttons instead.
+const isTouchDevice = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
+
 export function ExtendedTab({ a }: { a: AdminState }) {
   const {
     addExtendedLevel,
@@ -140,7 +145,7 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                       return (
                         <div
                           key={level.id}
-                          draggable={!extendedSearchQuery}
+                          draggable={!extendedSearchQuery && !isTouchDevice}
                           onDragStart={() => handleExtendedDragStart(realIndex)}
                           onDragOver={(e) => handleExtendedDragOver(e, realIndex)}
                           onDrop={() => handleExtendedDrop(realIndex)}
@@ -210,7 +215,7 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                                       <Image className="w-4 h-4 text-muted-foreground" />
                                     </div>
                                   )}
-                                  <div className="absolute inset-0 bg-background/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
+                                  <div className="absolute inset-0 bg-background/50 opacity-100 sm:bg-background/60 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center gap-1 transition-opacity">
                                     <button
                                       onClick={() => document.getElementById(`extra-thumb-upload-${level.id}`)?.click()}
                                       className="p-1 rounded bg-primary/80 hover:bg-primary"
@@ -248,7 +253,7 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                               size="icon"
                               onClick={() => moveExtendedLevel(realIndex, "up")}
                               disabled={realIndex === 0 || !!extendedSearchQuery.trim()}
-                              className="h-8 w-8 hidden sm:flex"
+                              className="h-8 w-8"
                               title={extendedSearchQuery.trim() ? "Clear search to reorder" : "Move up"}
                             >
                               <ChevronUp className="w-4 h-4" />
@@ -258,7 +263,7 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                               size="icon"
                               onClick={() => moveExtendedLevel(realIndex, "down")}
                               disabled={realIndex === extendedLevels.length - 1 || !!extendedSearchQuery.trim()}
-                              className="h-8 w-8 hidden sm:flex"
+                              className="h-8 w-8"
                               title={extendedSearchQuery.trim() ? "Clear search to reorder" : "Move down"}
                             >
                               <ChevronDown className="w-4 h-4" />
@@ -280,7 +285,7 @@ export function ExtendedTab({ a }: { a: AdminState }) {
                               title="Move to Main List"
                             >
                               <ArrowUpDown className="w-3 h-3" />
-                              Main
+                              <span className="hidden sm:inline">Main</span>
                             </Button>
                             <Button
                               variant="ghost"

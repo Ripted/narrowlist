@@ -1,5 +1,6 @@
 import { Bookmark, BookmarkCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -9,14 +10,16 @@ interface WatchlistButtonProps {
   levelDbId: string;
   levelName?: string;
   size?: "sm" | "default" | "lg" | "icon";
-  variant?: "outline" | "ghost" | "default";
+  variant?: "outline" | "ghost" | "default" | "secondary";
+  className?: string;
 }
 
 export function WatchlistButton({ 
   levelDbId, 
   levelName,
   size = "sm",
-  variant = "outline"
+  variant = "outline",
+  className = ""
 }: WatchlistButtonProps) {
   const { user } = useAuth();
   const { isInWatchlist, toggleWatchlist } = useWatchlist();
@@ -72,7 +75,7 @@ export function WatchlistButton({
       variant={inWatchlist ? "default" : variant}
       size={size}
       onClick={handleToggle}
-      className={`gap-2 ${inWatchlist ? "bg-primary" : ""}`}
+      className={cn("gap-2", inWatchlist && "bg-primary", className)}
       title={inWatchlist ? "Remove from watchlist" : "Add to watchlist"}
     >
       {inWatchlist ? (
