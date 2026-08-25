@@ -1,25 +1,33 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Hash, User as UserIcon } from "lucide-react";
+import { Hash, User as UserIcon, Users } from "lucide-react";
 import { JamRating, JamScore, JamSubmission } from "@/hooks/useJam";
 import { JamStarRating } from "./JamStarRating";
 import { JAM_RATING_CATEGORIES } from "@/config/events";
 
 interface JamSubmissionCardProps {
   submission: JamSubmission;
+  jamSlug: string;
+  collaboratorCount?: number;
   score?: JamScore | null;
   showScore?: boolean;
   footer?: React.ReactNode;
 }
 
-export function JamSubmissionCard({ submission, score, showScore, footer }: JamSubmissionCardProps) {
+export function JamSubmissionCard({ submission, jamSlug, collaboratorCount, score, showScore, footer }: JamSubmissionCardProps) {
   return (
     <Card className="flex flex-col gap-3 p-5 bg-card/60 border-border/60">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-semibold text-lg leading-tight truncate">{submission.level_name}</h3>
+          <Link
+            to={`/events/${jamSlug}/level/${submission.slug}`}
+            className="font-semibold text-lg leading-tight truncate block hover:text-primary transition-colors"
+          >
+            {submission.level_name}
+          </Link>
           <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
             <UserIcon className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">{submission.username ?? submission.creator ?? "Unknown"}</span>
@@ -41,16 +49,11 @@ export function JamSubmissionCard({ submission, score, showScore, footer }: JamS
           <Hash className="w-3 h-3" />
           ID {submission.level_id}
         </span>
-        {submission.video_url && (
-          <a
-            href={submission.video_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-primary hover:underline"
-          >
-            <ExternalLink className="w-3 h-3" />
-            Watch video
-          </a>
+        {!!collaboratorCount && (
+          <span className="inline-flex items-center gap-1">
+            <Users className="w-3 h-3" />
+            {collaboratorCount} collaborator{collaboratorCount === 1 ? "" : "s"}
+          </span>
         )}
       </div>
 

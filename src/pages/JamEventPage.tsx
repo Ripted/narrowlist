@@ -11,7 +11,6 @@ import {
   ScrollText,
   Send,
   Sparkles,
-  Trash2,
   Trophy,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -20,16 +19,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { findJamBySlug, getJamPhase, getRevealedTheme, JamEventConfig, JamPhase, JAM_EVENTS } from "@/config/events";
+import { findJamBySlug, getJamPhase, getRevealedTheme, JamEventConfig, JamPhase } from "@/config/events";
 import { JamCountdown } from "@/components/jam/JamCountdown";
 import { useNow } from "@/hooks/useNow";
 import { JamSubmissionForm } from "@/components/jam/JamSubmissionForm";
 import { JamVotingSection } from "@/components/jam/JamVotingSection";
 import { JamResults } from "@/components/jam/JamResults";
 import { JamSubmissionCard } from "@/components/jam/JamSubmissionCard";
-import { computeJamScores, useDeleteJamEntry, useJamRatings, useJamSubmissions } from "@/hooks/useJam";
+import {
+  computeJamScores,
+  JAM_MAX_ENTRIES_PER_USER,
+  useJamCollaborators,
+  useJamRatings,
+  useJamSubmissions,
+} from "@/hooks/useJam";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 
 const formatJamDate = (ts: number) => format(new Date(ts), "EEEE, MMM d yyyy 'at' HH:mm");
 
@@ -180,12 +184,12 @@ export default function JamEventPage() {
   const jam = findJamBySlug(jamSlug);
   const now = useNow(15_000);
   const { user } = useAuth();
-  const { toast } = useToast();
   const [tab, setTab] = useState<JamTab | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   const submissions = useJamSubmissions(jam?.id ?? "");
+  const collaborators = useJamCollaborators(jam?.id ?? "");
   const ratings = useJamRatings(jam?.id ?? "");
-  const deleteEntry = useDeleteJamEntry(jam ?? JAM_EVENTS[0]);
 
   if (!jam) {
     return (
@@ -204,8 +208,13 @@ export default function JamEventPage() {
 
   const phase = getJamPhase(jam, now);
   const entries = submissions.data ?? [];
+  const allCollaborators = collaborators.data ?? [];
   const allRatings = ratings.data ?? [];
-  const mySubmission = entries.find((s) => s.user_id === user?.id) ?? null;
+  const myEntries = entries.filter((s) => s.user_id === user?.id);
+  const collabCountBySubmission = new Map<string, number>();
+  for (const c of allCollaborators) {
+    collabCountBySubmission.set(c.submission_id, (collabCountBySubmission.get(c.submission_id) ?? 0) + 1);
+  }
   const scores = computeJamScores(allRatings);
   const activeTab = tab ?? defaultTabFor(phase);
 
@@ -252,29 +261,40 @@ export default function JamEventPage() {
             {phase === "active" &&
               (user ? (
                 <Card className="p-6 bg-card/40 border-primary/30">
-                  <h2 className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-4">
-                    {mySubmission ? "Your submission" : "Submit your level"}
-                  </h2>
-                  <JamSubmissionForm key={mySubmission?.id ?? "new"} jam={jam} existing={mySubmission} />
-                  {mySubmission && (
-                    <div className="mt-3 pt-3 border-t border-border/50">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive"
-                        disabled={deleteEntry.isPending}
-                        onClick={async () => {
-                          try {
-                            await deleteEntry.mutateAsync(mySubmission.id);
-                            toast({ title: "Submission removed" });
-                          } catch {
-                            toast({ title: "Could not remove submission", variant: "destructive" });
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4 mr-1.5" />
-                        {deleteEntry.isPending ? "Removing..." : "Remove submission"}
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <h2 className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Your entries ({myEntries.length} / {JAM_MAX_ENTRIES_PER_USER})
+                    </h2>
+                    {myEntries.length < JAM_MAX_ENTRIES_PER_USER && !formOpen && (
+                      <Button size="sm" variant="outline" onClick={() => setFormOpen(true)}>
+                        <Send className="w-4 h-4 mr-1.5" />
+                        Submit a level
                       </Button>
+                    )}
+                  </div>
+
+                  {myEntries.length > 0 && (
+                    <ul className="space-y-2 mb-4">
+                      {myEntries.map((entry) => (
+                        <li
+                          key={entry.id}
+                          className="flex items-center justify-between gap-3 rounded-lg border border-border/50 px-4 py-2.5"
+                        >
+                          <Link
+                            to={`/events/${jam.slug}/level/${entry.slug}`}
+                            className="text-sm font-medium hover:text-primary transition-colors truncate"
+                          >
+                            {entry.level_name}
+                          </Link>
+                          <span className="text-xs text-muted-foreground shrink-0">Manage on its page →</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {formOpen && myEntries.length < JAM_MAX_ENTRIES_PER_USER && (
+                    <div className="pt-4 border-t border-border/50">
+                      <JamSubmissionForm jam={jam} onDone={() => setFormOpen(false)} />
                     </div>
                   )}
                 </Card>
@@ -304,11 +324,13 @@ export default function JamEventPage() {
                   <JamSubmissionCard
                     key={submission.id}
                     submission={submission}
+                    jamSlug={jam.slug}
+                    collaboratorCount={collabCountBySubmission.get(submission.id) ?? 0}
                     score={scores.get(submission.id) ?? null}
                     showScore={phase === "ended"}
                     footer={
                       submission.user_id === user?.id ? (
-                        <Badge variant="secondary" className="self-start">Your submission</Badge>
+                        <Badge variant="secondary" className="self-start">Your entry</Badge>
                       ) : undefined
                     }
                   />
@@ -325,7 +347,7 @@ export default function JamEventPage() {
                 </p>
               </Card>
             ) : phase === "voting" ? (
-              <JamVotingSection jam={jam} submissions={entries} ratings={allRatings} />
+              <JamVotingSection jam={jam} submissions={entries} ratings={allRatings} collaborators={allCollaborators} />
             ) : (
               <Card className="p-8 text-center bg-card/40 border-border/60">
                 <p className="text-muted-foreground">Voting has closed — see the final results.</p>
@@ -335,7 +357,7 @@ export default function JamEventPage() {
 
           <TabsContent value="results" className="mt-6">
             {phase === "ended" ? (
-              <JamResults submissions={entries} ratings={allRatings} />
+              <JamResults submissions={entries} ratings={allRatings} collaborators={allCollaborators} jamSlug={jam.slug} />
             ) : (
               <Card className="p-8 text-center bg-card/40 border-border/60">
                 <p className="text-muted-foreground">
