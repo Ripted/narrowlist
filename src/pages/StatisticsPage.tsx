@@ -173,6 +173,45 @@ function RankedRow({
   );
 }
 
+interface ManualRun {
+  profile_id: string | null;
+  level_id: string;
+  list_type: string | null;
+  completed_at: string;
+  completion_time: number | null;
+}
+
+// manual_runs_public is a view with nullable columns; drop rows missing the
+// fields every stat needs.
+async function fetchManualRuns(since?: Date): Promise<ManualRun[]> {
+  let query = supabase
+    .from("manual_runs_public")
+    .select("profile_id, level_id, list_type, completed_at, completion_time");
+  if (since) query = query.gte("completed_at", since.toISOString());
+  const { data } = await query;
+  return (data || []).filter(
+    (r): r is ManualRun => r.level_id !== null && r.completed_at !== null
+  );
+}
+
+// Completions per main-list level, combining API-synced runs and manual runs.
+async function countMainListRuns(): Promise<Map<string, number>> {
+  const [{ data: completions }, manualRuns] = await Promise.all([
+    supabase.from("completions").select("level_id"),
+    fetchManualRuns(),
+  ]);
+
+  const counts = new Map<string, number>();
+  completions?.forEach((c) => {
+    counts.set(c.level_id, (counts.get(c.level_id) || 0) + 1);
+  });
+  manualRuns.forEach((r) => {
+    if (r.list_type === "extra") return;
+    counts.set(r.level_id, (counts.get(r.level_id) || 0) + 1);
+  });
+  return counts;
+}
+
 export default function StatisticsPage() {
   // Fetch total players
   const { data: playersCount = 0 } = useQuery({
@@ -219,25 +258,30 @@ export default function StatisticsPage() {
     },
   });
 
-  // Fetch completions over time (last 30 days)
+  // Fetch completions over time (last 30 days), including manual runs
   const { data: completionsTrend = [] } = useQuery({
     queryKey: ["stats-completions-trend"],
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { data: completions } = await supabase
-        .from("completions")
-        .select("completed_at")
-        .gte("completed_at", thirtyDaysAgo.toISOString())
-        .order("completed_at");
+      const [{ data: completions }, manualRuns] = await Promise.all([
+        supabase
+          .from("completions")
+          .select("completed_at")
+          .gte("completed_at", thirtyDaysAgo.toISOString())
+          .order("completed_at"),
+        fetchManualRuns(thirtyDaysAgo),
+      ]);
 
       // Group by day
       const grouped: { [key: string]: number } = {};
-      completions?.forEach((c) => {
-        const date = new Date(c.completed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const addDay = (completedAt: string) => {
+        const date = new Date(completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
         grouped[date] = (grouped[date] || 0) + 1;
-      });
+      };
+      completions?.forEach((c) => addDay(c.completed_at));
+      manualRuns.forEach((r) => addDay(r.completed_at));
 
       // Generate all dates for last 30 days
       const result: { date: string; completions: number }[] = [];
@@ -289,12 +333,21 @@ export default function StatisticsPage() {
 
       const { data } = await supabase
         .from("level_rank_history")
-        .select("recorded_at")
+        .select("level_id, rank_position, recorded_at")
         .gte("recorded_at", thirtyDaysAgo.toISOString());
+
+      // Dedupe identical rows — a legacy duplicate trigger wrote every change twice
+      const seen = new Set<string>();
+      const rows = (data || []).filter((r) => {
+        const key = `${r.level_id}:${r.recorded_at}:${r.rank_position}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
       // Group by day to count rank changes
       const grouped: { [key: string]: number } = {};
-      data?.forEach((r) => {
+      rows.forEach((r) => {
         const date = new Date(r.recorded_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
         grouped[date] = (grouped[date] || 0) + 1;
       });
@@ -317,9 +370,13 @@ export default function StatisticsPage() {
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      const [newCompletions, newProfiles] = await Promise.all([
+      const [newCompletions, newManualRuns, newProfiles] = await Promise.all([
         supabase
           .from("completions")
+          .select("*", { count: "exact", head: true })
+          .gte("completed_at", sevenDaysAgo.toISOString()),
+        supabase
+          .from("manual_runs_public")
           .select("*", { count: "exact", head: true })
           .gte("completed_at", sevenDaysAgo.toISOString()),
         supabase
@@ -329,7 +386,7 @@ export default function StatisticsPage() {
       ]);
 
       return {
-        completions: newCompletions.count || 0,
+        completions: (newCompletions.count || 0) + (newManualRuns.count || 0),
         newPlayers: newProfiles.count || 0,
       };
     },
@@ -339,33 +396,21 @@ export default function StatisticsPage() {
   const { data: mostCompletedLevels = [] } = useQuery({
     queryKey: ["stats-most-completed"],
     queryFn: async () => {
-      const { data: completions } = await supabase
-        .from("completions")
-        .select("level_id");
-      
-      const { data: levels } = await supabase
-        .from("levels")
-        .select("id, name, rank_position");
-      
-      if (!completions || !levels) return [];
-      
-      // Count completions per level
-      const counts: { [key: string]: number } = {};
-      completions.forEach((c) => {
-        counts[c.level_id] = (counts[c.level_id] || 0) + 1;
-      });
-      
-      // Map to level names
-      const result = levels
+      const [counts, { data: levels }] = await Promise.all([
+        countMainListRuns(),
+        supabase.from("levels").select("id, name, rank_position"),
+      ]);
+
+      if (!levels) return [];
+
+      return levels
         .map((level) => ({
           name: level.name || `#${level.rank_position}`,
           rank: level.rank_position,
-          completions: counts[level.id] || 0,
+          completions: counts.get(level.id) || 0,
         }))
         .sort((a, b) => b.completions - a.completions)
         .slice(0, 8);
-      
-      return result;
     },
   });
 
@@ -373,26 +418,18 @@ export default function StatisticsPage() {
   const { data: hardestLevels = [] } = useQuery({
     queryKey: ["stats-hardest-levels"],
     queryFn: async () => {
-      const { data: completions } = await supabase
-        .from("completions")
-        .select("level_id");
+      const [counts, { data: levels }] = await Promise.all([
+        countMainListRuns(),
+        supabase.from("levels").select("id, name, rank_position"),
+      ]);
 
-      const { data: levels } = await supabase
-        .from("levels")
-        .select("id, name, rank_position");
-
-      if (!completions || !levels) return [];
-
-      const counts: { [key: string]: number } = {};
-      completions.forEach((c) => {
-        counts[c.level_id] = (counts[c.level_id] || 0) + 1;
-      });
+      if (!levels) return [];
 
       return levels
         .map((level) => ({
           name: level.name || `#${level.rank_position}`,
           rank: level.rank_position,
-          completions: counts[level.id] || 0,
+          completions: counts.get(level.id) || 0,
         }))
         .sort((a, b) => a.completions - b.completions || a.rank - b.rank)
         .slice(0, 10);
@@ -404,16 +441,13 @@ export default function StatisticsPage() {
   const { data: completionByTier = [] } = useQuery({
     queryKey: ["stats-completion-by-tier"],
     queryFn: async () => {
-      const { data: levels } = await supabase
-        .from("levels")
-        .select("id, rank_position");
-      
-      const { data: completions } = await supabase
-        .from("completions")
-        .select("level_id");
-      
-      if (!levels || !completions) return [];
-      
+      const [counts, { data: levels }] = await Promise.all([
+        countMainListRuns(),
+        supabase.from("levels").select("id, rank_position"),
+      ]);
+
+      if (!levels) return [];
+
       // Define tiers
       const tiers = [
         { name: "Top 5", min: 1, max: 5 },
@@ -422,14 +456,17 @@ export default function StatisticsPage() {
         { name: "#26-50", min: 26, max: 50 },
         { name: "#51+", min: 51, max: 999 },
       ];
-      
+
       return tiers.map((tier) => {
-        const tierLevelIds = levels
-          .filter((l) => l.rank_position >= tier.min && l.rank_position <= tier.max)
-          .map((l) => l.id);
-        
-        const tierCompletions = completions.filter((c) => tierLevelIds.includes(c.level_id)).length;
-        const avgCompletions = tierLevelIds.length > 0 ? Math.round(tierCompletions / tierLevelIds.length) : 0;
+        const tierLevels = levels.filter(
+          (l) => l.rank_position >= tier.min && l.rank_position <= tier.max
+        );
+
+        const tierCompletions = tierLevels.reduce(
+          (sum, l) => sum + (counts.get(l.id) || 0),
+          0
+        );
+        const avgCompletions = tierLevels.length > 0 ? Math.round(tierCompletions / tierLevels.length) : 0;
         
         return {
           tier: tier.name,
@@ -440,44 +477,40 @@ export default function StatisticsPage() {
     },
   });
 
-  // Fetch Main vs Extra completion comparison over time
+  // Fetch Main vs Extra completion comparison over time.
+  // Main list runs live in `completions`, extra list runs in `extra_completions`;
+  // manual runs are split by their list_type.
   const { data: mainVsExtraTrend = [] } = useQuery({
     queryKey: ["stats-main-vs-extra-trend"],
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      // Get main level IDs
-      const { data: mainLevels } = await supabase
-        .from("levels")
-        .select("id");
-      const mainLevelIds = new Set((mainLevels || []).map(l => l.id));
-
-      // Get extra level IDs
-      const { data: extraLevels } = await supabase
-        .from("extended_levels")
-        .select("id");
-      const extraLevelIds = new Set((extraLevels || []).map(l => l.id));
-
-      // Get completions
-      const { data: completions } = await supabase
-        .from("completions")
-        .select("completed_at, level_id")
-        .gte("completed_at", thirtyDaysAgo.toISOString())
-        .order("completed_at");
+      const [{ data: completions }, { data: extraCompletions }, manualRuns] = await Promise.all([
+        supabase
+          .from("completions")
+          .select("completed_at")
+          .gte("completed_at", thirtyDaysAgo.toISOString()),
+        supabase
+          .from("extra_completions")
+          .select("completed_at")
+          .gte("completed_at", thirtyDaysAgo.toISOString()),
+        fetchManualRuns(thirtyDaysAgo),
+      ]);
 
       // Group by day and list type
       const mainGrouped: { [key: string]: number } = {};
       const extraGrouped: { [key: string]: number } = {};
-      
-      completions?.forEach((c) => {
-        const date = new Date(c.completed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-        if (mainLevelIds.has(c.level_id)) {
-          mainGrouped[date] = (mainGrouped[date] || 0) + 1;
-        } else if (extraLevelIds.has(c.level_id)) {
-          extraGrouped[date] = (extraGrouped[date] || 0) + 1;
-        }
-      });
+
+      const addDay = (grouped: { [key: string]: number }, completedAt: string) => {
+        const date = new Date(completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        grouped[date] = (grouped[date] || 0) + 1;
+      };
+      completions?.forEach((c) => addDay(mainGrouped, c.completed_at));
+      extraCompletions?.forEach((c) => addDay(extraGrouped, c.completed_at));
+      manualRuns.forEach((r) =>
+        addDay(r.list_type === "extra" ? extraGrouped : mainGrouped, r.completed_at)
+      );
 
       // Generate all dates for last 30 days
       const result: { date: string; main: number; extra: number }[] = [];
@@ -528,12 +561,18 @@ export default function StatisticsPage() {
     queryFn: async () => {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - 30);
-      const [{ data: comps }, { data: profiles }] = await Promise.all([
+      const [{ data: comps }, { data: extraComps }, manualRuns, { data: profiles }] = await Promise.all([
         supabase.from("completions").select("profile_id, completed_at").gte("completed_at", cutoff.toISOString()),
+        supabase.from("extra_completions").select("profile_id, completed_at").gte("completed_at", cutoff.toISOString()),
+        fetchManualRuns(cutoff),
         supabase.from("profiles").select("id, username, display_name, avatar_url"),
       ]);
       const counts: Record<string, number> = {};
       comps?.forEach(c => { counts[c.profile_id] = (counts[c.profile_id] || 0) + 1; });
+      extraComps?.forEach(c => { counts[c.profile_id] = (counts[c.profile_id] || 0) + 1; });
+      manualRuns.forEach(r => {
+        if (r.profile_id) counts[r.profile_id] = (counts[r.profile_id] || 0) + 1;
+      });
       const profileMap = new Map((profiles || []).map(p => [p.id, p]));
       return Object.entries(counts)
         .map(([id, count]) => ({ profile: profileMap.get(id), count }))
@@ -561,32 +600,67 @@ export default function StatisticsPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Recent records (last 10 fastest completions, last 7 days)
+  // Recent records (latest completions from the last 7 days, incl. manual runs)
   const { data: recentRecords = [] } = useQuery({
     queryKey: ["stats-recent-records"],
     queryFn: async () => {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - 7);
-      const { data } = await supabase
-        .from("completions")
-        .select("id, profile_id, level_id, completion_time, completed_at")
-        .gte("completed_at", cutoff.toISOString())
-        .order("completed_at", { ascending: false })
-        .limit(10);
-      if (!data || data.length === 0) return [];
-      const profileIds = [...new Set(data.map(d => d.profile_id))];
-      const levelIds = [...new Set(data.map(d => d.level_id))];
-      const [{ data: profiles }, { data: levels }] = await Promise.all([
-        supabase.from("profiles").select("id, username, display_name").in("id", profileIds),
-        supabase.from("levels").select("id, name, rank_position").in("id", levelIds),
+      const [{ data: apiRuns }, manualRuns] = await Promise.all([
+        supabase
+          .from("completions")
+          .select("id, profile_id, level_id, completion_time, completed_at")
+          .gte("completed_at", cutoff.toISOString())
+          .order("completed_at", { ascending: false })
+          .limit(10),
+        fetchManualRuns(cutoff),
       ]);
-      const pm = new Map((profiles || []).map(p => [p.id, p]));
-      const lm = new Map((levels || []).map(l => [l.id, l]));
-      return data.map(d => ({
-        ...d,
-        profile: pm.get(d.profile_id),
-        level: lm.get(d.level_id),
-      })).filter(r => r.profile && r.level);
+
+      const manual = manualRuns
+        .filter((r) => r.profile_id !== null && r.completion_time !== null)
+        .map((r) => ({
+          id: `manual-${r.profile_id}-${r.level_id}-${r.completed_at}`,
+          profile_id: r.profile_id as string,
+          level_id: r.level_id,
+          completion_time: r.completion_time as number,
+          completed_at: r.completed_at,
+          list_type: r.list_type,
+        }));
+
+      const merged = [
+        ...(apiRuns || []).map((d) => ({ ...d, list_type: "main" as string | null })),
+        ...manual,
+      ]
+        .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
+        .slice(0, 10);
+
+      if (merged.length === 0) return [];
+
+      const profileIds = [...new Set(merged.map((d) => d.profile_id))];
+      const mainLevelIds = [...new Set(merged.filter((d) => d.list_type !== "extra").map((d) => d.level_id))];
+      const extraLevelIds = [...new Set(merged.filter((d) => d.list_type === "extra").map((d) => d.level_id))];
+
+      const [{ data: profiles }, { data: mainLevels }, { data: extraLevels }] = await Promise.all([
+        supabase.from("profiles").select("id, username, display_name").in("id", profileIds),
+        mainLevelIds.length > 0
+          ? supabase.from("levels").select("id, name, rank_position").in("id", mainLevelIds)
+          : Promise.resolve({ data: [] }),
+        extraLevelIds.length > 0
+          ? supabase.from("extended_levels").select("id, name, rank_position").in("id", extraLevelIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const pm = new Map((profiles || []).map((p) => [p.id, p]));
+      const mainLm = new Map((mainLevels || []).map((l) => [l.id, l]));
+      const extraLm = new Map((extraLevels || []).map((l) => [l.id, l]));
+
+      return merged
+        .map((d) => ({
+          ...d,
+          profile: pm.get(d.profile_id),
+          level: (d.list_type === "extra" ? extraLm : mainLm).get(d.level_id),
+        }))
+        .filter((r) => r.profile && r.level);
     },
     staleTime: 60_000,
   });

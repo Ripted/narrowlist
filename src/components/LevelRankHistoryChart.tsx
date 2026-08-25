@@ -59,7 +59,15 @@ export function LevelRankHistoryChart({ levelDbId }: LevelRankHistoryChartProps)
         .eq("level_id", levelDbId)
         .order("recorded_at", { ascending: true });
 
-      const rows = (data as unknown as RankHistoryEntry[]) || [];
+      // Dedupe identical rows — a legacy duplicate DB trigger wrote every
+      // change twice, and older data still contains those duplicates.
+      const seen = new Set<string>();
+      const rows = ((data as unknown as RankHistoryEntry[]) || []).filter((r) => {
+        const key = `${r.recorded_at}:${r.rank_position}:${r.previous_rank ?? "null"}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
       if (error || rows.length === 0) {
         setHistory([]);
@@ -78,8 +86,15 @@ export function LevelRankHistoryChart({ levelDbId }: LevelRankHistoryChartProps)
         .select("level_id, recorded_at, rank_position, previous_rank")
         .in("recorded_at", timestamps);
 
+      const siblingSeen = new Set<string>();
       const siblings = ((siblingsRaw as unknown as (RankHistoryEntry & { level_id: string })[]) || [])
-        .filter((s) => s.level_id !== levelDbId);
+        .filter((s) => s.level_id !== levelDbId)
+        .filter((s) => {
+          const key = `${s.level_id}:${s.recorded_at}:${s.rank_position}:${s.previous_rank ?? "null"}`;
+          if (siblingSeen.has(key)) return false;
+          siblingSeen.add(key);
+          return true;
+        });
 
       // Levels that were added (inserted) at those exact moments also push levels down.
       const { data: addedLevels } = await supabase
