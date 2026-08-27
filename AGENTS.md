@@ -1,9 +1,10 @@
-# Narrowlist — repo notes
+# Narrowlist — old-site takeover page
 
-- Stack: Vite + React 18 + TypeScript + Tailwind + shadcn/ui + Supabase (auth, Postgres with RLS) + TanStack Query. Package manager: npm (bun.lock also present).
-- `npm run build` only runs `vite build` — it does NOT typecheck. Run `npx tsc --noEmit -p tsconfig.app.json` separately.
-- Pre-existing tsc errors (unrelated to new work): `src/pages/LevelPage.tsx` (~line 375), `src/pages/admin/tabs/RatersTab.tsx` (~line 81).
-- Database changes go in `supabase/migrations/<timestamp>_<name>.sql`; apply them to the Supabase project separately (no local DB here). Conventions: RLS enabled on every table, `public.has_role(auth.uid(), 'admin'::app_role)` for admin checks, `update_updated_at_column()` trigger for `updated_at`.
-- After adding tables, hand-edit `src/integrations/supabase/types.ts` (generated-style, alphabetically ordered tables) so typed queries compile.
-- Events/jams are hardcoded in `src/config/events.ts` (no admin page). The SQL time windows in the jam migration (`jam_submission_open`, `jam_voting_open`) must stay in sync with that config.
-- Dev server: `server.allowedHosts` in `vite.config.ts` includes `.prod-runtime.all-hands.dev` so the work-host previews work. The real brand logo is `src/assets/logo.png` (also used by Navbar) — use it instead of generic icons for branding.
+- This repo (`Ripted/narrowlist`) is the OLD site (legacy-narrowlist.lovable.app). It is no longer the real app.
+- The real app now lives at `narrowlist.net`, hosted from the separate private repo `sqmyou/Narrowlist`.
+- This repo was gutted: the entire old app (pages, components, hooks, config, integrations, supabase) was deleted.
+- It now renders ONE static "We have moved." takeover page: a disclaimer + a button linking to `https://narrowlist.net`. All old routes/features are gone.
+- Kept source: `src/main.tsx`, `src/index.css` (the full theme), `src/App.tsx` (the takeover page), `src/assets/logo.png`.
+- To change the redirect target, edit `NEW_SITE_URL` at the top of `src/App.tsx`. To enable auto-redirect, set `AUTO_REDIRECT_SECONDS` there (0 = button only).
+- Theme/CSS lives in `src/index.css` (Tailwind + CSS variables) — keep the same look.
+- Build: `npm run build` (vite). Typecheck separately: `npx tsc --noEmit -p tsconfig.app.json`.

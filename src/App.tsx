@@ -1,94 +1,81 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/hooks/useAuth";
-import { ThemeProvider } from "@/hooks/useTheme";
-import Index from "./pages/Index";
-import LevelPage from "./pages/LevelPage";
-import LeaderboardPage from "./pages/LeaderboardPage";
-import PlayerPage from "./pages/PlayerPage";
-import FutureListPage from "./pages/FutureListPage";
-import FutureLevelPage from "./pages/FutureLevelPage";
-import ExtendedListPage from "./pages/ExtendedListPage";
-import ExtraListPage from "./pages/ExtraListPage";
-import RecentRunsPage from "./pages/RecentRunsPage";
-import ComparePage from "./pages/ComparePage";
-import SubmitLevelPage from "./pages/SubmitLevelPage";
-import GuidePage from "./pages/GuidePage";
-import ThemesPage from "./pages/ThemesPage";
-import StatisticsPage from "./pages/StatisticsPage";
-import AuthPage from "./pages/AuthPage";
-import AdminPage from "./pages/AdminPage";
-import WatchlistPage from "./pages/WatchlistPage";
-import PacksPage from "./pages/PacksPage";
-import HubPage from "./pages/HubPage";
-import EventsPage from "./pages/EventsPage";
-import JamEventPage from "./pages/JamEventPage";
-import JamEntryPage from "./pages/JamEntryPage";
+import { useEffect, useMemo } from "react";
+import logo from "./assets/logo.png";
 
-import LevelRoulettePage from "./pages/LevelRoulettePage";
-import RecentlyAddedPage from "./pages/RecentlyAddedPage";
-import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
-import TermsPage from "./pages/TermsPage";
-import NotFound from "./pages/NotFound";
-import { ScrollToTop } from "@/components/ScrollToTop";
-import { BackToTop } from "@/components/BackToTop";
-import { SiteFooter } from "@/components/SiteFooter";
+const NEW_SITE_URL = "https://narrowlist.net";
 
+// Seconds to wait before automatically redirecting to the new website.
+// Set to 0 to disable auto-redirect (manual button only).
+const AUTO_REDIRECT_SECONDS = 0;
 
-const queryClient = new QueryClient();
+const App = () => {
+  const countdown = useMemo(() => {
+    if (AUTO_REDIRECT_SECONDS <= 0) return null;
+    return new Array(AUTO_REDIRECT_SECONDS).fill(null);
+  }, []);
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ScrollToTop />
-            <Routes>
-              <Route path="/" element={<HubPage />} />
-              <Route path="/hub" element={<HubPage />} />
-              <Route path="/main" element={<Index />} />
-              <Route path="/main-list" element={<Index />} />
-              <Route path="/level/:levelId" element={<LevelPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/future-list" element={<FutureListPage />} />
-              <Route path="/future-level/:levelId" element={<FutureLevelPage />} />
-              <Route path="/extended-list" element={<ExtendedListPage />} />
-              <Route path="/extra-list" element={<ExtraListPage />} />
-              <Route path="/recent" element={<RecentRunsPage />} />
-              <Route path="/recently-added" element={<RecentlyAddedPage />} />
-              <Route path="/compare" element={<ComparePage />} />
-              <Route path="/submit" element={<SubmitLevelPage />} />
-              <Route path="/info" element={<GuidePage />} />
-              <Route path="/guide" element={<Navigate to="/info" replace />} />
-              <Route path="/themes" element={<ThemesPage />} />
-              <Route path="/statistics" element={<StatisticsPage />} />
-              <Route path="/watchlist" element={<WatchlistPage />} />
-              <Route path="/roulette" element={<LevelRoulettePage />} />
-              <Route path="/events" element={<EventsPage />} />
-              <Route path="/events/:jamSlug" element={<JamEventPage />} />
-              <Route path="/events/:jamSlug/level/:entrySlug" element={<JamEntryPage />} />
-              <Route path="/packs" element={<PacksPage />} />
-              <Route path="/packs/:packId" element={<PacksPage />} />
-              <Route path="/player/:username" element={<PlayerPage />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="/privacy" element={<PrivacyPolicyPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <SiteFooter />
-            <BackToTop />
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+  useEffect(() => {
+    if (AUTO_REDIRECT_SECONDS <= 0) return;
+    const timer = setTimeout(() => {
+      window.location.href = NEW_SITE_URL;
+    }, AUTO_REDIRECT_SECONDS * 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <main className="min-h-screen flex items-center justify-center px-6 py-16">
+      <div className="w-full max-w-xl text-center space-y-8">
+        <img
+          src={logo}
+          alt="Narrowlist"
+          className="glow-primary mx-auto h-16 w-16 rounded-xl object-contain sm:h-20 sm:w-20"
+        />
+
+        <p className="font-display text-sm font-semibold tracking-[0.35em] uppercase text-muted-foreground">
+          Narrowlist
+        </p>
+
+        <h1 className="gradient-text text-4xl sm:text-5xl font-bold">
+          We have moved.
+        </h1>
+
+        <p className="text-muted-foreground sm:text-lg leading-relaxed">
+          Narrowlist is now hosted at its own home on the web. This old website
+          is no longer maintained and none of its features work here anymore.
+        </p>
+
+        <div className="border-theme-glow rounded-lg bg-theme-gradient p-6 sm:p-8 space-y-4">
+          <p className="text-foreground font-medium">
+            Visit the new, fully working website:
+          </p>
+          <a
+            href={NEW_SITE_URL}
+            className="glow-primary inline-flex items-center justify-center rounded-lg bg-primary px-8 py-4 text-base font-semibold text-primary-foreground transition-transform hover:scale-[1.03] active:scale-[0.98]"
+          >
+            Continue to narrowlist.net
+            <span aria-hidden="true" className="ml-2">
+              &rarr;
+            </span>
+          </a>
+          {countdown !== null && (
+            <p className="text-xs text-muted-foreground">
+              You will be redirected automatically in a moment.
+            </p>
+          )}
+        </div>
+
+        <p className="text-xs text-muted-foreground/70">
+          &copy; {new Date().getFullYear()} Narrowlist. Bookmark{" "}
+          <a
+            href={NEW_SITE_URL}
+            className="underline underline-offset-2 text-muted-foreground hover:text-foreground"
+          >
+            narrowlist.net
+          </a>{" "}
+          and save a new link.
+        </p>
+      </div>
+    </main>
+  );
+};
 
 export default App;
