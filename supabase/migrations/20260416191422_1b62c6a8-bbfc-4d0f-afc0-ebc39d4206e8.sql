@@ -1,1 +1,0 @@
-ALTER TABLE public.deleted_levels ALTER COLUMN deleted_by DROP NOT NULL;

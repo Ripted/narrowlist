@@ -1,1 +1,0 @@
-ALTER TABLE public.manual_runs DROP CONSTRAINT IF EXISTS manual_runs_level_id_fkey;
