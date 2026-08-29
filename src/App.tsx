@@ -7,7 +7,31 @@ const NEW_SITE_URL = "https://narrowlist.net";
 // Set to 0 to disable auto-redirect (manual button only).
 const AUTO_REDIRECT_SECONDS = 0;
 
+// Supabase sends email confirmation / password-reset links to this old domain's
+// `/auth/v1/verify…` path (because it is still the Site URL in the Supabase
+// dashboard). Those hosts serve our static takeover page, but the token can only be
+// validated by Supabase's GoTrue backend — so we forward them (query string intact)
+// to the project's real auth host. GoTrue 303-redirects the browser to `redirect_to`
+// (the new site) with the session fragment, where the app logs in.
+// Anything else keeps showing the moved-page.
+const SUPABASE_AUTH_BASE_URL = "https://ernuscqjcluitrtyilnc.supabase.co";
+const SUPABASE_AUTH_PATHS = ["/auth/v1/verify", "/auth/v1/callback"];
+
+function forwardAuthLinks() {
+  const { pathname, search, hash } = window.location;
+  const isAuthPath = SUPABASE_AUTH_PATHS.some((p) => (
+    pathname === p || pathname.startsWith(`${p}?`) || pathname.startsWith(`${p}/`)
+  ));
+  if (isAuthPath) {
+    window.location.replace(`${SUPABASE_AUTH_BASE_URL}${pathname}${search}${hash}`);
+    return true;
+  }
+  return false;
+}
+
 const App = () => {
+  if (forwardAuthLinks()) return null;
+
   const countdown = useMemo(() => {
     if (AUTO_REDIRECT_SECONDS <= 0) return null;
     return new Array(AUTO_REDIRECT_SECONDS).fill(null);
