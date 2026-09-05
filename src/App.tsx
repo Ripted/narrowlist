@@ -3,22 +3,12 @@ import logo from "./assets/logo.png";
 
 const NEW_SITE_URL = "https://narrowlist.net";
 
-// Seconds to wait before automatically redirecting to the new website.
-// Set to 0 to disable auto-redirect (manual button only).
-const AUTO_REDIRECT_SECONDS = 0;
-
+// The old site redirects to the new website immediately (meta refresh in
+// index.html + the effect below). This page is only a fallback if both fail.
 const App = () => {
-  const countdown = useMemo(() => {
-    if (AUTO_REDIRECT_SECONDS <= 0) return null;
-    return new Array(AUTO_REDIRECT_SECONDS).fill(null);
-  }, []);
-
   useEffect(() => {
-    if (AUTO_REDIRECT_SECONDS <= 0) return;
-    const timer = setTimeout(() => {
-      window.location.href = NEW_SITE_URL;
-    }, AUTO_REDIRECT_SECONDS * 1000);
-    return () => clearTimeout(timer);
+    // location.replace so the back button doesn't land on this page again.
+    window.location.replace(NEW_SITE_URL);
   }, []);
 
   return (
