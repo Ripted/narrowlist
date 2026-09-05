@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import logo from "./assets/logo.png";
 
 const NEW_SITE_URL = "https://narrowlist.net";
