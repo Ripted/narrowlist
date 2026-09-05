@@ -46,11 +46,10 @@ const App = () => {
               &rarr;
             </span>
           </a>
-          {countdown !== null && (
-            <p className="text-xs text-muted-foreground">
-              You will be redirected automatically in a moment.
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            You should be redirected automatically — if not, use the button
+            above.
+          </p>
         </div>
 
         <p className="text-xs text-muted-foreground/70">
